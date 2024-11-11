@@ -5,6 +5,7 @@ from recruitmentAPI.views.user_views import (
     UpdateBasicUserInfoView, UpdatePrivacySettingsView, DeleteUserAccountView,
     ViewUserProfileView, SearchProfilesView, SomeNormalUserView, SomeCompanyUserView
 )
+from recruitmentAPI.views.connection_views import SendConnectionRequestView, HandleConnectionRequestView
 
 urlpatterns = [
     path('register/', RegisterUserView.as_view(), name='register_user'),
@@ -20,4 +21,6 @@ urlpatterns = [
     path('search-profiles/', SearchProfilesView.as_view(), name='search_user_profiles'),
     path('normal-user-action/', SomeNormalUserView.as_view(), name='normal_user_action'),
     path('company-user-action/', SomeCompanyUserView.as_view(), name='company_user_action'),
+    path('connections/send/<int:receiver_id>/', SendConnectionRequestView.as_view(), name='send_connection_request'),
+    path('connections/handle/<int:request_id>/', HandleConnectionRequestView.as_view(), name='handle_connection_request'),
 ]

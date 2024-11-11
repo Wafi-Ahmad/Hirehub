@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny
 from ..services.user_services import UserService  # Use relative import
 from ..serializers.user_serializers import UserSerializer, CustomLoginSerializer, UserInterestSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, UserProfileSerializer  , PrivacySettingsSerializer, UserProfilePublicSerializer # Use relative import
 from django.core.mail import send_mail
@@ -21,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 class RegisterUserView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
@@ -33,7 +37,6 @@ class RegisterUserView(APIView):
                     date_of_birth=serializer.validated_data.get('date_of_birth'),
                     company_name=serializer.validated_data.get('company_name'),
                     user_type=serializer.validated_data['user_type'],
-                    #profile_picture=serializer.validated_data.get('profile_picture') #This should to remove , we don't need to add the picture while registration
                 )
                 return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
             except ValueError as e:
@@ -41,6 +44,8 @@ class RegisterUserView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CustomLoginUserView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
     def post(self, request):
         serializer = CustomLoginSerializer(data=request.data)
         if serializer.is_valid():

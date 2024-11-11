@@ -32,20 +32,13 @@ class CustomLoginSerializer(serializers.Serializer):
         password = data.get("password")
 
         try:
-            # Check if the user exists
             user = User.objects.get(email=email)
+            if not user.check_password(password):
+                raise serializers.ValidationError("Invalid email or password.")
+            data['user'] = user
+            return data
         except User.DoesNotExist:
             raise serializers.ValidationError("Invalid email or password.")
-
-        # Verify the password
-        if not check_password(password, user.password):
-            raise serializers.ValidationError("Invalid email or password.")
-
-        # Return user information if successful
-        return {
-            "email": user.email,
-            "user_type": user.user_type
-        }    
 
 class UserInterestSerializer(serializers.ModelSerializer):
     class Meta:

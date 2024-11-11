@@ -72,23 +72,20 @@ TEMPLATES = [
 WSGI_APPLICATION = 'recruitment_platform.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'recruitment_platform',  # Your database name
-        'USER': 'Ali',       # Your MySQL username
-        'PASSWORD': '2002',      # Your MySQL password
-        'HOST': 'localhost',              # Leave it as localhost if using local DB
-        'PORT': '3306',                   # Default MySQL port
+        'NAME': 'hirehub',
+        'USER': 'wafi',          
+        'PASSWORD': '1998',    
+        'HOST': 'localhost',
+        'PORT': '3306',                 
     }
 }
 
 
-# Password validation
-# https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -139,10 +136,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # ...
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
+   'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-
+    ],
 }
 
 # Optionally, you can configure JWT settings
