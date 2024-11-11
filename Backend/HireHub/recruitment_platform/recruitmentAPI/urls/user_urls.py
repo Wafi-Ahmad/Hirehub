@@ -3,7 +3,7 @@ from recruitmentAPI.views.user_views import (
     RegisterUserView, CustomLoginUserView, UpdateUserInterestsView,
     PasswordResetRequestView, PasswordResetConfirmView, UpdateUserProfileView,
     UpdateBasicUserInfoView, UpdatePrivacySettingsView, DeleteUserAccountView,
-    ViewUserProfileView, SearchProfilesView  # Corrected the class name here
+    ViewUserProfileView, SearchProfilesView, SomeNormalUserView, SomeCompanyUserView
 )
 
 urlpatterns = [
@@ -17,5 +17,7 @@ urlpatterns = [
     path('update-privacy/', UpdatePrivacySettingsView.as_view(), name='update_privacy_settings'),
     path('delete-account/', DeleteUserAccountView.as_view(), name='delete_user_account'),
     path('view-profile/<int:user_id>/', ViewUserProfileView.as_view(), name='view_user_profile'),
-    path('search-profiles/', SearchProfilesView.as_view(), name='search_user_profiles'),  # Corrected the class name here
+    path('search-profiles/', SearchProfilesView.as_view(), name='search_user_profiles'),
+    path('normal-user-action/', SomeNormalUserView.as_view(), name='normal_user_action'),
+    path('company-user-action/', SomeCompanyUserView.as_view(), name='company_user_action'),
 ]

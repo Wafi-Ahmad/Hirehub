@@ -9,6 +9,7 @@ class UserService:
         if User.objects.filter(email=email).exists():
             raise ValueError('A user with this email already exists.')
 
+        profile_picture = extra_fields.pop('profile_picture', None)
         user = User.objects.create_user(
             email=email,
             first_name=first_name,
@@ -16,6 +17,9 @@ class UserService:
             password=password,
             **extra_fields
         )
+        if profile_picture:
+            user.profile_picture = profile_picture
+            user.save()
         return user
 
     @staticmethod

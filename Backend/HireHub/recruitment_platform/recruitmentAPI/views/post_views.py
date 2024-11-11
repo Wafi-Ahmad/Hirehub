@@ -4,9 +4,10 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from recruitmentAPI.serializers.post_serializers import PostSerializer
 from recruitmentAPI.services.post_services import PostService
+from recruitmentAPI.permissions import IsCompanyUser, IsNormalUser
 
 class CreatePostView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,IsCompanyUser,IsNormalUser]
 
     def post(self, request):
         """
@@ -23,7 +24,7 @@ class CreatePostView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LikePostView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNormalUser,IsCompanyUser]
 
     def post(self, request, post_id):
         """

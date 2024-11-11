@@ -8,7 +8,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'password', 'date_of_birth', 'company_name', 'user_type', 'profile_picture']
+        fields = ['email', 'first_name', 'last_name', 'password', 'date_of_birth', 'company_name', 'user_type']
 
     def create(self, validated_data):
         user = User(
@@ -18,10 +18,8 @@ class UserSerializer(serializers.ModelSerializer):
             date_of_birth=validated_data.get('date_of_birth'),
             company_name=validated_data.get('company_name'),
             user_type=validated_data['user_type'],
-            profile_picture=validated_data.get('profile_picture')
         )
         user.set_password(validated_data['password'])
-        user.save()
         return user
     
 
@@ -81,17 +79,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'skills', 'experience', 'recent_work', 
             'current_work', 'contact_details'
         ]
-
-class UserProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = [
-            'skills', 'experience', 'recent_work', 
-            'current_work', 'contact_details'
-        ]
-
-
-
 
 class PrivacySettingsSerializer(serializers.ModelSerializer):
     class Meta:

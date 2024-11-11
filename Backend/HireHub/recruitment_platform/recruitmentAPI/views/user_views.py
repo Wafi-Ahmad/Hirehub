@@ -13,6 +13,7 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q
 import logging
+from recruitmentAPI.permissions import IsNormalUser, IsCompanyUser
 
 User = get_user_model()
 
@@ -32,7 +33,7 @@ class RegisterUserView(APIView):
                     date_of_birth=serializer.validated_data.get('date_of_birth'),
                     company_name=serializer.validated_data.get('company_name'),
                     user_type=serializer.validated_data['user_type'],
-                    profile_picture=serializer.validated_data.get('profile_picture')
+                    #profile_picture=serializer.validated_data.get('profile_picture') #This should to remove , we don't need to add the picture while registration
                 )
                 return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
             except ValueError as e:
@@ -57,13 +58,13 @@ class CustomLoginUserView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ProtectedView(APIView):
-    permission_classes = [IsAuthenticated]
 
+    permission_classes = [IsAuthenticated] 
     def get(self, request):
         return Response({"message": "This is a protected view"}, status=status.HTTP_200_OK)
 
 class UpdateUserInterestsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNormalUser]
 
     def put(self, request):
         user = request.user
@@ -81,7 +82,7 @@ class PasswordResetRequestView(APIView):
             try:
                 user = User.objects.get(email=email)
                 token = default_token_generator.make_token(user)
-                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                uid = urlsafe_base64_encode(force_bytes(user.pk))   
                 reset_link = f"http://localhost:8000/api/reset-password-confirm/{uid}/{token}/"
                 send_mail(
                     'Password Reset Request',
@@ -117,7 +118,7 @@ class PasswordResetConfirmView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UpdateUserProfileView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNormalUser]
 
     def put(self, request):
         serializer = UserProfileSerializer(instance=request.user, data=request.data, partial=True)
@@ -128,7 +129,7 @@ class UpdateUserProfileView(APIView):
 
 
 class UpdateBasicUserInfoView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNormalUser, IsCompanyUser]
 
     def put(self, request):
         """
@@ -142,7 +143,7 @@ class UpdateBasicUserInfoView(APIView):
 
 
 class UpdatePrivacySettingsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNormalUser, IsCompanyUser]
 
     def put(self, request):
         user = request.user
@@ -154,7 +155,7 @@ class UpdatePrivacySettingsView(APIView):
 
 
 class DeleteUserAccountView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNormalUser, IsCompanyUser]
 
     def delete(self, request):
         user = request.user
@@ -166,7 +167,7 @@ class DeleteUserAccountView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 class ViewUserProfileView(APIView):
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsNormalUser, IsCompanyUser]
 
     def get(self, request, user_id):
         try:
@@ -179,7 +180,7 @@ class ViewUserProfileView(APIView):
 
 
 class SearchProfilesView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsNormalUser, IsCompanyUser]
 
     def get(self, request):
         query = request.GET.get('query', '')
@@ -222,3 +223,17 @@ class SearchProfilesView(APIView):
             return Response({"message": "No results found."}, status=status.HTTP_200_OK)
 
         return Response(result, status=status.HTTP_200_OK)
+
+class SomeNormalUserView(APIView):
+    permission_classes = [IsAuthenticated, IsNormalUser]
+
+    def get(self, request):
+        # Logic for normal users
+        return Response({"message": "This is accessible only to normal users."})
+
+class SomeCompanyUserView(APIView):
+    permission_classes = [IsAuthenticated, IsCompanyUser]
+
+    def get(self, request):
+        # Logic for company users
+        return Response({"message": "This is accessible only to company users."})
