@@ -1,15 +1,13 @@
-from rest_framework.permissions import BasePermission
+from rest_framework import permissions
 
-class IsNormalUser(BasePermission):
-    """
-    Allows access only to normal users.
-    """
+class IsNormalUser(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.user_type == 'Normal'
+        return request.user.user_type == 'Normal'
 
-class IsCompanyUser(BasePermission):
-    """
-    Allows access only to company users.
-    """
+class IsCompanyUser(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.user_type == 'Company'
+        return request.user.user_type == 'Company'
+
+class IsNormalOrCompanyUser(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.user_type in ['Normal', 'Company']

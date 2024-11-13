@@ -13,7 +13,7 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.db.models import Q
 import logging
-from recruitmentAPI.permissions import IsNormalUser, IsCompanyUser
+from recruitmentAPI.permissions import IsNormalUser, IsCompanyUser, IsNormalOrCompanyUser
 
 User = get_user_model()
 
@@ -47,6 +47,7 @@ class CustomLoginUserView(APIView):
             user = User.objects.get(email=serializer.validated_data['email'])
             refresh = RefreshToken.for_user(user)
             return Response({
+                "id": user.id,
                 "message": "Login successful",
                 "user": {
                     "email": user.email,
@@ -129,7 +130,7 @@ class UpdateUserProfileView(APIView):
 
 
 class UpdateBasicUserInfoView(APIView):
-    permission_classes = [IsAuthenticated, IsNormalUser, IsCompanyUser]
+    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
     def put(self, request):
         """
@@ -143,7 +144,7 @@ class UpdateBasicUserInfoView(APIView):
 
 
 class UpdatePrivacySettingsView(APIView):
-    permission_classes = [IsAuthenticated, IsNormalUser, IsCompanyUser]
+    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
     def put(self, request):
         user = request.user
@@ -155,7 +156,7 @@ class UpdatePrivacySettingsView(APIView):
 
 
 class DeleteUserAccountView(APIView):
-    permission_classes = [IsAuthenticated, IsNormalUser, IsCompanyUser]
+    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
     def delete(self, request):
         user = request.user
@@ -167,7 +168,7 @@ class DeleteUserAccountView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 class ViewUserProfileView(APIView):
-    permission_classes = [IsAuthenticatedOrReadOnly, IsNormalUser, IsCompanyUser]
+    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
     def get(self, request, user_id):
         try:
@@ -180,7 +181,7 @@ class ViewUserProfileView(APIView):
 
 
 class SearchProfilesView(APIView):
-    permission_classes = [IsAuthenticated, IsNormalUser, IsCompanyUser]
+    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
     def get(self, request):
         query = request.GET.get('query', '')
