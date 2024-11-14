@@ -10,6 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import pymysql
+pymysql.install_as_MySQLdb()
+
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -37,8 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
     'recruitmentAPI',
+    'rest_framework',
+    'rest_framework_simplejwt',
 ]
 
 MIDDLEWARE = [
@@ -78,11 +82,11 @@ WSGI_APPLICATION = 'recruitment_platform.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'recruitment_platform',  # Your database name
-        'USER': 'Ali',       # Your MySQL username
-        'PASSWORD': '2002',      # Your MySQL password
-        'HOST': 'localhost',              # Leave it as localhost if using local DB
-        'PORT': '3306',                   # Default MySQL port
+        'NAME': 'hirehub',
+        'USER': 'wafi',
+        'PASSWORD': '1998',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 

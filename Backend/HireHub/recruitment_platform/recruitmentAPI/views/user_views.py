@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from ..services.user_services import UserService  # Use relative import
-from ..serializers.user_serializers import UserSerializer, CustomLoginSerializer, UserInterestSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, UserProfileSerializer  , PrivacySettingsSerializer, UserProfilePublicSerializer # Use relative import
+from ..serializers.user_serializers import UserSerializer, CustomLoginSerializer, UserInterestSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, UserProfileSerializer  , PrivacySettingsSerializer, UserProfilePublicSerializer, FollowUserSerializer # Use relative import
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
@@ -238,3 +238,46 @@ class SomeCompanyUserView(APIView):
     def get(self, request):
         # Logic for company users
         return Response({"message": "This is accessible only to company users."})
+
+class FollowUserView(APIView):
+    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
+
+    def post(self, request, user_id):
+        try:
+            user_to_follow = User.objects.get(id=user_id)
+            request.user.following.add(user_to_follow)
+            return Response({
+                "message": f"You are now following {user_to_follow.first_name} {user_to_follow.last_name}"
+            }, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({
+                "error": "User not found."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, user_id):
+        try:
+            user_to_unfollow = User.objects.get(id=user_id)
+            request.user.following.remove(user_to_unfollow)
+            return Response({
+                "message": f"You have unfollowed {user_to_unfollow.first_name} {user_to_unfollow.last_name}"
+            }, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return Response({
+                "error": "User not found."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+class GetFollowersFollowingView(APIView):
+    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
+
+    def get(self, request):
+        user = request.user
+        followers = user.followers.all()
+        following = user.following.all()
+
+        follower_data = UserProfilePublicSerializer(followers, many=True).data
+        following_data = UserProfilePublicSerializer(following, many=True).data
+
+        return Response({
+            "followers": follower_data,
+            "following": following_data
+        }, status=status.HTTP_200_OK)

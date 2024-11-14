@@ -81,6 +81,14 @@ class User(AbstractBaseUser):
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
+    # Add this new field for following relationships
+    following = models.ManyToManyField(
+        'self',
+        related_name='followers',
+        symmetrical=False,
+        blank=True
+    )
+
     objects = UserManager()
 
     USERNAME_FIELD = 'email'

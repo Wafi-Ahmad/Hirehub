@@ -115,3 +115,16 @@ class UserProfilePublicSerializer(serializers.ModelSerializer):
 
         return data
     
+
+class FollowUserSerializer(serializers.Serializer):
+    user_to_follow = serializers.IntegerField()
+
+    def validate_user_to_follow(self, value):
+        try:
+            user = User.objects.get(id=value)
+            if user == self.context['request'].user:
+                raise serializers.ValidationError("You cannot follow yourself.")
+            return value
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User not found.")
+    
