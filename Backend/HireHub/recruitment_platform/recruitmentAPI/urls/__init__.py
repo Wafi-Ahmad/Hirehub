@@ -2,6 +2,7 @@ from .user_urls import urlpatterns as user_urls
 from .post_urls import urlpatterns as post_urls
 from .comment_urls import urlpatterns as comment_urls
 from .connection_urls import urlpatterns as connection_urls
+from .role_urls import urlpatterns as role_urls
 from django.urls import path, include
 
 urlpatterns = [
@@ -9,4 +10,5 @@ urlpatterns = [
     path('post/', include(post_urls)),
     path('comment/', include(comment_urls)),
     path('connection/', include(connection_urls)),
+    path('role/', include(role_urls)),
 ]

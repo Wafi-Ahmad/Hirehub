@@ -25,11 +25,11 @@ from rest_framework_simplejwt.views import (
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('recruitmentAPI.urls')),
     path('api/', include('recruitmentAPI.urls.user_urls')),
     path('api/', include('recruitmentAPI.urls.post_urls')),
     path('api/', include('recruitmentAPI.urls.comment_urls')),
     path('api/', include('recruitmentAPI.urls.connection_urls')),
+    path('api/', include('recruitmentAPI.urls.role_urls')),
     # JWT Authentication URLs
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

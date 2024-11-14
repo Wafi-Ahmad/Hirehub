@@ -115,7 +115,6 @@ class UserProfilePublicSerializer(serializers.ModelSerializer):
 
         return data
     
-
 class FollowUserSerializer(serializers.Serializer):
     user_to_follow = serializers.IntegerField()
 

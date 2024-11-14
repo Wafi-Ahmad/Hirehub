@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from ..services.user_services import UserService  # Use relative import
-from ..serializers.user_serializers import UserSerializer, CustomLoginSerializer, UserInterestSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, UserProfileSerializer  , PrivacySettingsSerializer, UserProfilePublicSerializer, FollowUserSerializer # Use relative import
+from ..serializers.user_serializers import UserSerializer, CustomLoginSerializer, UserInterestSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, UserProfileSerializer  , PrivacySettingsSerializer, UserProfilePublicSerializer # Use relative import
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
@@ -238,7 +238,7 @@ class SomeCompanyUserView(APIView):
     def get(self, request):
         # Logic for company users
         return Response({"message": "This is accessible only to company users."})
-
+    
 class FollowUserView(APIView):
     permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
@@ -280,4 +280,4 @@ class GetFollowersFollowingView(APIView):
         return Response({
             "followers": follower_data,
             "following": following_data
-        }, status=status.HTTP_200_OK)
+        }, status=status.HTTP_200_OK)    

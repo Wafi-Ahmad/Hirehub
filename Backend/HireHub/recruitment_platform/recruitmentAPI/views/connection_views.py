@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from ..services.connection_services import ConnectionService
 from django.core.exceptions import ValidationError
 from ..models.user_model import User
-from ..permissions import IsNormalOrCompanyUser, IsNormalUser, IsCompanyUser
+from ..permissions import IsNormalOrCompanyUser, IsNormalUser, IsCompanyUser    
 
 class SendConnectionRequestView(APIView):
     permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]

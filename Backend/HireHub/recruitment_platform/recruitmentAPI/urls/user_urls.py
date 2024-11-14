@@ -3,8 +3,8 @@ from recruitmentAPI.views.user_views import (
     RegisterUserView, CustomLoginUserView, UpdateUserInterestsView,
     PasswordResetRequestView, PasswordResetConfirmView, UpdateUserProfileView,
     UpdateBasicUserInfoView, UpdatePrivacySettingsView, DeleteUserAccountView,
-    ViewUserProfileView, SearchProfilesView, SomeNormalUserView, SomeCompanyUserView,
-    FollowUserView
+    ViewUserProfileView, SearchProfilesView, SomeNormalUserView, SomeCompanyUserView,FollowUserView,
+    GetFollowersFollowingView
 )
 
 urlpatterns = [
@@ -22,4 +22,5 @@ urlpatterns = [
     path('normal-user-action/', SomeNormalUserView.as_view(), name='normal_user_action'),
     path('company-user-action/', SomeCompanyUserView.as_view(), name='company_user_action'),
     path('follow/<int:user_id>/', FollowUserView.as_view(), name='follow-user'),
+    path('followers-following/', GetFollowersFollowingView.as_view(), name='followers-following'),
 ]

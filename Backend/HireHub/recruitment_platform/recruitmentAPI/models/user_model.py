@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
+from django.apps import apps  # Import apps to dynamically get models
 
 # Custom user manager for handling user creation
 class UserManager(BaseUserManager):
@@ -96,3 +97,30 @@ class User(AbstractBaseUser):
 
     def __str__(self):
         return self.email
+
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}".strip()
+
+class RoleService:
+    @staticmethod
+    def assign_role(user_id, role):
+        try:
+            user = User.objects.get(pk=user_id)
+            if user.user_type != User.NORMAL_USER:
+                raise ValueError("Only normal users can be assigned roles.")
+            Role = apps.get_model('recruitmentAPI', 'Role')  # Dynamically get Role model
+            Role.objects.update_or_create(user=user, defaults={'role': role})
+            return {"message": f"Role {role} assigned to {user.email}."}
+        except User.DoesNotExist:
+            raise ValueError("User not found")
+
+    @staticmethod
+    def remove_role(user_id):
+        try:
+            Role = apps.get_model('recruitmentAPI', 'Role')  # Dynamically get Role model
+            role = Role.objects.get(user_id=user_id)
+            role.delete()
+            return {"message": "Role removed successfully."}
+        except Role.DoesNotExist:
+            raise ValueError("Role not found for this user")
