@@ -12,10 +12,14 @@ import {
   useMediaQuery,
   useTheme,
   Avatar,
+  Divider,
+  ListItemIcon,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useAuth } from '../../context/AuthContext';
 import { isCompanyUser, isNormalUser } from '../../utils/permissions';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import LogoutIcon from '@mui/icons-material/Logout';
 
 const Header = () => {
   const theme = useTheme();
@@ -87,11 +91,16 @@ const Header = () => {
           {item.label}
         </Button>
       ))}
-      {user?.token ? (
+      {user ? (
         <>
           <IconButton
             onClick={handleMenu}
-            sx={{ ml: 2 }}
+            sx={{ 
+              ml: 2,
+              border: '2px solid',
+              borderColor: 'primary.main',
+              padding: '4px'
+            }}
             aria-controls="profile-menu"
             aria-haspopup="true"
           >
@@ -114,10 +123,55 @@ const Header = () => {
               vertical: 'top',
               horizontal: 'right',
             }}
+            PaperProps={{
+              elevation: 0,
+              sx: {
+                overflow: 'visible',
+                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                mt: 1.5,
+                '& .MuiAvatar-root': {
+                  width: 32,
+                  height: 32,
+                  ml: -0.5,
+                  mr: 1,
+                },
+                '&:before': {
+                  content: '""',
+                  display: 'block',
+                  position: 'absolute',
+                  top: 0,
+                  right: 14,
+                  width: 10,
+                  height: 10,
+                  bgcolor: 'background.paper',
+                  transform: 'translateY(-50%) rotate(45deg)',
+                  zIndex: 0,
+                },
+              },
+            }}
           >
-            <MenuItem onClick={() => handleNavigate('/profile')}>Profile</MenuItem>
-            <MenuItem onClick={() => handleNavigate('/settings')}>Settings</MenuItem>
-            <MenuItem onClick={handleLogout}>Logout</MenuItem>
+            <MenuItem onClick={() => handleNavigate('/profile')}>
+              <Avatar src={user?.profile_picture} /> My Profile
+            </MenuItem>
+            <MenuItem onClick={() => handleNavigate('/dashboard')}>
+              <Avatar /> Dashboard
+            </MenuItem>
+            <MenuItem onClick={() => handleNavigate('/settings')}>
+              <Avatar /> Settings
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={() => handleNavigate('/help')}>
+              <ListItemIcon>
+                <HelpOutlineIcon fontSize="small" />
+              </ListItemIcon>
+              Help Center
+            </MenuItem>
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutIcon fontSize="small" color="error" />
+              </ListItemIcon>
+              <Typography color="error">Logout</Typography>
+            </MenuItem>
           </Menu>
         </>
       ) : (
