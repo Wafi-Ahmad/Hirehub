@@ -39,9 +39,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'recruitmentAPI',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -78,13 +80,14 @@ WSGI_APPLICATION = 'recruitment_platform.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'recruitment_platform',  # Your database name
-        'USER': 'Ali',       # Your MySQL username
-        'PASSWORD': '2002',      # Your MySQL password
-        'HOST': 'localhost',              # Leave it as localhost if using local DB
-        'PORT': '3306',                   # Default MySQL port
+        'NAME': 'hirehub',            
+        'USER': 'wafi',               
+        'PASSWORD': '1998',           
+        'HOST': 'localhost',           
+        'PORT': '3306',                
     }
 }
+
 
 
 # Password validation
@@ -174,3 +177,12 @@ EMAIL_USE_SSL = False
 EMAIL_HOST_USER = 'ahalaswad5@gmail.com'  # Your email address
 EMAIL_HOST_PASSWORD = 'ctwz hycw hdii fayj'  # Your email password
 DEFAULT_FROM_EMAIL = 'ahalaswad5@gmail.com'  # Default sender email
+
+CORS_ALLOW_ALL_ORIGINS = True  # Only use this in development!
+CORS_ALLOW_CREDENTIALS = True
+
+# For production, specify allowed origins
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",
+#     "http://127.0.0.1:3000",
+# ]

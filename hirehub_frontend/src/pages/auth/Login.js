@@ -37,11 +37,22 @@ const Login = () => {
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
       const response = await api.post('/login/', values);
-      login(response.data.token, response.data.user);
+      
+      localStorage.setItem('access', response.data.access);
+      localStorage.setItem('refresh', response.data.refresh);
+      
+      login(response.data.access, {
+        id: response.data.id,
+        email: response.data.user.email,
+        userType: response.data.user.user_type,
+        firstName: response.data.user.first_name,
+        lastName: response.data.user.last_name
+      });
+      
       toast.success('Login successful!');
       navigate('/');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed');
+      toast.error(error.response?.data?.error || 'Invalid email or password');
     } finally {
       setSubmitting(false);
     }

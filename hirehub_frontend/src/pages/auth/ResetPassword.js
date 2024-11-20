@@ -30,21 +30,21 @@ const validationSchema = Yup.object({
 });
 
 const ResetPassword = () => {
-  const { token } = useParams();
+  const { uidb64, token } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      await api.post('/auth/reset-password/', {
-        token,
-        password: values.password,
+      await api.post(`/reset-password-confirm/${uidb64}/${token}/`, {
+        new_password: values.password,
+        confirm_password: values.confirmPassword,
       });
       toast.success('Password reset successful! Please login with your new password.');
       navigate('/login');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Password reset failed');
+      toast.error(error.response?.data?.error || 'Password reset failed');
     } finally {
       setSubmitting(false);
     }

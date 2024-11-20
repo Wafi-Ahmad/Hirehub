@@ -72,3 +72,6 @@ Thumbs.db
 *.mov
 *.wmv
 
+# Django settings
+recruitment_platform/recruitment_platform/settings.py
+

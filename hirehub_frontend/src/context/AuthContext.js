@@ -1,32 +1,26 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { jwtDecode } from 'jwt-decode';
+import React, { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        return { token, ...decoded };
-      } catch {
-        localStorage.removeItem('token');
-        return null;
-      }
-    }
-    return null;
+    const savedUser = localStorage.getItem('user');
+    const savedToken = localStorage.getItem('access');
+    return savedUser && savedToken ? JSON.parse(savedUser) : null;
   });
 
-  const login = useCallback((token, userData) => {
-    localStorage.setItem('token', token);
-    setUser({ token, ...userData });
-  }, []);
+  const login = (token, userData) => {
+    localStorage.setItem('access', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+  };
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('token');
+  const logout = () => {
+    localStorage.removeItem('access');
+    localStorage.removeItem('refresh');
+    localStorage.removeItem('user');
     setUser(null);
-  }, []);
+  };
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>

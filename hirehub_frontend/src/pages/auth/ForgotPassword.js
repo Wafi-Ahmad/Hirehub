@@ -29,10 +29,10 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      await api.post('/auth/forgot-password/', values);
-      toast.success('Password reset instructions have been sent to your email');
+      const response = await api.post('/password-reset/', values);
+      toast.success(response.data.message || 'Password reset instructions have been sent to your email');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to process request');
+      toast.error(error.response?.data?.error || 'Failed to process request');
     } finally {
       setSubmitting(false);
     }

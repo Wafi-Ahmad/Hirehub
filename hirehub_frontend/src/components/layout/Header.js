@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useAuth } from '../../context/AuthContext';
+import { isCompanyUser, isNormalUser } from '../../utils/permissions';
 
 const Header = () => {
   const theme = useTheme();
@@ -44,12 +45,35 @@ const Header = () => {
     handleClose();
   };
 
-  const menuItems = user?.token ? [
-    { label: 'Home', path: '/' },
-    { label: 'Profile', path: '/profile' },
-    { label: 'Jobs', path: '/jobs' },
-    { label: 'Network', path: '/network' },
-  ] : [];
+  const getNavigationItems = () => {
+    const items = [
+      { label: 'Home', path: '/' },
+    ];
+
+    if (user) {
+      if (isNormalUser(user.userType)) {
+        items.push(
+          { label: 'Find Jobs', path: '/jobs' },
+          { label: 'My Applications', path: '/applications' },
+          { label: 'Network', path: '/network' }
+        );
+      }
+
+      if (isCompanyUser(user.userType)) {
+        items.push(
+          { label: 'Post Job', path: '/post-job' },
+          { label: 'Candidates', path: '/candidates' },
+          { label: 'Job Listings', path: '/my-listings' }
+        );
+      }
+
+      items.push({ label: 'Profile', path: '/profile' });
+    }
+
+    return items;
+  };
+
+  const menuItems = getNavigationItems();
 
   const renderDesktopMenu = () => (
     <>
