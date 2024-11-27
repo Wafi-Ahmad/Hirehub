@@ -1,8 +1,19 @@
 from django.urls import path
-from recruitmentAPI.views.comment_views import CreateCommentView, DeleteCommentView, LikeCommentView
+
+from recruitmentAPI.views.comment_views import CommentListView, ReplyListView, CommentLikeView
+
+
 
 urlpatterns = [
-    path('posts/<int:post_id>/comments/', CreateCommentView.as_view(), name='create_comment'),
-    path('comments/<int:comment_id>/delete/', DeleteCommentView.as_view(), name='delete_comment'),
-    path('comments/<int:comment_id>/like/', LikeCommentView.as_view(), name='like_comment'),  # New URL for liking comments
+
+    # Comment URLs
+
+    path('<int:post_id>/comments/', CommentListView.as_view(), name='comment-list'),
+
+    path('<int:comment_id>/replies/', ReplyListView.as_view(), name='reply-list'),
+
+    path('<int:comment_id>/like/', CommentLikeView.as_view(), name='comment-like'),
+
 ]
+
+

@@ -1,4 +1,4 @@
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.apps import apps  # Import apps to dynamically get models
 
@@ -32,7 +32,7 @@ class UserManager(BaseUserManager):
 
 
 # User model
-class User(AbstractBaseUser):
+class User(AbstractBaseUser, PermissionsMixin):
     NORMAL_USER = 'Normal'
     COMPANY_USER = 'Company'
 
@@ -101,6 +101,21 @@ class User(AbstractBaseUser):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
+
+    def has_perm(self, perm, obj=None):
+        """Does the user have a specific permission?"""
+        # Simplest possible answer: Yes, always
+        return True
+
+    def has_module_perms(self, app_label):
+        """Does the user have permissions to view the app `app_label`?"""
+        # Simplest possible answer: Yes, always
+        return True
+
+    @property
+    def is_admin(self):
+        """Is the user a member of staff?"""
+        return self.is_staff
 
 class RoleService:
     @staticmethod

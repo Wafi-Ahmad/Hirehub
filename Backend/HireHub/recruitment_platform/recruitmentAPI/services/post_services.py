@@ -1,28 +1,71 @@
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Prefetch
 from recruitmentAPI.models.post_model import Post
-from django.shortcuts import get_object_or_404
+from recruitmentAPI.models.comment_model import Comment
 
 class PostService:
     @staticmethod
-    def create_post(user, content, attachment=None):
+    def get_posts_paginated(cursor=None, limit=10):
         """
-        Create a new post with optional attachment.
+        Get paginated posts with optimized queries
         """
-        post = Post.objects.create(
-            user=user,
-            content=content,
-            attachment=attachment
-        )
-        return post
+        posts = Post.objects.select_related('user')\
+                          .prefetch_related('likes')\
+                          .all()
+        
+        if cursor:
+            posts = posts.filter(created_at__lt=cursor)
+        
+        # Get one extra to determine if there are more
+        posts = posts[:limit + 1]
+        
+        has_next = len(posts) > limit
+        posts = posts[:limit]
+        
+        next_cursor = posts[limit-1].created_at.isoformat() if has_next else None
+        
+        return {
+            'posts': posts,
+            'next_cursor': next_cursor
+        }
 
     @staticmethod
-    def like_post(user, post_id):
+    def get_post_detail(post_id):
         """
-        Like or unlike a post.
+        Get single post with related data
         """
-        post = get_object_or_404(Post, pk=post_id)  # Use get_object_or_404 for cleaner error handling
+        try:
+            post = Post.objects.select_related('user')\
+                             .prefetch_related(
+                                 'likes',
+                                 Prefetch(
+                                     'comments',
+                                     queryset=Comment.objects.filter(parent_comment=None)\
+                                                          .select_related('user')\
+                                                          .prefetch_related('likes')[:5]
+                                 )
+                             )\
+                             .get(id=post_id)
+            return post
+        except ObjectDoesNotExist:
+            return None
 
-        if user in post.likes.all():
-            post.likes.remove(user)  # Unlike the post if already liked
-        else:
-            post.likes.add(user)  # Like the post if not liked
-        return post
+    @staticmethod
+    def toggle_like(post_id, user):
+        """
+        Toggle like status for a post
+        """
+        try:
+            post = Post.objects.get(id=post_id)
+            if user in post.likes.all():
+                post.remove_like(user)
+                action = 'unliked'
+            else:
+                post.add_like(user)
+                action = 'liked'
+            
+            post.update_counts()
+            return post, action
+            
+        except ObjectDoesNotExist:
+            return None, None

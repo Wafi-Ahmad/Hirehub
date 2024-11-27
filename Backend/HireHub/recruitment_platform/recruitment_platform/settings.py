@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'recruitmentAPI',
     'corsheaders',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -145,7 +146,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # Optionally, you can configure JWT settings
@@ -186,3 +187,11 @@ CORS_ALLOW_CREDENTIALS = True
 #     "http://localhost:3000",
 #     "http://127.0.0.1:3000",
 # ]
+
+# Add Spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'HireHub API',
+    'DESCRIPTION': 'Your recruitment platform API description',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}

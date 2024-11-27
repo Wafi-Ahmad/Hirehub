@@ -1,36 +1,38 @@
 from rest_framework import serializers
+from recruitmentAPI.serializers.comment_serializers import CommentSerializer
 from recruitmentAPI.models.post_model import Post
-from recruitmentAPI.serializers.user_serializers import UserSerializer  # Assuming a user serializer exists
+from .user_serializers import UserMinimalSerializer
 
-class PostSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)  # Display selected user details in the post output
-    like_count = serializers.SerializerMethodField()  # Return like count instead of user list
-
+class PostListSerializer(serializers.ModelSerializer):
+    user = UserMinimalSerializer(read_only=True)
+    is_liked = serializers.SerializerMethodField()
+    
     class Meta:
         model = Post
-        fields = ['id', 'user', 'content', 'attachment', 'created_at', 'updated_at', 'like_count']
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'like_count']
+        fields = [
+            'id', 'user', 'content', 'attachment', 
+            'created_at', 'comments_count', 'likes_count',
+            'is_liked'
+        ]
+        read_only_fields = ['id', 'created_at', 'comments_count', 'likes_count']
 
-    def create(self, validated_data):
-        """
-        Overriding create to ensure the user is set from the request context.
-        """
+    def get_is_liked(self, obj):
         user = self.context['request'].user
-        post = Post.objects.create(user=user, **validated_data)
-        return post
+        return obj.likes.filter(id=user.id).exists()
 
-    def get_like_count(self, obj):
-        return obj.likes.count()
+class PostDetailSerializer(PostListSerializer):
+    top_level_comments = serializers.SerializerMethodField()
+    
+    class Meta(PostListSerializer.Meta):
+        fields = PostListSerializer.Meta.fields + ['top_level_comments']
 
-    def validate_attachment(self, value):
-        """
-        File type and size validation for attachment uploads.
-        """
-        allowed_types = ['image/jpeg', 'image/png', 'application/pdf']  # Example allowed types
-        max_file_size = 10 * 1024 * 1024  # 10MB size limit
-
-        if value.size > max_file_size:
-            raise serializers.ValidationError("The file size exceeds the limit of 10MB.")
-        if value.content_type not in allowed_types:
-            raise serializers.ValidationError("Invalid file type. Only images and PDFs are allowed.")
-        return value
+    def get_top_level_comments(self, obj):
+        # Get first page of comments
+        comments = obj.comments.filter(parent_comment=None)\
+                             .select_related('user')\
+                             .prefetch_related('likes')[:5]
+        return CommentSerializer(
+            comments, 
+            many=True, 
+            context=self.context
+        ).data
