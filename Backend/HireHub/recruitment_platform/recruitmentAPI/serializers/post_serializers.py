@@ -6,11 +6,12 @@ from .user_serializers import UserMinimalSerializer
 class PostListSerializer(serializers.ModelSerializer):
     user = UserMinimalSerializer(read_only=True)
     is_liked = serializers.SerializerMethodField()
+    media_urls = serializers.SerializerMethodField()
     
     class Meta:
         model = Post
         fields = [
-            'id', 'user', 'content', 'attachment', 
+            'id', 'user', 'content', 'media_type', 'media_urls',
             'created_at', 'comments_count', 'likes_count',
             'is_liked'
         ]
@@ -19,6 +20,53 @@ class PostListSerializer(serializers.ModelSerializer):
     def get_is_liked(self, obj):
         user = self.context['request'].user
         return obj.likes.filter(id=user.id).exists()
+
+    def get_media_urls(self, obj):
+        urls = {}
+        if obj.image:
+            urls['image'] = obj.image.url
+        if obj.video:
+            urls['video'] = obj.video.url
+        return urls
+
+    def validate(self, data):
+        image = self.context['request'].FILES.get('image')
+        video = self.context['request'].FILES.get('video')
+        
+        if image:
+            self.validate_image(image)
+            data['image'] = image
+            data['media_type'] = 'image'
+        
+        if video:
+            self.validate_video(video)
+            data['video'] = video
+            data['media_type'] = 'video'
+        
+        if image and video:
+            data['media_type'] = 'both'
+        elif not image and not video:
+            data['media_type'] = 'none'
+
+        return data
+
+    def validate_image(self, image):
+        max_size = 10 * 1024 * 1024  # 10MB
+        if image.size > max_size:
+            raise serializers.ValidationError("Image file too large. Max size is 10MB")
+        
+        allowed_types = ['image/jpeg', 'image/png', 'image/gif']
+        if image.content_type not in allowed_types:
+            raise serializers.ValidationError("Invalid image format. Supported formats: JPEG, PNG, GIF")
+
+    def validate_video(self, video):
+        max_size = 100 * 1024 * 1024  # 100MB
+        if video.size > max_size:
+            raise serializers.ValidationError("Video file too large. Max size is 100MB")
+        
+        allowed_types = ['video/mp4', 'video/quicktime']
+        if video.content_type not in allowed_types:
+            raise serializers.ValidationError("Invalid video format. Supported formats: MP4, MOV")
 
 class PostDetailSerializer(PostListSerializer):
     top_level_comments = serializers.SerializerMethodField()

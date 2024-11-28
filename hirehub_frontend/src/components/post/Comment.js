@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
@@ -6,14 +6,17 @@ import {
   Button,
   TextField,
   Avatar,
+  CircularProgress,
 } from '@mui/material';
 import {
   ThumbUp as ThumbUpIcon,
   Reply as ReplyIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
-import { postService } from '../../services/postService';
+import { commentService } from '../../services/commentService';
+import { likeService } from '../../services/likeService';
 import { toast } from 'react-toastify';
+import { formatTimeAgo } from '../../utils/dateUtils';
 
 const Comment = ({ comment, postId, onDelete, onLike, currentUser, isReply = false }) => {
   const [isReplying, setIsReplying] = useState(false);
@@ -28,11 +31,11 @@ const Comment = ({ comment, postId, onDelete, onLike, currentUser, isReply = fal
     
     try {
       setLoadingReplies(true);
-      const response = await postService.getCommentReplies(comment.id);
+      const response = await commentService.getReplies(comment.id);
 
-      if (response.replies) {
-        setReplies(response.replies);
-        setNextCursor(response.next_cursor);
+      if (response.data?.replies) {  // Fixed: Access correct response structure
+        setReplies(response.data.replies);
+        setNextCursor(response.data.next_cursor);
       }
     } catch (error) {
       console.error('Failed to load replies:', error);
@@ -48,11 +51,11 @@ const Comment = ({ comment, postId, onDelete, onLike, currentUser, isReply = fal
     
     try {
       setLoadingReplies(true);
-      const response = await postService.getCommentReplies(comment.id, nextCursor);
+      const response = await commentService.getReplies(comment.id, nextCursor);
 
-      if (response.replies) {
-        setReplies(prev => [...prev, ...response.replies]);
-        setNextCursor(response.next_cursor);
+      if (response.data?.replies) {  // Fixed: Access correct response structure
+        setReplies(prev => [...prev, ...response.data.replies]);
+        setNextCursor(response.data.next_cursor);
       }
     } catch (error) {
       console.error('Failed to load more replies:', error);
@@ -66,7 +69,7 @@ const Comment = ({ comment, postId, onDelete, onLike, currentUser, isReply = fal
     if (!replyContent.trim()) return;
     
     try {
-      const response = await postService.replyToComment(comment.id, replyContent);
+      const response = await commentService.createReply(comment.id, replyContent);
       if (response.data) {
         // Initialize replies array if it's null
         if (replies === null) {
@@ -86,8 +89,12 @@ const Comment = ({ comment, postId, onDelete, onLike, currentUser, isReply = fal
 
   const handleLike = async () => {
     try {
-      const response = await postService.likeComment(comment.id);
-      // Let parent handle the state update with the new like count
+      const response = await likeService.toggleCommentLike(comment.id);
+      // Update local state first for immediate feedback
+      const newLikeState = !comment.is_liked;
+      comment.is_liked = newLikeState;
+      comment.likes_count = response.likes_count;
+      // Notify parent to update UI
       onLike(comment.id, response.likes_count);
     } catch (error) {
       toast.error('Failed to like comment');
@@ -104,9 +111,14 @@ const Comment = ({ comment, postId, onDelete, onLike, currentUser, isReply = fal
         />
         <Box sx={{ flex: 1 }}>
           <Box sx={{ bgcolor: 'grey.100', p: 1, borderRadius: 1 }}>
-            <Typography variant="subtitle2">
-              {comment.user?.first_name} {comment.user?.last_name}
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+              <Typography variant="subtitle2">
+                {comment.user?.first_name} {comment.user?.last_name}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {formatTimeAgo(comment.created_at)}
+              </Typography>
+            </Box>
             <Typography variant="body2">{comment.content}</Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
@@ -191,18 +203,22 @@ const Comment = ({ comment, postId, onDelete, onLike, currentUser, isReply = fal
                   isReply={true}
                 />
               ))}
+              
+              {nextCursor && (
+                <Button
+                  size="small"
+                  onClick={loadMoreReplies}
+                  disabled={loadingReplies}
+                  sx={{ mt: 1 }}
+                >
+                  {loadingReplies ? (
+                    <CircularProgress size={16} sx={{ mr: 1 }} />
+                  ) : (
+                    'Show more replies'
+                  )}
+                </Button>
+              )}
             </Box>
-          )}
-
-          {!isReply && replies?.length > 0 && nextCursor && (
-            <Button
-              size="small"
-              onClick={loadMoreReplies}
-              disabled={loadingReplies}
-              sx={{ mt: 1, ml: 4 }}
-            >
-              {loadingReplies ? 'Loading...' : 'Show more replies'}
-            </Button>
           )}
         </Box>
       </Box>

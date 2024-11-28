@@ -37,10 +37,10 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'content_preview', 'created_at', 'like_count', 'has_attachment')
+    list_display = ('id', 'user', 'content_preview', 'created_at', 'likes_count', 'comments_count', 'has_attachment')
     list_filter = ('created_at', 'user')
     search_fields = ('content', 'user__email')
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = ('created_at', 'updated_at', 'likes_count', 'comments_count')
     date_hierarchy = 'created_at'
     
     def content_preview(self, obj):

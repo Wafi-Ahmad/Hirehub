@@ -36,7 +36,7 @@ const Login = () => {
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      const response = await api.post('/login/', values);
+      const response = await api.post('/users/login/', values);
       
       localStorage.setItem('access', response.data.access);
       localStorage.setItem('refresh', response.data.refresh);

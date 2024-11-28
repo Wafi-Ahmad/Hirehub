@@ -5,154 +5,102 @@ import {
   Avatar,
   TextField,
   Button,
-  IconButton,
-  Divider,
   CircularProgress,
 } from '@mui/material';
-import {
-  Photo as PhotoIcon,
-  Videocam as VideoIcon,
-  Event as EventIcon,
-  EmojiEmotions as EmojiIcon,
-  Close as CloseIcon,
-} from '@mui/icons-material';
 import { postService } from '../../services/postService';
+import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
-import api from '../../services/api';
+import MediaUpload from './MediaUpload';
 
-const CreatePost = ({ onPostCreated, user }) => {
+const CreatePost = ({ onPostCreated }) => {
+  const { user } = useAuth();
   const [content, setContent] = useState('');
-  const [attachment, setAttachment] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState({
+    image: null,
+    video: null
+  });
 
-  const handleFileSelect = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setAttachment(file);
-      // Create preview URL for images
-      if (file.type.startsWith('image/')) {
-        const url = URL.createObjectURL(file);
-        setPreviewUrl(url);
-      }
-    }
-  };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!content.trim() && !selectedFiles.image && !selectedFiles.video) return;
 
-  const clearAttachment = () => {
-    setAttachment(null);
-    setPreviewUrl('');
-  };
-
-  const handleSubmit = async () => {
-    if (!content.trim() && !attachment) return;
-
-    setIsSubmitting(true);
+    setLoading(true);
     try {
       const formData = new FormData();
-      formData.append('content', content);
-      if (attachment) {
-        formData.append('attachment', attachment);
+      formData.append('content', content.trim());
+      
+      if (selectedFiles.image) {
+        formData.append('image', selectedFiles.image);
+      }
+      if (selectedFiles.video) {
+        formData.append('video', selectedFiles.video);
       }
 
-      const response = await api.post('/posts/create/', formData);
+      const response = await postService.createPost(formData);
       
-      setContent('');
-      clearAttachment();
-      onPostCreated(response.data);
-      toast.success('Post created successfully!');
-    } catch (error) {
-      if (error.response?.status === 401) {
-        toast.error('Please log in again to continue');
-        // Let the API interceptor handle the redirect
-      } else {
-        toast.error(error.response?.data?.error || 'Failed to create post');
+      if (response) {
+        onPostCreated(response);
+        setContent('');
+        setSelectedFiles({ image: null, video: null });
+        toast.success('Post created successfully!');
       }
+    } catch (error) {
+      console.error('Error creating post:', error);
+      toast.error(error.response?.data?.error || 'Failed to create post');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
+  };
+
+  const handleFileSelect = (file, type) => {
+    setSelectedFiles(prev => ({
+      ...prev,
+      [type]: file
+    }));
+  };
+
+  const handleRemoveFile = (type) => {
+    setSelectedFiles(prev => ({
+      ...prev,
+      [type]: null
+    }));
   };
 
   return (
     <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'flex', gap: 2 }}>
         <Avatar src={user?.profile_picture} />
-        <TextField
-          fullWidth
-          multiline
-          rows={2}
-          variant="outlined"
-          placeholder="Share your thoughts..."
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          disabled={isSubmitting}
-        />
-      </Box>
+        <Box sx={{ flex: 1 }}>
+          <form onSubmit={handleSubmit}>
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              placeholder="What's on your mind?"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              variant="outlined"
+              sx={{ mb: 2 }}
+            />
+            
+            <MediaUpload
+              onFileSelect={handleFileSelect}
+              selectedFiles={selectedFiles}
+              onRemoveFile={handleRemoveFile}
+            />
 
-      {previewUrl && (
-        <Box sx={{ position: 'relative', mb: 2 }}>
-          <img
-            src={previewUrl}
-            alt="Preview"
-            style={{
-              maxWidth: '100%',
-              maxHeight: '200px',
-              objectFit: 'cover',
-              borderRadius: '8px',
-            }}
-          />
-          <IconButton
-            size="small"
-            sx={{
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              bgcolor: 'background.paper',
-            }}
-            onClick={clearAttachment}
-          >
-            <CloseIcon />
-          </IconButton>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+              <Button
+                variant="contained"
+                type="submit"
+                disabled={loading || (!content.trim() && !selectedFiles.image && !selectedFiles.video)}
+              >
+                {loading ? <CircularProgress size={24} /> : 'Post'}
+              </Button>
+            </Box>
+          </form>
         </Box>
-      )}
-
-      <Divider sx={{ my: 2 }} />
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <input
-            type="file"
-            id="file-input"
-            style={{ display: 'none' }}
-            onChange={handleFileSelect}
-            accept="image/*,.pdf"
-          />
-          <label htmlFor="file-input">
-            <Button
-              component="span"
-              startIcon={<PhotoIcon />}
-              disabled={isSubmitting}
-            >
-              Photo
-            </Button>
-          </label>
-          <Button startIcon={<VideoIcon />} disabled={isSubmitting}>
-            Video
-          </Button>
-          <Button startIcon={<EventIcon />} disabled={isSubmitting}>
-            Event
-          </Button>
-          <Button startIcon={<EmojiIcon />} disabled={isSubmitting}>
-            Feeling
-          </Button>
-        </Box>
-
-        <Button
-          variant="contained"
-          disabled={isSubmitting || (!content.trim() && !attachment)}
-          onClick={handleSubmit}
-        >
-          {isSubmitting ? <CircularProgress size={24} /> : 'Post'}
-        </Button>
       </Box>
     </Paper>
   );
