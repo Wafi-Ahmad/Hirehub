@@ -2,13 +2,11 @@ import api from './api';
 
 export const commentService = {
   // Get comments for a post
-  getComments: async (postId, cursor = null, limit = 10) => {
+  getComments: async (postId, cursor = null) => {
     const params = new URLSearchParams();
     if (cursor) params.append('cursor', cursor);
-    params.append('limit', limit);
     return api.get(`/comments/${postId}/comments/?${params.toString()}`);
   },
-
   // Create a new comment
   createComment: async (postId, content) => {
     return api.post(`/comments/${postId}/comments/`, {
@@ -24,10 +22,7 @@ export const commentService = {
   // Get replies for a comment
   getReplies: async (commentId, cursor = null, limit = 10) => {
     const params = new URLSearchParams();
-    if (cursor) {
-      const cursorDate = new Date(cursor);
-      params.append('cursor', cursorDate.toISOString());
-    }
+    if (cursor) params.append('cursor', cursor);
     params.append('limit', limit);
     return api.get(`/comments/${commentId}/replies/?${params.toString()}`);
   },
@@ -38,4 +33,9 @@ export const commentService = {
       content: content.trim()
     });
   },
-}; 
+
+  // Toggle like on a comment
+  toggleLike: async (commentId) => {
+    return api.post(`/comments/${commentId}/like/`);
+  }
+};

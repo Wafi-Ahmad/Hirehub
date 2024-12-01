@@ -14,7 +14,7 @@ import {
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { commentService } from '../../services/commentService';
-import { likeService } from '../../services/likeService';
+import { postService } from '../../services/postService';
 import { toast } from 'react-toastify';
 import { formatTimeAgo } from '../../utils/dateUtils';
 
@@ -89,7 +89,7 @@ const Comment = ({ comment, postId, onDelete, onLike, currentUser, isReply = fal
 
   const handleLike = async () => {
     try {
-      const response = await likeService.toggleCommentLike(comment.id);
+      const response = await postService.toggleCommentLike(comment.id);
       // Update local state first for immediate feedback
       const newLikeState = !comment.is_liked;
       comment.is_liked = newLikeState;

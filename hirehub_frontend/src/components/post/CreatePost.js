@@ -7,12 +7,13 @@ import {
   Button,
   CircularProgress,
 } from '@mui/material';
-import { postService } from '../../services/postService';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 import MediaUpload from './MediaUpload';
+import { usePost } from '../../context/PostContext';
 
 const CreatePost = ({ onPostCreated }) => {
+  const { createPost } = usePost();
   const { user } = useAuth();
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,23 +28,21 @@ const CreatePost = ({ onPostCreated }) => {
 
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('content', content.trim());
-      
-      if (selectedFiles.image) {
-        formData.append('image', selectedFiles.image);
-      }
-      if (selectedFiles.video) {
-        formData.append('video', selectedFiles.video);
-      }
+      const postData = {
+        content: content.trim(),
+        image: selectedFiles.image,
+        video: selectedFiles.video
+      };
 
-      const response = await postService.createPost(formData);
+      await createPost(postData);
       
-      if (response) {
-        onPostCreated(response);
-        setContent('');
-        setSelectedFiles({ image: null, video: null });
-        toast.success('Post created successfully!');
+      // Clear form first
+      setContent('');
+      setSelectedFiles({ image: null, video: null });
+      
+      // Notify parent component to refresh posts
+      if (onPostCreated) {
+        onPostCreated();
       }
     } catch (error) {
       console.error('Error creating post:', error);
@@ -77,7 +76,7 @@ const CreatePost = ({ onPostCreated }) => {
               fullWidth
               multiline
               rows={3}
-              placeholder="What's on your mind?"
+              placeholder="Share Posts With Your Connections!"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               variant="outlined"
@@ -106,4 +105,4 @@ const CreatePost = ({ onPostCreated }) => {
   );
 };
 
-export default CreatePost; 
+export default CreatePost;

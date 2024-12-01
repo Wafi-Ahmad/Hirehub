@@ -11,6 +11,7 @@ import {
   Button,
   TextField,
   CircularProgress,
+  Divider,
 } from '@mui/material';
 import {
   MoreVert as MoreVertIcon,
@@ -18,14 +19,16 @@ import {
   ChatBubbleOutline as CommentIcon,
 } from '@mui/icons-material';
 import { commentService } from '../../services/commentService';
-import { likeService } from '../../services/likeService';
+import { postService } from '../../services/postService';
 import { toast } from 'react-toastify';
 import Comment from './Comment';
 import { useAuth } from '../../context/AuthContext';
+import { usePost } from '../../context/PostContext';
 import { formatTimeAgo } from '../../utils/dateUtils';
 
-const Post = ({ post, onPostUpdate }) => {
+const Post = ({ post }) => {
   const { user: currentUser } = useAuth();
+  const { updatePost } = usePost();
   const [isCommenting, setIsCommenting] = useState(false);
   const [commentContent, setCommentContent] = useState('');
   const [comments, setComments] = useState([]);
@@ -40,12 +43,13 @@ const Post = ({ post, onPostUpdate }) => {
       setLoadingComments(true);
       const response = await commentService.getComments(post.id, cursor);
       
-      if (response.data?.comments) {  // Fixed: Access correct response structure
+      if (response?.data?.comments) {
         setComments(prev => cursor ? [...prev, ...response.data.comments] : response.data.comments);
         setCommentCursor(response.data.next_cursor);
         setHasMoreComments(!!response.data.next_cursor);
       }
     } catch (error) {
+      console.error('Failed to load comments:', error);
       toast.error('Failed to load comments');
     } finally {
       setLoadingComments(false);
@@ -66,13 +70,19 @@ const Post = ({ post, onPostUpdate }) => {
       const response = await commentService.createComment(post.id, commentContent);
       
       if (response?.data) {
-        setComments(prev => [response.data, ...prev]);
-        onPostUpdate(post.id, { comments_count: post.comments_count + 1 });
+        // Update local state first
+        const newComment = response.data;
+        setComments(prev => [newComment, ...prev]);
         setCommentContent('');
-        setIsCommenting(false);
-        toast.success('Comment posted successfully');
+        
+        // Update post comment count
+        const newCommentCount = (post.comments_count || 0) + 1;
+        updatePost(post.id, { comments_count: newCommentCount });
+        
+        toast.success('Comment added successfully');
       }
     } catch (error) {
+      console.error('Failed to post comment:', error);
       toast.error('Failed to post comment');
     }
   };
@@ -111,45 +121,61 @@ const Post = ({ post, onPostUpdate }) => {
       await commentService.deleteComment(commentId);
       
       setComments(prevComments => {
-        // Remove the comment if it's a top-level comment
         const filteredComments = prevComments.filter(c => c.id !== commentId);
-        // Remove the comment if it's a reply
         return filteredComments.map(comment => ({
           ...comment,
           replies: comment.replies?.filter(reply => reply.id !== commentId) || []
         }));
       });
       
-      onPostUpdate(post.id, { comments_count: post.comments_count - 1 });
+      const newCommentCount = Math.max(0, (post.comments_count || 0) - 1);
+      updatePost(post.id, { comments_count: newCommentCount });
       toast.success('Comment deleted successfully');
     } catch (error) {
+      console.error('Failed to delete comment:', error);
       toast.error('Failed to delete comment');
     }
   };
 
   const handleLikePost = async () => {
+    // Get the current state before updating
+    const currentLikeState = post.is_liked;
+    const currentLikeCount = post.likes_count || 0;
+
     try {
-      const response = await likeService.togglePostLike(post.id);
-      onPostUpdate(post.id, {
-        is_liked: !post.is_liked,
-        likes_count: response.likes_count
+      // Optimistically update UI
+      const newLikeState = !currentLikeState;
+      const newLikeCount = currentLikeCount + (newLikeState ? 1 : -1);
+      
+      // Update UI immediately
+      updatePost(post.id, {
+        is_liked: newLikeState,
+        likes_count: newLikeCount
       });
+
+      // Make API call
+      await postService.toggleLike(post.id);
     } catch (error) {
-      toast.error('Failed to like post');
+      console.error('Failed to update like:', error);
+      toast.error('Failed to update like');
+      // Revert changes on error
+      updatePost(post.id, {
+        is_liked: currentLikeState,
+        likes_count: currentLikeCount
+      });
     }
   };
 
   const renderMedia = () => {
     if (!post.media_urls) return null;
 
-    // Get the backend base URL from your environment or config
     const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
     if (post.media_type === 'image') {
       return (
         <Box
           component="img"
-          src={`${baseURL}${post.media_urls.image}`}  // Prepend base URL
+          src={`${baseURL}${post.media_urls.image}`}
           sx={{
             width: '100%',
             borderRadius: 1,
@@ -175,44 +201,13 @@ const Post = ({ post, onPostUpdate }) => {
             maxHeight: 500,
           }}
         >
-          <source src={`${baseURL}${post.media_urls.video}`} />  // Prepend base URL
+          <source src={`${baseURL}${post.media_urls.video}`} />
           Your browser does not support the video tag.
         </Box>
       );
     }
 
-    if (post.media_type === 'both') {
-      return (
-        <>
-          <Box
-            component="img"
-            src={`${baseURL}${post.media_urls.image}`}  // Prepend base URL
-            sx={{
-              width: '100%',
-              borderRadius: 1,
-              mb: 2,
-              maxHeight: 500,
-              objectFit: 'contain'
-            }}
-            loading="lazy"
-            alt="Post image"
-          />
-          <Box
-            component="video"
-            controls
-            sx={{
-              width: '100%',
-              borderRadius: 1,
-              mb: 2,
-              maxHeight: 500,
-            }}
-          >
-            <source src={`${baseURL}${post.media_urls.video}`} />  // Prepend base URL
-            Your browser does not support the video tag.
-          </Box>
-        </>
-      );
-    }
+    return null;
   };
 
   return (
@@ -220,50 +215,67 @@ const Post = ({ post, onPostUpdate }) => {
       <CardHeader
         avatar={
           <Avatar 
-            src={post.user.profile_picture}
-            alt={`${post.user.first_name} ${post.user.last_name}`}
+            src={post.user?.profile_picture} 
+            alt={`${post.user?.first_name} ${post.user?.last_name}`}
           />
         }
-        action={<IconButton><MoreVertIcon /></IconButton>}
-        title={
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            {`${post.user.first_name} ${post.user.last_name}`}
-          </Typography>
+        action={
+          <IconButton>
+            <MoreVertIcon />
+          </IconButton>
         }
-        subheader={
-          <Typography variant="body2" color="text.secondary">
-            {formatTimeAgo(post.created_at)}
-          </Typography>
-        }
+        title={`${post.user?.first_name} ${post.user?.last_name}`}
+        subheader={formatTimeAgo(post.created_at)}
       />
+      
       <CardContent>
-        <Typography variant="body1" paragraph>
+        <Typography variant="body1" sx={{ mb: 2 }}>
           {post.content}
         </Typography>
         {renderMedia()}
       </CardContent>
-      <CardActions sx={{ px: 2 }}>
-        <IconButton
-          onClick={handleLikePost}
-          color={post.is_liked ? "primary" : "inherit"}
-        >
-          <ThumbUpIcon />
-          <Typography variant="caption" sx={{ ml: 0.5 }}>
-            {post.likes_count || 0}
-          </Typography>
-        </IconButton>
-        <IconButton onClick={() => setShowComments(!showComments)}>
-          <CommentIcon />
-          <Typography variant="caption" sx={{ ml: 0.5 }}>
-            {post.comments_count || 0}
-          </Typography>
-        </IconButton>
+
+      <Divider />
+      
+      <CardActions disableSpacing>
+        <Box sx={{ width: '100%', display: 'flex', gap: 2 }}>
+          <Button
+            startIcon={
+              <ThumbUpIcon 
+                sx={{ 
+                  color: post.is_liked ? 'primary.main' : 'inherit'
+                }}
+              />
+            }
+            onClick={handleLikePost}
+            size="small"
+            sx={{
+              color: post.is_liked ? 'primary.main' : 'inherit',
+              '&:hover': {
+                backgroundColor: 'rgba(25, 118, 210, 0.04)'
+              }
+            }}
+          >
+            {post.likes_count || 0} {post.likes_count === 1 ? 'Like' : 'Likes'}
+          </Button>
+          <Button
+            startIcon={<CommentIcon />}
+            onClick={() => setShowComments(!showComments)}
+            size="small"
+          >
+            {post.comments_count || 0} Comments
+          </Button>
+        </Box>
       </CardActions>
 
       {showComments && (
-        <Box sx={{ px: 2, pb: 2 }}>
-          {isCommenting ? (
-            <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+        <Box sx={{ p: 2, pt: 0 }}>
+          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+            <Avatar 
+              src={currentUser?.profile_picture} 
+              sx={{ width: 32, height: 32 }}
+            />
+            <Box sx={{ flex: 1 }}>
               <TextField
                 fullWidth
                 size="small"
@@ -277,56 +289,30 @@ const Post = ({ post, onPostUpdate }) => {
                   }
                 }}
               />
-              <Button 
-                variant="contained" 
-                onClick={handleComment}
-                disabled={!commentContent.trim()}
+            </Box>
+          </Box>
+
+          {comments.map((comment) => (
+            <Comment
+              key={comment.id}
+              comment={comment}
+              postId={post.id}
+              onDelete={handleDeleteComment}
+              onLike={handleCommentLike}
+              currentUser={currentUser}
+            />
+          ))}
+
+          {hasMoreComments && (
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Button
+                size="small"
+                onClick={() => fetchComments(commentCursor)}
+                disabled={loadingComments}
               >
-                Post
+                {loadingComments ? <CircularProgress size={20} /> : 'Load more comments'}
               </Button>
             </Box>
-          ) : (
-            <Button
-              fullWidth
-              sx={{ mt: 1 }}
-              onClick={() => setIsCommenting(true)}
-            >
-              Write a comment...
-            </Button>
-          )}
-
-          {loadingComments ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : (
-            <>
-              {comments.map((comment) => (
-                <Comment
-                  key={comment.id}
-                  comment={comment}
-                  postId={post.id}
-                  onDelete={handleDeleteComment}
-                  onLike={handleCommentLike}
-                  currentUser={currentUser}
-                />
-              ))}
-              
-              {hasMoreComments && (
-                <Button
-                  fullWidth
-                  sx={{ mt: 2 }}
-                  onClick={() => fetchComments(commentCursor)}
-                  disabled={loadingComments}
-                >
-                  {loadingComments ? (
-                    <CircularProgress size={16} sx={{ mr: 1 }} />
-                  ) : (
-                    'Load more comments'
-                  )}
-                </Button>
-              )}
-            </>
           )}
         </Box>
       )}
@@ -334,4 +320,4 @@ const Post = ({ post, onPostUpdate }) => {
   );
 };
 
-export default Post; 
+export default Post;

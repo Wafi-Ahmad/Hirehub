@@ -1,60 +1,36 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Box, Button, CircularProgress, Paper, Typography } from '@mui/material';
-import { postService } from '../../services/postService';
-import { toast } from 'react-toastify';
+import { usePost } from '../../context/PostContext';
 import Post from './Post';
 
 const PostList = () => {
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [cursor, setCursor] = useState(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const { posts, loading, error, hasMore, cursor, fetchPosts } = usePost();
 
-  // Fetch posts with cursor-based pagination
-  const fetchPosts = useCallback(async (nextCursor = null) => {
-    try {
-      const response = await postService.getPosts(nextCursor);
-      const { posts: newPosts, next_cursor } = response.data;
-      
-      setPosts(prev => nextCursor ? [...prev, ...newPosts] : newPosts);
-      setCursor(next_cursor);
-      setHasMore(!!next_cursor);
-    } catch (error) {
-      toast.error('Failed to fetch posts');
-      console.error('Error fetching posts:', error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, []);
-
-  // Initial load
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
 
-  // Load more posts
-  const loadMorePosts = async () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    await fetchPosts(cursor);
+  const loadMorePosts = () => {
+    if (!loading && hasMore) {
+      fetchPosts(cursor);
+    }
   };
 
-  // Handle post updates (likes, comments, etc.)
-  const handlePostUpdate = (postId, updates) => {
-    setPosts(prevPosts =>
-      prevPosts.map(post =>
-        post.id === postId ? { ...post, ...updates } : post
-      )
-    );
-  };
-
-  if (loading) {
+  if (loading && posts.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
         <CircularProgress />
       </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <Typography color="error">
+          {error}
+        </Typography>
+      </Paper>
     );
   }
 
@@ -71,16 +47,16 @@ const PostList = () => {
   return (
     <>
       {posts.map((post) => (
-        <Post key={post.id} post={post} onPostUpdate={handlePostUpdate} />
+        <Post key={post.id} post={post} />
       ))}
       {hasMore && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
           <Button
             onClick={loadMorePosts}
-            disabled={loadingMore}
+            disabled={loading}
             variant="outlined"
           >
-            {loadingMore ? <CircularProgress size={24} /> : 'Load More'}
+            {loading ? <CircularProgress size={24} /> : 'Load More'}
           </Button>
         </Box>
       )}
