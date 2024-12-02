@@ -133,24 +133,90 @@ class UpdateBasicUserInfoView(APIView):
     permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
     def get(self, request):
+        """Get user's basic information"""
         user = request.user
-        serializer = UserProfileSerializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    
+        serializer = UserProfileSerializer(user, context={'request': request})
+        return Response(serializer.data)
 
-    def put(self, request):
-        """
-        This method updates the user's basic information: skills, experience, recent work, current work, and contact details.
-        """
-        serializer = UserProfileSerializer(instance=request.user, data=request.data, partial=True)
+    def patch(self, request):
+        """Update user's basic information"""
+        user = request.user
+        serializer = UserProfileSerializer(user, data=request.data, partial=True, context={'request': request})
+        print("####1")
         if serializer.is_valid():
+            # Handle file uploads
+            if 'profile_picture' in request.FILES:
+                # Delete old profile picture if it exists
+                if user.profile_picture:
+                    user.profile_picture.delete(save=False)
+                user.profile_picture = request.FILES['profile_picture']
+            
+            if 'cover_picture' in request.FILES:
+                # Delete old cover picture if it exists
+                if user.cover_picture:
+                    user.cover_picture.delete(save=False)
+                user.cover_picture = request.FILES['cover_picture']
+            
+            # Save the updated user data
+            print("####2")
             serializer.save()
-            return Response({"message": "Basic information updated successfully."}, status=status.HTTP_200_OK)
+            print("####3")
+            return Response(serializer.data)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class ViewOwnProfileView(APIView):
+    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
+    def get(self, request):
+        """Get the current user's profile"""
+        user = request.user
+        serializer = UserProfileSerializer(user, context={'request': request})
+        return Response(serializer.data)
 
+class ViewUserProfileView(APIView):
+    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
+    def get(self, request, user_id):
+        """Get another user's profile by ID"""
+        try:
+            user = User.objects.get(id=user_id)
+            
+            # Check if the profile is public or if the viewer is the profile owner
+            if not user.is_profile_public and request.user.id != user_id:
+                return Response(
+                    {"detail": "This profile is private"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            serializer = UserProfileSerializer(user, context={'request': request})
+            data = serializer.data
+            
+            # Filter out private information based on privacy settings
+            if not user.show_email:
+                data.pop('email', None)
+            if not user.show_phone:
+                data.pop('phone', None)
+            if not user.show_skills:
+                data.pop('skills', None)
+            if not user.show_experience:
+                data.pop('experience', None)
+            if not user.show_education:
+                data.pop('education', None)
+            if not user.show_certifications:
+                data.pop('certifications', None)
+            if not user.show_recent_work:
+                data.pop('recent_work', None)
+            if not user.show_current_work:
+                data.pop('current_work', None)
+            
+            return Response(data)
+            
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 class UpdatePrivacySettingsView(APIView):
     permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
@@ -158,7 +224,7 @@ class UpdatePrivacySettingsView(APIView):
     def get(self, request):
         user = request.user
         serializer = PrivacySettingsSerializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data)
 
     def put(self, request):
         user = request.user
@@ -167,9 +233,6 @@ class UpdatePrivacySettingsView(APIView):
             serializer.save()
             return Response({"message": "Privacy settings updated successfully."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
 
 
 class DeleteUserAccountView(APIView):
@@ -184,19 +247,6 @@ class DeleteUserAccountView(APIView):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
-class ViewUserProfileView(APIView):
-    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
-
-    def get(self, request, user_id):
-        try:
-            user = User.objects.get(id=user_id)
-        except User.DoesNotExist:
-            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = UserProfilePublicSerializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)        
-
-
 class SearchProfilesView(APIView):
     permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
@@ -210,7 +260,7 @@ class SearchProfilesView(APIView):
             Q(first_name__icontains=query) |
             Q(last_name__icontains=query) |
             Q(skills__icontains=query)
-        )
+        ).exclude(id=request.user.id)
 
         # Check privacy settings for each user
         result = []
@@ -218,6 +268,7 @@ class SearchProfilesView(APIView):
             if user.is_profile_public:
                 # Respect privacy settings for individual fields
                 user_data = {
+                    "id": user.id,  # Add user ID
                     "first_name": user.first_name,
                     "last_name": user.last_name,
                     "profile_picture": request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else None,
@@ -286,15 +337,28 @@ class FollowUserView(APIView):
 class GetFollowersFollowingView(APIView):
     permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
-    def get(self, request):
-        user = request.user
-        followers = user.followers.all()
-        following = user.following.all()
+    def get(self, request, user_id=None):
+        try:
+            # If user_id is provided, get that user's data, otherwise use the current user
+            target_user = User.objects.get(id=user_id) if user_id else request.user
+            
+            # Get followers and following
+            followers = target_user.followers.all()
+            following = target_user.following.all()
 
-        follower_data = UserProfilePublicSerializer(followers, many=True).data
-        following_data = UserProfilePublicSerializer(following, many=True).data
+            # Serialize the data
+            follower_data = UserProfilePublicSerializer(followers, many=True).data
+            following_data = UserProfilePublicSerializer(following, many=True).data
 
-        return Response({
-            "followers": follower_data,
-            "following": following_data
-        }, status=status.HTTP_200_OK)    
+            # Return counts and data
+            return Response({
+                "followers": follower_data,
+                "following": following_data,
+                "followers_count": len(follower_data),
+                "following_count": len(following_data)
+            }, status=status.HTTP_200_OK)
+            
+        except User.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

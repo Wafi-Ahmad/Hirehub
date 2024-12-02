@@ -1,9 +1,9 @@
 import axios from 'axios';
-
+import API_BASE_URL from config;
 const searchService = {
   searchProfiles: async (query) => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/search-profiles/`, {
+      const response = await axios.get(`${API_BASE_URL}/api/search-profiles/`, {
         params: { query }
       });
       return response.data;

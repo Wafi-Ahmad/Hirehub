@@ -29,7 +29,7 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      const response = await api.post('/password-reset/', values);
+      const response = await api.post('users/password-reset/', values);
       toast.success(response.data.message || 'Password reset instructions have been sent to your email');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to process request');

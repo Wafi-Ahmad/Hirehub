@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import api from '../services/api';
+import { profileService } from '../services/profileService';
 
 const PostContext = createContext();
 
@@ -10,21 +11,47 @@ export const PostProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [cursor, setCursor] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
-  const fetchPosts = useCallback(async (nextCursor = null) => {
+  const clearPosts = useCallback(() => {
+    setPosts([]);
+    setCursor(null);
+    setHasMore(true);
+    setCurrentUserId(null);
+    setError(null);
+  }, []);
+
+  const fetchPosts = useCallback(async (nextCursor = null, userId = null) => {
     try {
       setLoading(true);
-      const response = await api.get('/posts/', {
-        params: { cursor: nextCursor }
-      });
+      let responseData;
       
-      const { posts: newPosts, next_cursor } = response.data;
+      if (userId) {
+        // Fetch user-specific posts
+        const response = await profileService.getUserPosts(userId, nextCursor);
+        responseData = response;
+      } else {
+        // Fetch all posts
+        const response = await api.get('/posts/', {
+          params: { cursor: nextCursor }
+        });
+        responseData = response.data;
+      }
       
-      setPosts(prev => nextCursor ? [...prev, ...newPosts] : newPosts);
+      const { posts: newPosts, next_cursor } = responseData;
+      
+      // Always set posts directly, don't append if it's the initial fetch
+      if (!nextCursor) {
+        setPosts(newPosts);
+      } else {
+        setPosts(prev => [...prev, ...newPosts]);
+      }
+      
       setCursor(next_cursor);
       setHasMore(!!next_cursor);
       setError(null);
     } catch (err) {
+      console.error('Error fetching posts:', err);
       setError('Failed to fetch posts');
       toast.error('Error loading posts');
     } finally {
@@ -54,11 +81,11 @@ export const PostProvider = ({ children }) => {
         },
       });
 
-      // Add new post to the beginning of the posts array
       setPosts(prevPosts => [response.data, ...prevPosts]);
       toast.success('Post created successfully!');
       return response.data;
     } catch (err) {
+      console.error('Error creating post:', err);
       toast.error('Failed to create post');
       throw err;
     } finally {
@@ -68,8 +95,6 @@ export const PostProvider = ({ children }) => {
 
   const updatePost = async (postId, updates) => {
     try {
-      // For likes and comments, we just update the local state
-      // without making a PUT request to the backend
       setPosts(prevPosts =>
         prevPosts.map(post =>
           post.id === postId ? { ...post, ...updates } : post
@@ -86,27 +111,27 @@ export const PostProvider = ({ children }) => {
     try {
       await api.delete(`/posts/${postId}/`);
       setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
-      toast.success('Post deleted successfully!');
+      toast.success('Post deleted successfully');
     } catch (err) {
+      console.error('Error deleting post:', err);
       toast.error('Failed to delete post');
       throw err;
     }
   };
 
   return (
-    <PostContext.Provider
-      value={{
-        posts,
-        loading,
-        error,
-        hasMore,
-        cursor,
-        fetchPosts,
-        createPost,
-        updatePost,
-        deletePost
-      }}
-    >
+    <PostContext.Provider value={{
+      posts,
+      loading,
+      error,
+      hasMore,
+      cursor,
+      fetchPosts,
+      createPost,
+      updatePost,
+      deletePost,
+      clearPosts,
+    }}>
       {children}
     </PostContext.Provider>
   );
@@ -118,4 +143,6 @@ export const usePost = () => {
     throw new Error('usePost must be used within a PostProvider');
   }
   return context;
-}; 
+};
+
+export default PostContext;

@@ -54,28 +54,47 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_of_birth = models.DateField(null=True, blank=True)
     company_name = models.CharField(max_length=100, null=True, blank=True)
     user_type = models.CharField(max_length=7, choices=USER_TYPE_CHOICES, default=NORMAL_USER)
-    profile_picture = models.ImageField(upload_to='profiles/', null=True, blank=True)
-
-    # New fields for profile interests
+    
+    # Profile and cover pictures
+    profile_picture = models.ImageField(upload_to='profiles/avatars/', null=True, blank=True)
+    cover_picture = models.ImageField(upload_to='profiles/covers/', null=True, blank=True)
+    
+    # Bio and location
+    bio = models.TextField(null=True, blank=True)
+    location = models.CharField(max_length=100, null=True, blank=True)
+    website = models.URLField(max_length=200, null=True, blank=True)
+    
+    # Professional information
+    headline = models.CharField(max_length=100, null=True, blank=True)  # e.g. "Senior Software Engineer at Google"
     preferred_job_category = models.CharField(max_length=255, null=True, blank=True)
     preferred_job_type = models.CharField(max_length=10, choices=JOB_TYPE_CHOICES, default=ONSITE)
     desired_salary_range = models.CharField(max_length=50, null=True, blank=True)
     preferred_location = models.CharField(max_length=100, null=True, blank=True)
 
-    # New fields for user profile
+    # Detailed profile information
     skills = models.TextField(null=True, blank=True)
     experience = models.TextField(null=True, blank=True)
+    education = models.TextField(null=True, blank=True)
+    certifications = models.TextField(null=True, blank=True)
     recent_work = models.TextField(null=True, blank=True)
     current_work = models.TextField(null=True, blank=True)
+    
+    # Contact information
     contact_details = models.TextField(null=True, blank=True)
+    phone = models.CharField(max_length=20, null=True, blank=True)
+    linkedin_url = models.URLField(max_length=200, null=True, blank=True)
+    github_url = models.URLField(max_length=200, null=True, blank=True)
 
-    # Fields to manage privacy settings
-    is_profile_public = models.BooleanField(default=True)  # Controls overall profile visibility
-    show_email = models.BooleanField(default=True)  # Controls whether email is visible
-    show_skills = models.BooleanField(default=True)  # Controls whether skills are visible
-    show_experience = models.BooleanField(default=True)  # Controls whether experience is visible
-    show_recent_work = models.BooleanField(default=True)  # Controls whether recent work is visible
-    show_current_work = models.BooleanField(default=True)  # Controls whether current work is visible
+    # Privacy settings
+    is_profile_public = models.BooleanField(default=True)
+    show_email = models.BooleanField(default=True)
+    show_phone = models.BooleanField(default=False)
+    show_skills = models.BooleanField(default=True)
+    show_experience = models.BooleanField(default=True)
+    show_education = models.BooleanField(default=True)
+    show_certifications = models.BooleanField(default=True)
+    show_recent_work = models.BooleanField(default=True)
+    show_current_work = models.BooleanField(default=True)
 
     # Permissions
     is_active = models.BooleanField(default=True)

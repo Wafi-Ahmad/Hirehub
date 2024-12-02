@@ -40,6 +40,24 @@ class PostService:
                 post_data['media_type'] = 'both'
 
             post = Post.objects.create(**post_data)
+            
+            # Delete all feed-related caches
+            keys_to_delete = [
+                # Delete main feed cache
+                f"posts:list:None:{PostService.POSTS_PER_PAGE}",
+                # Delete user's specific feed cache
+                f"posts:list:None:{PostService.POSTS_PER_PAGE}:{user.id}"
+            ]
+            
+            # Also delete any cursor-based caches that might exist
+            for i in range(5):  # Clear first 5 pages to be safe
+                cursor_key = f"posts:list:page_{i}:{PostService.POSTS_PER_PAGE}"
+                keys_to_delete.append(cursor_key)
+                if user:
+                    keys_to_delete.append(f"{cursor_key}:{user.id}")
+            
+            cache.delete_many(keys_to_delete)
+            
             return post
         except Exception as e:
             raise ValueError(str(e))
@@ -63,11 +81,11 @@ class PostService:
         """
         Get paginated posts with caching and optimized queries
         """
-        # Generate cache key
+        # Generate cache key - simpler version for better reliability
         cache_key = f"posts:list:{cursor}:{limit}"
         if user:
             cache_key += f":{user.id}"
-
+            
         # Try to get from cache
         cached_result = cache.get(cache_key)
         if cached_result:
@@ -81,7 +99,7 @@ class PostService:
             'user'
         ).prefetch_related(
             'likes'
-        )
+        ).order_by('-created_at')  # Ensure newest posts appear first
 
         if cursor:
             posts = posts.filter(created_at__lt=cursor)
@@ -97,6 +115,11 @@ class PostService:
         if has_next and result_posts:
             next_cursor = result_posts[-1].created_at.isoformat()
 
+        # Add user-specific data if user is authenticated
+        if user:
+            for post in result_posts:
+                post.user_has_liked = user in post.likes.all()
+
         result = {
             'posts': result_posts,
             'next_cursor': next_cursor,
@@ -104,9 +127,45 @@ class PostService:
         }
 
         # Cache the result
-        cache.set(cache_key, result, PostService.CACHE_TTL)
+        cache.set(cache_key, result, 300)  # 5 minutes
         
         return result
+
+    @staticmethod
+    def get_user_posts_paginated(user_id, cursor=None, limit=10, requesting_user=None):
+        """
+        Get paginated posts for a specific user
+        """
+        try:
+            # Get posts for the specific user
+            posts_query = Post.objects.filter(user_id=user_id)
+            
+            # Apply cursor pagination
+            if cursor:
+                posts_query = posts_query.filter(created_at__lt=cursor)
+            
+            # Order by creation date
+            posts_query = posts_query.order_by('-created_at')
+            
+            # Get one extra post to determine if there are more
+            posts = list(posts_query[:limit + 1])
+            
+            next_cursor = None
+            if len(posts) > limit:
+                next_cursor = posts[limit - 1].created_at.isoformat()
+                posts = posts[:limit]
+            
+            return {
+                'posts': posts,
+                'next_cursor': next_cursor
+            }
+            
+        except Exception as e:
+            print(f"Error fetching user posts: {str(e)}")
+            return {
+                'posts': [],
+                'next_cursor': None
+            }
 
     @staticmethod
     def get_post_detail(post_id, user=None):
@@ -163,6 +222,15 @@ class PostService:
                 action = 'liked'
             
             post.update_counts()
+            
+            # Invalidate specific post cache
+            cache.delete(f"post:detail:{post_id}")
+            if user:
+                cache.delete(f"post:detail:{post_id}:{user.id}")
+            
+            # Update feed version to invalidate all feed caches
+            cache.set('post_feed_version', int(time.time()))
+            
             return post, action
             
         except ObjectDoesNotExist:
@@ -176,5 +244,5 @@ class PostService:
         # Clear post detail cache
         cache.delete(f"post:detail:{post_id}")
         
-        # Clear post list caches (pattern-based deletion)
-        cache.delete_pattern("posts:list:*")
+        # Update feed version to invalidate all feed caches
+        cache.set('post_feed_version', int(time.time()))

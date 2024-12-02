@@ -17,6 +17,7 @@ import { commentService } from '../../services/commentService';
 import { postService } from '../../services/postService';
 import { toast } from 'react-toastify';
 import { formatTimeAgo } from '../../utils/dateUtils';
+import { useNavigate } from 'react-router-dom';
 
 const Comment = ({ comment, postId, onDelete, onLike, currentUser, isReply = false }) => {
   const [isReplying, setIsReplying] = useState(false);
@@ -24,6 +25,11 @@ const Comment = ({ comment, postId, onDelete, onLike, currentUser, isReply = fal
   const [replies, setReplies] = useState(null);
   const [loadingReplies, setLoadingReplies] = useState(false);
   const [nextCursor, setNextCursor] = useState(null);
+  const navigate = useNavigate();
+
+  const handleProfileClick = (userId) => {
+    navigate(`/profile/${userId}`);
+  };
 
   // Load replies only when needed
   const loadReplies = async () => {
@@ -107,12 +113,30 @@ const Comment = ({ comment, postId, onDelete, onLike, currentUser, isReply = fal
         <Avatar
           src={comment.user?.profile_picture}
           alt={`${comment.user?.first_name} ${comment.user?.last_name}`}
-          sx={{ width: 32, height: 32 }}
+          sx={{ 
+            width: 32, 
+            height: 32, 
+            mr: 1, 
+            cursor: 'pointer',
+            '&:hover': {
+              opacity: 0.8
+            }
+          }}
+          onClick={() => handleProfileClick(comment.user.id)}
         />
         <Box sx={{ flex: 1 }}>
           <Box sx={{ bgcolor: 'grey.100', p: 1, borderRadius: 1 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-              <Typography variant="subtitle2">
+              <Typography
+                variant="subtitle2"
+                sx={{ 
+                  cursor: 'pointer',
+                  '&:hover': {
+                    textDecoration: 'underline'
+                  }
+                }}
+                onClick={() => handleProfileClick(comment.user.id)}
+              >
                 {comment.user?.first_name} {comment.user?.last_name}
               </Typography>
               <Typography variant="caption" color="text.secondary">

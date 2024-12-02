@@ -1,49 +1,100 @@
 import api from './api';
 
-const profileService = {
-  // Get current user's profile
-  getCurrentProfile: async () => {
+export const profileService = {
+  getProfile: async (userId = null) => {
     try {
-      const response = await api.get('/users/update-basic-info/');
+      const endpoint = userId ? `/users/profile/${userId}` : '/users/profile/me';
+      const response = await api.get(endpoint);
       return response.data;
     } catch (error) {
-      console.error('Error fetching current profile:', error);
       throw error;
     }
   },
 
-  // Get specific user's profile
-  getUserProfile: async (userId) => {
+  updateProfile: async (formData) => {
     try {
-      const response = await api.get(`/users/view-profile/${userId}/`);
+      // Convert formData to FormData object if it's not already
+      const form = formData instanceof FormData ? formData : new FormData();
+      
+      // If formData is not already FormData, append each field
+      if (!(formData instanceof FormData)) {
+        Object.keys(formData).forEach(key => {
+          if (formData[key] !== null && formData[key] !== undefined) {
+            if (key === 'skills' && Array.isArray(formData[key])) {
+              form.append(key, JSON.stringify(formData[key]));
+            } else {
+              form.append(key, formData[key]);
+            }
+          }
+        });
+      }
+
+      const response = await api.patch('/users/update-basic-info/', form, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data;
     } catch (error) {
-      console.error('Error fetching user profile:', error);
       throw error;
     }
   },
 
-  // Get follow data
-  getFollowData: async () => {
+  getFollowData: async (userId = null) => {
     try {
-      const response = await api.get('/users/followers-following/');
+      // If no userId provided, get current user's ID from localStorage
+      if (!userId) {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          userId = user.id;
+        }
+      }
+      
+      if (!userId) {
+        throw new Error('No user ID available');
+      }
+
+      const endpoint = `/users/${userId}/followers-following`;
+      const response = await api.get(endpoint);
       return response.data;
     } catch (error) {
-      console.error('Error fetching follow data:', error);
       throw error;
     }
   },
 
-  // Update profile
-  updateProfile: async (data) => {
+  getUserPosts: async (userId = null, cursor = null, limit = 10) => {
     try {
-      const response = await api.put('/users/update-basic-info/', data);
+      // If no userId provided, get current user's ID from localStorage
+      if (!userId) {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          userId = user.id;
+        }
+      }
+      
+      if (!userId) {
+        throw new Error('No user ID available');
+      }
+
+      const endpoint = `/posts/user/${userId}/`;
+      const params = { cursor, limit };
+      const response = await api.get(endpoint, { params });
       return response.data;
     } catch (error) {
-      console.error('Error updating profile:', error);
+      throw error;
+    }
+  },
+
+  updatePrivacySettings: async (settings) => {
+    try {
+      const response = await api.put('/users/privacy-settings/', settings);
+      return response.data;
+    } catch (error) {
       throw error;
     }
   }
 };
 
-export default profileService; 
+export default profileService;

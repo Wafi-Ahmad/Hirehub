@@ -10,20 +10,29 @@ import { useAuth } from '../context/AuthContext';
 
 const Home = () => {
   const { fetchPosts } = usePost();
-  const { fetchProfileData } = useProfile();
+  const { fetchProfileData, profileData } = useProfile();
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user?.id) {
-      fetchProfileData();
-      fetchPosts();
-    }
-  }, [user?.id, fetchProfileData, fetchPosts]);
+    const loadHomeData = async () => {
+      console.log("Loading Home Data");
+      if (user?.id) {
+        try {
+          // Ensure profile data is loaded
+          if (!profileData) {
+            console.log("Fetching profile data");
+            await fetchProfileData();
+          }
+          console.log("Fetching Posts");
+          await fetchPosts();
+        } catch (error) {
+          console.error('Error loading home data:', error);
+        }
+      }
+    };
 
-  const handlePostCreated = () => {
-    // Refresh the posts list after creating a new post
-    fetchPosts();
-  };
+    loadHomeData();
+  }, [user?.id, fetchProfileData, fetchPosts, profileData]);
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -32,7 +41,7 @@ const Home = () => {
           <ProfileSummary />
         </Grid>
         <Grid item xs={12} md={6}>
-          <CreatePost onPostCreated={handlePostCreated} />
+          <CreatePost />
           <PostList />
         </Grid>
         <Grid item xs={12} md={3}>

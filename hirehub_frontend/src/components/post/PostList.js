@@ -1,67 +1,97 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Box, Button, CircularProgress, Paper, Typography } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { usePost } from '../../context/PostContext';
 import Post from './Post';
 
-const PostList = () => {
-  const { posts, loading, error, hasMore, cursor, fetchPosts } = usePost();
+const PostList = ({ userId = null }) => {
+  const { posts, loading, error, hasMore, cursor, fetchPosts, clearPosts } = usePost();
+  const navigate = useNavigate();
+  const prevUserIdRef = useRef(userId);
 
   useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+    const loadPosts = async () => {
+      // Clear posts if userId has changed
+      if (prevUserIdRef.current !== userId) {
+        await clearPosts();
+        prevUserIdRef.current = userId;
+      }
+      
+      // Fetch new posts
+      await fetchPosts(null, userId);
+    };
+
+    loadPosts();
+
+    // Cleanup function
+    return () => {
+      // Only clear if we're actually changing users
+      if (prevUserIdRef.current !== userId) {
+        clearPosts();
+      }
+    };
+  }, [userId, fetchPosts, clearPosts]);
 
   const loadMorePosts = () => {
-    if (!loading && hasMore) {
-      fetchPosts(cursor);
+    if (cursor) {
+      fetchPosts(cursor, userId);
     }
   };
 
-  if (loading && posts.length === 0) {
+  const handleProfileClick = (userId) => {
+    navigate(`/profile/${userId}`);
+  };
+
+  // Show loading state only when initially loading with no posts
+  if (loading && !posts?.length) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+      <Box display="flex" justifyContent="center" p={2}>
         <CircularProgress />
       </Box>
     );
   }
 
+  // Show error state
   if (error) {
     return (
-      <Paper sx={{ p: 3, textAlign: 'center' }}>
+      <Paper sx={{ p: 2, mb: 2 }}>
         <Typography color="error">
-          {error}
+          Error loading posts. Please try again later.
         </Typography>
       </Paper>
     );
   }
 
-  if (posts.length === 0) {
+  // Show no posts message
+  if (!loading && (!posts || posts.length === 0)) {
     return (
-      <Paper sx={{ p: 3, textAlign: 'center' }}>
-        <Typography color="text.secondary">
-          No posts yet. Be the first to share something!
-        </Typography>
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography>{userId ? 'No posts yet from this user.' : 'No posts yet. Be the first to share something!'}</Typography>
       </Paper>
     );
   }
 
   return (
-    <>
+    <Box>
       {posts.map((post) => (
-        <Post key={post.id} post={post} />
+        <Box key={post.id} sx={{ mb: 2 }}>
+          <Post post={post} />
+        </Box>
       ))}
+      
       {hasMore && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-          <Button
-            onClick={loadMorePosts}
+        <Box display="flex" justifyContent="center" p={2}>
+          <Button 
+            onClick={loadMorePosts} 
             disabled={loading}
             variant="outlined"
           >
-            {loading ? <CircularProgress size={24} /> : 'Load More'}
+            {loading ? 'Loading...' : 'Load More'}
           </Button>
         </Box>
       )}
-    </>
+    </Box>
   );
 };
 
-export default PostList; 
+export default PostList;

@@ -25,6 +25,7 @@ import Comment from './Comment';
 import { useAuth } from '../../context/AuthContext';
 import { usePost } from '../../context/PostContext';
 import { formatTimeAgo } from '../../utils/dateUtils';
+import { useNavigate } from 'react-router-dom';
 
 const Post = ({ post }) => {
   const { user: currentUser } = useAuth();
@@ -36,6 +37,7 @@ const Post = ({ post }) => {
   const [commentCursor, setCommentCursor] = useState(null);
   const [hasMoreComments, setHasMoreComments] = useState(true);
   const [showComments, setShowComments] = useState(false);
+  const navigate = useNavigate();
 
   // Fetch comments when comments section is opened
   const fetchComments = async (cursor = null) => {
@@ -210,6 +212,10 @@ const Post = ({ post }) => {
     return null;
   };
 
+  const handleProfileClick = (userId) => {
+    navigate(`/profile/${userId}`);
+  };
+
   return (
     <Card sx={{ mb: 3, borderRadius: 2 }}>
       <CardHeader
@@ -217,14 +223,27 @@ const Post = ({ post }) => {
           <Avatar 
             src={post.user?.profile_picture} 
             alt={`${post.user?.first_name} ${post.user?.last_name}`}
+            sx={{ cursor: 'pointer' }}
+            onClick={() => handleProfileClick(post.user?.id)}
           />
+        }
+        title={
+          <Typography
+            variant="subtitle1"
+            sx={{ 
+              cursor: 'pointer',
+              '&:hover': { textDecoration: 'underline' }
+            }}
+            onClick={() => handleProfileClick(post.user?.id)}
+          >
+            {`${post.user?.first_name} ${post.user?.last_name}`}
+          </Typography>
         }
         action={
           <IconButton>
             <MoreVertIcon />
           </IconButton>
         }
-        title={`${post.user?.first_name} ${post.user?.last_name}`}
         subheader={formatTimeAgo(post.created_at)}
       />
       

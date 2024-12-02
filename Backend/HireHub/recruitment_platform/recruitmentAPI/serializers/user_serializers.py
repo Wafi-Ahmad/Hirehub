@@ -73,12 +73,37 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         return data
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+    cover_picture = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
-            'skills', 'experience', 'recent_work', 
-            'current_work', 'contact_details'
+            'id', 'email', 'first_name', 'last_name',
+            'profile_picture', 'cover_picture',
+            'bio', 'location', 'website',
+            'headline', 'preferred_job_category',
+            'preferred_job_type', 'desired_salary_range',
+            'preferred_location', 'skills', 'experience',
+            'education', 'certifications',
+            'recent_work', 'current_work',
+            'contact_details', 'phone',
+            'linkedin_url', 'github_url',
+            'is_profile_public', 'show_email', 'show_phone',
+            'show_skills', 'show_experience', 'show_education',
+            'show_certifications', 'show_recent_work', 'show_current_work'
         ]
+        read_only_fields = ['id', 'email']
+
+    def get_profile_picture(self, obj):
+        if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
+            return self.context['request'].build_absolute_uri(obj.profile_picture.url)
+        return None
+
+    def get_cover_picture(self, obj):
+        if obj.cover_picture and hasattr(obj.cover_picture, 'url'):
+            return self.context['request'].build_absolute_uri(obj.cover_picture.url)
+        return None
 
 class PrivacySettingsSerializer(serializers.ModelSerializer):
     class Meta:

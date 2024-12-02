@@ -64,7 +64,7 @@ const Register = () => {
 
       console.log('Sending registration data:', registrationData);
       
-      const response = await api.post('/register/', registrationData);
+      const response = await api.post('users/register/', registrationData);
       console.log('Registration response:', response.data);
       
       toast.success('Registration successful!');

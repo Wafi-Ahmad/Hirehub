@@ -75,4 +75,5 @@ Thumbs.db
 # Django settings
 Backend/HireHub/recruitment_platform/recruitment_platform/settings.p
 Backend/HireHub/v2
-
+Backend/HireHub/env
+Backend/HireHub/recruitment_platform/media

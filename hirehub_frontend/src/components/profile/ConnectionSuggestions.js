@@ -1,23 +1,11 @@
-import React from 'react';
-import {
-  Paper,
-  Typography,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  ListItemSecondaryAction,
-  Avatar,
-  Button,
-  Box,
-  Divider,
-  Skeleton
-} from '@mui/material';
-import { useConnection } from '../../context/ConnectionContext';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Avatar, Button, Paper, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import api from '../../services/api';
 
 const ConnectionSuggestions = () => {
-  const { sendConnectionRequest, loading } = useConnection();
+  // const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   // Placeholder data - will be replaced with real data later
@@ -40,87 +28,66 @@ const ConnectionSuggestions = () => {
 
   if (loading) {
     return (
-      <Paper elevation={1} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-        <Skeleton variant="text" width="60%" height={32} sx={{ mb: 2 }} />
-        {[1, 2, 3].map((item) => (
-          <Box key={item} sx={{ mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Skeleton variant="circular" width={40} height={40} sx={{ mr: 2 }} />
-              <Box sx={{ flex: 1 }}>
-                <Skeleton variant="text" width="80%" />
-                <Skeleton variant="text" width="60%" />
-              </Box>
-            </Box>
-            <Divider />
-          </Box>
-        ))}
-      </Paper>
+      <Box display="flex" justifyContent="center" p={2}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   return (
-    <Paper elevation={1} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-      <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
+    <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+      <Typography variant="h6" gutterBottom>
         People you may know
       </Typography>
-      <List disablePadding>
-        {suggestions.map((suggestion, index) => (
-          <React.Fragment key={suggestion.id}>
-            <ListItem 
-              alignItems="flex-start"
-              sx={{ px: 0 }}
-            >
-              <ListItemAvatar>
-                <Avatar
-                  src={suggestion.profile_picture}
-                  alt={`${suggestion.first_name} ${suggestion.last_name}`}
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/profile/${suggestion.id}`)}
-                />
-              </ListItemAvatar>
-              <ListItemText
-                primary={
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ 
-                      cursor: 'pointer',
-                      '&:hover': { textDecoration: 'underline' }
-                    }}
-                    onClick={() => navigate(`/profile/${suggestion.id}`)}
-                  >
-                    {`${suggestion.first_name} ${suggestion.last_name}`}
-                  </Typography>
-                }
-                secondary={
-                  <Typography variant="body2" color="text.secondary">
-                    {suggestion.current_work}
-                  </Typography>
-                }
-              />
-              <ListItemSecondaryAction>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => sendConnectionRequest(suggestion.id)}
-                  disabled={loading}
-                >
-                  Connect
-                </Button>
-              </ListItemSecondaryAction>
-            </ListItem>
-            {index < suggestions.length - 1 && (
-              <Divider variant="inset" component="li" />
-            )}
-          </React.Fragment>
-        ))}
-      </List>
-      <Box sx={{ textAlign: 'center', mt: 2 }}>
-        <Button color="primary" size="small">
-          View More
-        </Button>
-      </Box>
+      {suggestions.map((user) => (
+        <Box
+          key={user.id}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            mb: 2,
+            p: 1,
+            '&:hover': {
+              bgcolor: 'rgba(0, 0, 0, 0.04)',
+              borderRadius: 1,
+            },
+          }}
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+            }}
+            // onClick={() => handleProfileClick(user.id)}
+          >
+            <Avatar
+              src={user.profile_picture}
+              alt={`${user.first_name} ${user.last_name}`}
+              sx={{ mr: 2 }}
+            />
+            <Box>
+              <Typography variant="subtitle2">
+                {user.first_name} {user.last_name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {user.headline || user.current_position || 'No headline'}
+              </Typography>
+            </Box>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            // onClick={() => user.is_following ? handleUnfollow(user.id) : handleFollow(user.id)}
+            sx={{ ml: 2 }}
+          >
+            {user.is_following ? 'Unfollow' : 'Connect'}
+          </Button>
+        </Box>
+      ))}
     </Paper>
   );
 };
 
-export default ConnectionSuggestions; 
+export default ConnectionSuggestions;

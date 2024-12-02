@@ -3,7 +3,7 @@ from recruitmentAPI.views.user_views import (
     RegisterUserView, CustomLoginUserView, UpdateUserInterestsView,
     PasswordResetRequestView, PasswordResetConfirmView, UpdateUserProfileView,
     UpdateBasicUserInfoView, UpdatePrivacySettingsView, DeleteUserAccountView,
-    ViewUserProfileView, SearchProfilesView, SomeNormalUserView, SomeCompanyUserView,FollowUserView,
+    ViewOwnProfileView, ViewUserProfileView, SearchProfilesView, SomeNormalUserView, SomeCompanyUserView,FollowUserView,
     GetFollowersFollowingView
 )
 
@@ -17,10 +17,11 @@ urlpatterns = [
     path('update-basic-info/', UpdateBasicUserInfoView.as_view(), name='update_basic_user_info'),
     path('update-privacy/', UpdatePrivacySettingsView.as_view(), name='update_privacy_settings'),
     path('delete-account/', DeleteUserAccountView.as_view(), name='delete_user_account'),
-    path('view-profile/<int:user_id>/', ViewUserProfileView.as_view(), name='view_user_profile'),
+    path('profile/me/', ViewOwnProfileView.as_view(), name='view_own_profile'),
+    path('profile/<int:user_id>/', ViewUserProfileView.as_view(), name='view_user_profile'),
     path('search-profiles/', SearchProfilesView.as_view(), name='search_user_profiles'),
     path('normal-user-action/', SomeNormalUserView.as_view(), name='normal_user_action'),
     path('company-user-action/', SomeCompanyUserView.as_view(), name='company_user_action'),
     path('follow/<int:user_id>/', FollowUserView.as_view(), name='follow-user'),
-    path('followers-following/', GetFollowersFollowingView.as_view(), name='followers-following'),
+    path('<int:user_id>/followers-following/', GetFollowersFollowingView.as_view(), name='followers-following'),
 ]

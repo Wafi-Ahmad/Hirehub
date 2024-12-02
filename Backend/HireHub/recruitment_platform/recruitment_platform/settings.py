@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
-
+from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -78,18 +78,27 @@ WSGI_APPLICATION = 'recruitment_platform.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'hirehub',            
+#         'USER': 'wafi',               
+#         'PASSWORD': '1998',           
+#         'HOST': 'localhost',           
+#         'PORT': '3306',                
+#     }
+# }
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
+        'ENGINE' : 'django.db.backends.mysql',
         'NAME': 'hirehub',            
-        'USER': 'wafi',               
-        'PASSWORD': '1998',           
+        'USER': 'root',               
+        'PASSWORD': 'RootRoot1.',           
         'HOST': 'localhost',           
-        'PORT': '3306',                
+        'PORT': '3306',   
     }
 }
-
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -150,7 +159,7 @@ REST_FRAMEWORK = {
 }
 
 # Optionally, you can configure JWT settings
-from datetime import timedelta
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),

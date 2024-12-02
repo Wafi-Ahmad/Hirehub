@@ -6,7 +6,31 @@ import axios from 'axios';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const userStr = localStorage.getItem('user');
+      const userId = localStorage.getItem('userId');
+      console.log('Initial user data from localStorage:', { userStr, userId });
+      
+      if (!userStr || userStr === '{}' || !userId) {
+        console.log('No valid user data found in localStorage');
+        return null;
+      }
+
+      const userData = JSON.parse(userStr);
+      if (!userData || !userData.id || userData.id.toString() !== userId) {
+        console.log('Invalid or mismatched user data:', { userData, userId });
+        return null;
+      }
+
+      console.log('Successfully loaded user data:', userData);
+      return userData;
+    } catch (error) {
+      console.error('Error parsing user from localStorage:', error);
+      return null;
+    }
+  });
+
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
@@ -44,39 +68,60 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Update localStorage whenever user state changes
+  useEffect(() => {
+    console.log('User state changed:', user);
+    if (user && user.id) {
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('userId', user.id);
+      setIsAuthenticated(true);
+    } else {
+      // Only clear if we're explicitly setting user to null
+      if (user === null) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('userId');
+      }
+      setIsAuthenticated(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     const initAuth = async () => {
       try {
         const token = localStorage.getItem('token');
         const refresh = localStorage.getItem('refresh');
+        const userId = localStorage.getItem('userId');
 
-        if (!token || !refresh) {
+        console.log('InitAuth - Stored tokens and userId:', { token: !!token, refresh: !!refresh, userId });
+
+        if (!token || !refresh || !userId) {
+          console.log('Missing required auth data');
           setLoading(false);
           return;
         }
 
         if (isTokenExpired(token)) {
+          console.log('Token expired, attempting refresh');
           const refreshed = await refreshToken();
           if (!refreshed) {
+            console.log('Token refresh failed');
             logout();
             setLoading(false);
             return;
           }
         }
 
+        // console.log('Fetching user data from API');
         api.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
-        const response = await api.get('/users/update-basic-info/');
-
-        if (response.data) {
-          setUser({
-            id: response.data.id,
-            email: response.data.email,
-            userType: response.data.user_type,
-            firstName: response.data.first_name,
-            lastName: response.data.last_name
-          });
+        // read user from localStorage  
+        // let userData = localStorage.getItem('user')
+        //   console.log('Received user data from API:', userData);
+        //   setUser(userData);
+        //   localStorage.setItem('user', JSON.stringify(userData));
+          let userData = JSON.parse(localStorage.getItem("user"))
           setIsAuthenticated(true);
-        }
+          setUser(userData)
+        
       } catch (error) {
         console.error('Auth initialization error:', error);
         if (error.response?.status === 401) {
@@ -93,34 +138,24 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  useEffect(() => {
-    let refreshInterval;
-
-    if (isAuthenticated) {
-      refreshInterval = setInterval(async () => {
-        const token = localStorage.getItem('token');
-        if (isTokenExpired(token)) {
-          const refreshed = await refreshToken();
-          if (!refreshed) {
-            logout();
-          }
-        }
-      }, 240000); // Check every 4 minutes
-    }
-
-    return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
-      }
-    };
-  }, [isAuthenticated]);
-
   const login = async (userData) => {
     try {
+      // Ensure we have all required fields
+      if (!userData || !userData.id) {
+        throw new Error('Invalid user data');
+      }
+      
+      console.log('Logging in with user data:', userData);
+      
+      // Store user data in localStorage first
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('userId', userData.id);
+      
+      // Then update state
       setUser(userData);
       setIsAuthenticated(true);
       api.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
-      return userData;
+      return true;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -128,20 +163,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    console.log('Logging out - clearing all auth data');
     localStorage.removeItem('token');
     localStorage.removeItem('refresh');
-    delete api.defaults.headers.common['Authorization'];
+    localStorage.removeItem('user');
+    localStorage.removeItem('userId');
     setUser(null);
     setIsAuthenticated(false);
+    delete api.defaults.headers.common['Authorization'];
     navigate('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      setUser, 
-      isAuthenticated, 
+    <AuthContext.Provider value={{
+      user,
       loading,
+      isAuthenticated,
       login,
       logout,
       refreshToken
@@ -151,4 +188,12 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext); 
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+export default AuthContext;

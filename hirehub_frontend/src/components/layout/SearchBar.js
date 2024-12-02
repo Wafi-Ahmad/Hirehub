@@ -20,8 +20,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 import { debounce } from 'lodash';
-import axios from 'axios';
-
+import api from '../../services/api';
+import {API_BASE_URL} from '../../config';
 const SearchBar = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -39,7 +39,7 @@ const SearchBar = () => {
 
     try {
       setLoading(true);
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/search-profiles/`, {
+      const response = await api.get(`/users/search-profiles/`, {
         params: { query }
       });
       
