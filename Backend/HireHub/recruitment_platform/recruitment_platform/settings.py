@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,7 +26,7 @@ SECRET_KEY = 'django-insecure-y4%u^no9q8b9$#=nn$s306&ykj_ogw&8)n7+4rgs0)#ynbk&ym
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 
 # Application definition
@@ -82,24 +83,13 @@ WSGI_APPLICATION = 'recruitment_platform.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'hirehub',            
-        'USER': 'wafi',               
-        'PASSWORD': '1998',           
-        'HOST': 'localhost',           
-        'PORT': '3306',                
+        'NAME': os.environ.get('DATABASE_NAME', 'hirehub'),
+        'USER': os.environ.get('DATABASE_USER', 'wafi'),
+        'PASSWORD': os.environ.get('DATABASE_PASSWORD', '1998'),
+        'HOST': os.environ.get('DATABASE_HOST', 'localhost'),
+        'PORT': os.environ.get('DATABASE_PORT', '3306'),
     }
 }
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE' : 'django.db.backends.mysql',
-#         'NAME': 'hirehub',            
-#         'USER': 'root',               
-#         'PASSWORD': 'RootRoot1.',           
-#         'HOST': 'localhost',           
-#         'PORT': '3306',   
-#     }
-# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

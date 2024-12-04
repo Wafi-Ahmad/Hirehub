@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_DATABASE: hirehub_db
+      MYSQL_USER: hirehub_user
+      MYSQL_PASSWORD: hirehub_password
+      MYSQL_ROOT_PASSWORD: root_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  backend:
+    build: 
+      context: ./Backend/HireHub
+      dockerfile: Dockerfile
+    volumes:
+      - ./Backend/HireHub:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_HOST=db
+      - DATABASE_NAME=hirehub_db
+      - DATABASE_USER=hirehub_user
+      - DATABASE_PASSWORD=hirehub_password
+    restart: always
+
+  frontend:
+    build:
+      context: ./hirehub_frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  mysql_data: 
