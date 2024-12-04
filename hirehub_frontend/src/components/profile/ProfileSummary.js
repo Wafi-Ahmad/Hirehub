@@ -18,7 +18,7 @@ import { useProfile } from '../../context/ProfileContext';
 
 const ProfileSummary = ({ allowEdit = false }) => {
   const { user: currentUser } = useAuth();
-  const { currentUserProfile, loading, fetchCurrentUserProfile } = useProfile();
+  const { currentUserProfile, loading, followData, fetchCurrentUserProfile } = useProfile();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -114,11 +114,11 @@ const ProfileSummary = ({ allowEdit = false }) => {
 
           <Grid container spacing={2} sx={{ mt: 3, textAlign: 'center' }}>
             <Grid item xs={6}>
-              <Typography variant="h6">{currentUserProfile?.followers_count || 0}</Typography>
+              <Typography variant="h6">{followData?.followers_count || 0}</Typography>
               <Typography variant="body2" color="textSecondary">Followers</Typography>
             </Grid>
             <Grid item xs={6}>
-              <Typography variant="h6">{currentUserProfile?.following_count || 0}</Typography>
+              <Typography variant="h6">{followData?.following_count || 0}</Typography>
               <Typography variant="body2" color="textSecondary">Following</Typography>
             </Grid>
           </Grid>

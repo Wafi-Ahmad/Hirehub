@@ -16,7 +16,7 @@ function App() {
           <ConnectionProvider>
             <PostProvider>
               <AppRoutes />
-              <ToastContainer />
+              <ToastContainer position="top-right" autoClose={5000} />
             </PostProvider>
           </ConnectionProvider>
         </ProfileProvider>

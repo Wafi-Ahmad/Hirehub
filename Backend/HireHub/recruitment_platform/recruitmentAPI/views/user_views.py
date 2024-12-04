@@ -10,10 +10,11 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 from django.db.models import Q
 import logging
 from recruitmentAPI.permissions import IsNormalUser, IsCompanyUser, IsNormalOrCompanyUser
+from django.conf import settings
 
 User = get_user_model()
 
@@ -84,13 +85,24 @@ class PasswordResetRequestView(APIView):
                 user = User.objects.get(email=email)
                 token = default_token_generator.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))   
-                reset_link = f"http://localhost:8000/api/reset-password-confirm/{uid}/{token}/"
+                reset_link = f"{settings.FRONTEND_URL}/reset-password/{uid}/{token}/"
+                
+                # Send email with HTML formatting
+                html_message = f"""
+                <h3>Password Reset Request</h3>
+                <p>You requested to reset your password. Click the link below to proceed:</p>
+                <p><a href="{reset_link}">Reset Password</a></p>
+                <p>If you didn't request this, you can safely ignore this email.</p>
+                <p>The link will expire in 24 hours.</p>
+                """
+                
                 send_mail(
                     'Password Reset Request',
                     f'Click the link to reset your password: {reset_link}',
-                    'from@example.com',
+                    settings.DEFAULT_FROM_EMAIL,
                     [email],
                     fail_silently=False,
+                    html_message=html_message
                 )
                 return Response({"message": "Password reset link sent."}, status=status.HTTP_200_OK)
             except User.DoesNotExist:
@@ -308,31 +320,51 @@ class SomeCompanyUserView(APIView):
         return Response({"message": "This is accessible only to company users."})
     
 class FollowUserView(APIView):
-    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, user_id):
         try:
             user_to_follow = User.objects.get(id=user_id)
-            request.user.following.add(user_to_follow)
-            return Response({
-                "message": f"You are now following {user_to_follow.first_name} {user_to_follow.last_name}"
-            }, status=status.HTTP_200_OK)
-        except User.DoesNotExist:
-            return Response({
-                "error": "User not found."
-            }, status=status.HTTP_404_NOT_FOUND)
+            current_user = request.user
 
-    def delete(self, request, user_id):
-        try:
-            user_to_unfollow = User.objects.get(id=user_id)
-            request.user.following.remove(user_to_unfollow)
-            return Response({
-                "message": f"You have unfollowed {user_to_unfollow.first_name} {user_to_unfollow.last_name}"
-            }, status=status.HTTP_200_OK)
+            if current_user == user_to_follow:
+                return Response(
+                    {"error": "You cannot follow yourself"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Check if already following
+            is_following = current_user.following.filter(id=user_to_follow.id).exists()
+
+            if is_following:
+                # Unfollow
+                current_user.following.remove(user_to_follow)
+                return Response({
+                    "message": "Successfully unfollowed user",
+                    "is_following": False,
+                    "followers_count": user_to_follow.followers.count(),
+                    "following_count": user_to_follow.following.count()
+                })
+            else:
+                # Follow
+                current_user.following.add(user_to_follow)
+                return Response({
+                    "message": "Successfully followed user",
+                    "is_following": True,
+                    "followers_count": user_to_follow.followers.count(),
+                    "following_count": user_to_follow.following.count()
+                })
+
         except User.DoesNotExist:
-            return Response({
-                "error": "User not found."
-            }, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"error": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class GetFollowersFollowingView(APIView):
     permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
@@ -362,3 +394,21 @@ class GetFollowersFollowingView(APIView):
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data.get('refresh_token')
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                # Add token to blacklist
+                token.blacklist()
+                return Response({'message': 'Successfully logged out.'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Refresh token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        except TokenError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

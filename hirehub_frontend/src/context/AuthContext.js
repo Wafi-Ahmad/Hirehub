@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { userService } from '../services/userService';
 
 const AuthContext = createContext(null);
 
@@ -162,16 +163,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    console.log('Logging out - clearing all auth data');
-    localStorage.removeItem('token');
-    localStorage.removeItem('refresh');
-    localStorage.removeItem('user');
-    localStorage.removeItem('userId');
-    setUser(null);
-    setIsAuthenticated(false);
-    delete api.defaults.headers.common['Authorization'];
-    navigate('/login');
+  const logout = async () => {
+    try {
+      await userService.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Clear local storage
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh');
+      // Reset auth state
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   };
 
   return (

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'recruitmentAPI',
     'corsheaders',
     'drf_spectacular',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
@@ -78,27 +79,27 @@ WSGI_APPLICATION = 'recruitment_platform.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': 'hirehub',            
-#         'USER': 'wafi',               
-#         'PASSWORD': '1998',           
-#         'HOST': 'localhost',           
-#         'PORT': '3306',                
-#     }
-# }
-
 DATABASES = {
     'default': {
-        'ENGINE' : 'django.db.backends.mysql',
+        'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hirehub',            
-        'USER': 'root',               
-        'PASSWORD': 'RootRoot1.',           
+        'USER': 'wafi',               
+        'PASSWORD': '1998',           
         'HOST': 'localhost',           
-        'PORT': '3306',   
+        'PORT': '3306',                
     }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE' : 'django.db.backends.mysql',
+#         'NAME': 'hirehub',            
+#         'USER': 'root',               
+#         'PASSWORD': 'RootRoot1.',           
+#         'HOST': 'localhost',           
+#         'PORT': '3306',   
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -164,7 +165,7 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=90),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
@@ -204,3 +205,6 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
+
+# Frontend URL for password reset
+FRONTEND_URL = 'http://localhost:3000'

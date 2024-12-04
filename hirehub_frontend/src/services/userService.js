@@ -1,19 +1,25 @@
 import api from './api';
 
 export const userService = {
-  // Get user profile stats
-  getProfileStats: async () => {
-    return api.get('/users/followers-following/');
+  // Follow a user
+  followUser: async (userId) => {
+    return api.post(`/users/follow/${userId}/`);
+  },
+
+  // Get user profile stats (followers/following)
+  getProfileStats: async (userId = null) => {
+    const endpoint = userId ? `/users/${userId}/followers-following/` : '/users/me/followers-following/';
+    return api.get(endpoint);
   },
 
   // Get user profile
   getProfile: async (userId) => {
-    return api.get(`/users/view-profile/${userId}/`);
+    return api.get(`/users/profile/${userId}/`);
   },
 
   // Get own profile
   getOwnProfile: async () => {
-    return api.get('/users/view-profile/me/');
+    return api.get('/users/profile/me/');
   },
 
   // Update user profile
@@ -35,5 +41,11 @@ export const userService = {
         'Content-Type': 'multipart/form-data',
       },
     });
+  },
+
+  // Logout user
+  logout: async () => {
+    const refresh = localStorage.getItem('refresh');
+    return api.post('/users/logout/', { refresh_token: refresh });
   }
 };

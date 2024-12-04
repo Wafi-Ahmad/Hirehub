@@ -15,6 +15,7 @@ import {
   Skeleton,
   Link,
   Alert,
+  Tooltip,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -24,17 +25,29 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import PhoneIcon from '@mui/icons-material/Phone';
 import LanguageIcon from '@mui/icons-material/Language';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
 import { usePost } from '../../context/PostContext';
+import { userService } from '../../services/userService';
+import { toast } from 'react-toastify';
 import EditProfileDialog from '../../components/profile/EditProfileDialog';
 import PostList from '../../components/post/PostList';
 
 const Profile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { profileData, loading, error, followData, fetchProfileData } = useProfile();
+  const { user: currentUser } = useAuth();
+  const { 
+    profileData, 
+    loading, 
+    error, 
+    followData, 
+    fetchProfileData, 
+    setProfileData,
+    updateFollowData 
+  } = useProfile();
   const { clearPosts } = usePost();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
@@ -45,12 +58,12 @@ const Profile = () => {
         clearPosts();
         
         // If no ID in URL or ID matches current user, load own profile
-        if (!id || id === user?.id?.toString()) {
+        if (!id) {
           await fetchProfileData();
           // Update URL to reflect user's own profile ID if not already there
-          if (!id && user?.id) {
-            navigate(`/profile/${user.id}`, { replace: true });
-          }
+          // if (!id && currentUser?.id) {
+          //   navigate(`/profile/me}`, { replace: true });
+          // }
         } else {
           await fetchProfileData(id);
         }
@@ -59,7 +72,7 @@ const Profile = () => {
       }
     };
 
-    if (user?.id) {
+    if (currentUser?.id) {
       // Force a complete reload of profile data when component mounts or ID changes
       loadProfile();
     }
@@ -68,7 +81,49 @@ const Profile = () => {
     return () => {
       clearPosts();
     };
-  }, [id, user?.id, fetchProfileData, navigate, clearPosts]);
+  }, [id, currentUser?.id, fetchProfileData, navigate, clearPosts]);
+
+  const handleFollow = async () => {
+    try {
+      const response = await userService.followUser(profileData.id);
+      const { is_following, followers_count, following_count } = response.data;
+      
+      // Update follow status in profile data
+      setProfileData(prev => ({
+        ...prev,
+        is_following
+      }));
+
+      // Update follow counts
+      updateFollowData({ followers_count, following_count });
+      
+      toast.success('Successfully followed user');
+    } catch (error) {
+      toast.error('Failed to follow user');
+      console.error('Follow error:', error);
+    }
+  };
+
+  const handleUnfollow = async () => {
+    try {
+      const response = await userService.followUser(profileData.id);
+      const { is_following, followers_count, following_count } = response.data;
+      
+      // Update follow status in profile data
+      setProfileData(prev => ({
+        ...prev,
+        is_following
+      }));
+
+      // Update follow counts
+      updateFollowData({ followers_count, following_count });
+      
+      toast.success('Successfully unfollowed user');
+    } catch (error) {
+      toast.error('Failed to unfollow user');
+      console.error('Unfollow error:', error);
+    }
+  };
 
   const handleEditClick = () => {
     setEditDialogOpen(true);
@@ -78,7 +133,7 @@ const Profile = () => {
     setEditDialogOpen(false);
   };
 
-  const isOwnProfile = !id || id === user?.id?.toString();
+  const isOwnProfile = !id || id === currentUser?.id?.toString();
 
   const renderSkeletons = () => (
     <>
@@ -255,19 +310,23 @@ const Profile = () => {
           overflow: 'hidden',
         }}
       >
-        {isOwnProfile && (
+        {isOwnProfile ? (
           <IconButton
             onClick={handleEditClick}
-            sx={{
-              position: 'absolute',
-              top: 16,
-              right: 16,
-              bgcolor: 'background.paper',
-              '&:hover': { bgcolor: 'background.default' },
-            }}
+            sx={{ position: 'absolute', right: 16, top: 16 }}
           >
             <EditIcon />
           </IconButton>
+        ) : (
+          <Tooltip title={profileData?.is_following ? "Unfollow" : "Follow"}>
+            <IconButton
+              onClick={profileData?.is_following ? handleUnfollow : handleFollow}
+              color={profileData?.is_following ? "primary" : "default"}
+              sx={{ position: 'absolute', right: 16, top: 16 }}
+            >
+              {profileData?.is_following ? <PersonRemoveIcon /> : <PersonAddIcon />}
+            </IconButton>
+          </Tooltip>
         )}
       </Box>
 
@@ -375,18 +434,16 @@ const Profile = () => {
             )}
 
             {/* Follow Stats */}
-            {followData && (
-              <Grid container spacing={4} sx={{ mt: 3, justifyContent: 'center' }}>
-                <Grid item>
-                  <Typography variant="h6">{followData.followers_count}</Typography>
-                  <Typography variant="body2" color="text.secondary">Followers</Typography>
-                </Grid>
-                <Grid item>
-                  <Typography variant="h6">{followData.following_count}</Typography>
-                  <Typography variant="body2" color="text.secondary">Following</Typography>
-                </Grid>
+            <Grid container spacing={4} sx={{ mt: 3, justifyContent: 'center' }}>
+              <Grid item>
+                <Typography variant="h6">{followData?.followers_count || 0}</Typography>
+                <Typography variant="body2" color="text.secondary">Followers</Typography>
               </Grid>
-            )}
+              <Grid item>
+                <Typography variant="h6">{followData?.following_count || 0}</Typography>
+                <Typography variant="body2" color="text.secondary">Following</Typography>
+              </Grid>
+            </Grid>
           </Box>
         </Box>
       </Paper>

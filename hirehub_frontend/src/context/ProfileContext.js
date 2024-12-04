@@ -1,38 +1,42 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import profileService from '../services/profileService';
+import { userService } from '../services/userService';
+import { profileService } from '../services/profileService';
 
 const ProfileContext = createContext();
 
 export const ProfileProvider = ({ children }) => {
-  // State for the currently viewed profile (could be any user)
   const [profileData, setProfileData] = useState(null);
-  // State specifically for the current user's profile
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [followData, setFollowData] = useState({ followers_count: 0, following_count: 0 });
   const [lastFetchedId, setLastFetchedId] = useState(null);
 
+  const fetchFollowData = useCallback(async (userId = null) => {
+    try {
+      const response = await userService.getProfileStats(userId);
+      setFollowData(response.data);
+    } catch (err) {
+      console.error('Error fetching follow data:', err);
+      setError(err.response?.data?.error || 'Failed to load follow data');
+    }
+  }, []);
+
   const fetchProfileData = useCallback(async (userId = null) => {
     setLoading(true);
     setError(null);
     try {
-      const [profileResponse, followResponse] = await Promise.all([
-        profileService.getProfile(userId),
-        profileService.getFollowData(userId)
-      ]);
+      const profileResponse = await profileService.getProfile(userId);
+      await fetchFollowData(userId);
       
       if (userId) {
-        // If fetching a specific user's profile
         setProfileData(profileResponse);
         setLastFetchedId(userId);
       } else {
-        // If fetching current user's profile, update both states
         setProfileData(profileResponse);
         setCurrentUserProfile(profileResponse);
         setLastFetchedId(null);
       }
-      setFollowData(followResponse);
     } catch (err) {
       console.error('Error in fetchProfileData:', err);
       setError(err.response?.data?.error || 'Failed to load profile data');
@@ -40,20 +44,17 @@ export const ProfileProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchFollowData]);
 
-  // Specific method to fetch current user's profile
   const fetchCurrentUserProfile = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [profileResponse, followResponse] = await Promise.all([
-        profileService.getProfile(),
-        profileService.getFollowData()
-      ]);
+      const profileResponse = await profileService.getProfile();
+      await fetchFollowData();
       
       setCurrentUserProfile(profileResponse);
-      setFollowData(followResponse);
+      setProfileData(profileResponse);
     } catch (err) {
       console.error('Error in fetchCurrentUserProfile:', err);
       setError(err.response?.data?.error || 'Failed to load profile data');
@@ -61,7 +62,7 @@ export const ProfileProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchFollowData]);
 
   const updateProfile = useCallback(async (formData) => {
     setLoading(true);
@@ -80,8 +81,16 @@ export const ProfileProvider = ({ children }) => {
     }
   }, []);
 
+  const updateFollowData = useCallback((newFollowData) => {
+    setFollowData(prev => ({
+      ...prev,
+      ...newFollowData
+    }));
+  }, []);
+
   const clearProfileData = useCallback(() => {
     setProfileData(null);
+    setCurrentUserProfile(null);
     setFollowData({ followers_count: 0, following_count: 0 });
     setLastFetchedId(null);
   }, []);
@@ -95,9 +104,11 @@ export const ProfileProvider = ({ children }) => {
       followData,
       fetchProfileData,
       fetchCurrentUserProfile,
-      updateProfile,
+      setProfileData,
+      updateFollowData,
+      fetchFollowData,
       clearProfileData,
-      setProfileData
+      updateProfile
     }}>
       {children}
     </ProfileContext.Provider>

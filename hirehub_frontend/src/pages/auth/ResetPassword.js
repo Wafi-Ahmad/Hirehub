@@ -1,5 +1,5 @@
 import React from 'react';
-import { Formik, Field } from 'formik';
+import { Formik, Field, Form } from 'formik';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Container,
@@ -35,20 +35,42 @@ const ResetPassword = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  React.useEffect(() => {
+    if (!uidb64 || !token) {
+      toast.error('Invalid reset password link');
+      navigate('/forgot-password');
+    }
+  }, [uidb64, token, navigate]);
+
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      await api.post(`/reset-password-confirm/${uidb64}/${token}/`, {
+      await api.post(`/users/reset-password-confirm/${uidb64}/${token}/`, {
         new_password: values.password,
-        confirm_password: values.confirmPassword,
+        confirm_password: values.confirmPassword
       });
       toast.success('Password reset successful! Please login with your new password.');
       navigate('/login');
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Password reset failed');
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.detail ||
+                          'Password reset failed. Please try again or request a new reset link.';
+      toast.error(errorMessage);
+      
+      // If token is invalid or expired, redirect to forgot password
+      if (error.response?.status === 400 || error.response?.status === 404) {
+        toast.error('Reset link is invalid or has expired. Please request a new one.');
+        setTimeout(() => {
+          navigate('/forgot-password');
+        }, 3000);
+      }
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (!uidb64 || !token) {
+    return null;
+  }
 
   return (
     <Container maxWidth="sm">
@@ -94,8 +116,8 @@ const ResetPassword = () => {
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
           >
-            {({ handleSubmit, isSubmitting }) => (
-              <form onSubmit={handleSubmit} noValidate>
+            {({ isSubmitting }) => (
+              <Form noValidate>
                 <Box sx={{ mb: 3 }}>
                   <Field
                     component={FormInput}
@@ -125,7 +147,7 @@ const ResetPassword = () => {
                 >
                   {isSubmitting ? 'Resetting Password...' : 'Reset Password'}
                 </Button>
-              </form>
+              </Form>
             )}
           </Formik>
         </Paper>

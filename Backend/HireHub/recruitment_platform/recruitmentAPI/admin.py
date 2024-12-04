@@ -37,7 +37,7 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'content_preview', 'created_at', 'likes_count', 'comments_count', 'has_attachment')
+    list_display = ('id', 'user', 'content_preview', 'created_at', 'likes_count', 'comments_count')
     list_filter = ('created_at', 'user')
     search_fields = ('content', 'user__email')
     readonly_fields = ('created_at', 'updated_at', 'likes_count', 'comments_count')
@@ -47,10 +47,10 @@ class PostAdmin(admin.ModelAdmin):
         return obj.content[:100] + "..." if len(obj.content) > 100 else obj.content
     content_preview.short_description = 'Content'
     
-    def has_attachment(self, obj):
-        return bool(obj.attachment)
-    has_attachment.boolean = True
-    has_attachment.short_description = 'Has Attachment'
+    # def has_attachment(self, obj):
+    #     return bool(obj.attachment)
+    # has_attachment.boolean = True
+    # has_attachment.short_description = 'Has Attachment'
 
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):

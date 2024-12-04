@@ -12,14 +12,18 @@ import {
   TextField,
   CircularProgress,
   Divider,
+  Tooltip,
 } from '@mui/material';
 import {
   MoreVert as MoreVertIcon,
   ThumbUp as ThumbUpIcon,
   ChatBubbleOutline as CommentIcon,
+  PersonAdd as PersonAddIcon,
+  PersonRemove as PersonRemoveIcon,
 } from '@mui/icons-material';
 import { commentService } from '../../services/commentService';
 import { postService } from '../../services/postService';
+import { userService } from '../../services/userService';
 import { toast } from 'react-toastify';
 import Comment from './Comment';
 import { useAuth } from '../../context/AuthContext';
@@ -168,6 +172,40 @@ const Post = ({ post }) => {
     }
   };
 
+  const handleFollow = async () => {
+    try {
+      await userService.followUser(post.user.id);
+      // Update local state
+      updatePost(post.id, {
+        user: {
+          ...post.user,
+          is_following: true
+        }
+      });
+      toast.success('Successfully followed user');
+    } catch (error) {
+      toast.error('Failed to follow user');
+      console.error('Follow error:', error);
+    }
+  };
+
+  const handleUnfollow = async () => {
+    try {
+      await userService.followUser(post.user.id);
+      // Update local state
+      updatePost(post.id, {
+        user: {
+          ...post.user,
+          is_following: false
+        }
+      });
+      toast.success('Successfully unfollowed user');
+    } catch (error) {
+      toast.error('Failed to unfollow user');
+      console.error('Unfollow error:', error);
+    }
+  };
+
   const renderMedia = () => {
     if (!post.media_urls) return null;
 
@@ -228,16 +266,29 @@ const Post = ({ post }) => {
           />
         }
         title={
-          <Typography
-            variant="subtitle1"
-            sx={{ 
-              cursor: 'pointer',
-              '&:hover': { textDecoration: 'underline' }
-            }}
-            onClick={() => handleProfileClick(post.user?.id)}
-          >
-            {`${post.user?.first_name} ${post.user?.last_name}`}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{ 
+                cursor: 'pointer',
+                '&:hover': { textDecoration: 'underline' }
+              }}
+              onClick={() => handleProfileClick(post.user?.id)}
+            >
+              {`${post.user?.first_name} ${post.user?.last_name}`}
+            </Typography>
+            {currentUser?.id !== post.user?.id && (
+              <Tooltip title={post.user?.is_following ? "Unfollow" : "Follow"}>
+                <IconButton
+                  size="small"
+                  onClick={post.user?.is_following ? handleUnfollow : handleFollow}
+                  color={post.user?.is_following ? "primary" : "default"}
+                >
+                  {post.user?.is_following ? <PersonRemoveIcon /> : <PersonAddIcon />}
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
         }
         action={
           <IconButton>

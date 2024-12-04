@@ -1,8 +1,8 @@
 import React, { Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
-import ProtectedRoute from './ProtectedRoute';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import ProtectedRoute from './ProtectedRoute';
 
 // Lazy load pages for better performance
 const Login = React.lazy(() => import('../pages/auth/Login'));
@@ -24,9 +24,9 @@ function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/reset-password/:uidb64/:token" element={<ResetPassword />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
-        
+
         {/* Protected Routes - With Layout */}
         <Route
           path="/"

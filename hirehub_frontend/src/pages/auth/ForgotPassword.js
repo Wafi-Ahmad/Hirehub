@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Formik, Field } from 'formik';
 import { Link as RouterLink } from 'react-router-dom';
 import {
@@ -10,6 +10,7 @@ import {
   Paper,
   useTheme,
   useMediaQuery,
+  Alert,
 } from '@mui/material';
 import * as Yup from 'yup';
 import { toast } from 'react-toastify';
@@ -26,13 +27,22 @@ const validationSchema = Yup.object({
 const ForgotPassword = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [emailSent, setEmailSent] = useState(false);
+  const [sentEmail, setSentEmail] = useState('');
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      const response = await api.post('users/password-reset/', values);
-      toast.success(response.data.message || 'Password reset instructions have been sent to your email');
+      await api.post('/users/password-reset/', {
+        email: values.email
+      });
+      setEmailSent(true);
+      setSentEmail(values.email);
+      toast.success('Password reset instructions have been sent to your email');
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Failed to process request');
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.detail ||
+                          'Failed to send reset instructions. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -65,59 +75,89 @@ const ForgotPassword = () => {
           >
             Reset Password
           </Typography>
-          <Typography
-            variant="body1"
-            color="text.secondary"
-            align="center"
-            sx={{ mb: 4 }}
-          >
-            Enter your email address and we'll send you instructions to reset your password
-          </Typography>
+          
+          {emailSent ? (
+            <>
+              <Alert severity="success" sx={{ mb: 3 }}>
+                We've sent reset instructions to {sentEmail}
+              </Alert>
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                align="center"
+                sx={{ mb: 4 }}
+              >
+                Please check your email and follow the instructions to reset your password.
+                If you don't see the email, please check your spam folder.
+              </Typography>
+              <Button
+                variant="outlined"
+                fullWidth
+                size="large"
+                component={RouterLink}
+                to="/login"
+                sx={{ mt: 2 }}
+              >
+                Back to Login
+              </Button>
+            </>
+          ) : (
+            <>
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                align="center"
+                sx={{ mb: 4 }}
+              >
+                Enter your email address and we'll send you instructions to reset your password
+              </Typography>
 
-          <Formik
-            initialValues={{ email: '' }}
-            validationSchema={validationSchema}
-            onSubmit={handleSubmit}
-          >
-            {({ handleSubmit, isSubmitting }) => (
-              <form onSubmit={handleSubmit} noValidate>
-                <Box sx={{ mb: 4 }}>
-                  <Field
-                    component={FormInput}
-                    name="email"
-                    type="email"
-                    label="Email Address"
-                    autoComplete="email"
-                  />
-                </Box>
+              <Formik
+                initialValues={{ email: '' }}
+                validationSchema={validationSchema}
+                onSubmit={handleSubmit}
+              >
+                {({ handleSubmit, isSubmitting }) => (
+                  <form onSubmit={handleSubmit} noValidate>
+                    <Box sx={{ mb: 4 }}>
+                      <Field
+                        component={FormInput}
+                        name="email"
+                        type="email"
+                        label="Email Address"
+                        autoComplete="email"
+                      />
+                    </Box>
 
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  size="large"
-                  disabled={isSubmitting}
-                  sx={{ mb: 2 }}
-                >
-                  {isSubmitting ? 'Sending...' : 'Send Reset Instructions'}
-                </Button>
-
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Remember your password?{' '}
-                    <Link
-                      component={RouterLink}
-                      to="/login"
-                      color="primary"
-                      underline="hover"
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      fullWidth
+                      size="large"
+                      disabled={isSubmitting}
+                      sx={{ mb: 2 }}
                     >
-                      Back to login
-                    </Link>
-                  </Typography>
-                </Box>
-              </form>
-            )}
-          </Formik>
+                      {isSubmitting ? 'Sending...' : 'Send Reset Instructions'}
+                    </Button>
+
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Remember your password?{' '}
+                        <Link
+                          component={RouterLink}
+                          to="/login"
+                          color="primary"
+                          underline="hover"
+                        >
+                          Back to login
+                        </Link>
+                      </Typography>
+                    </Box>
+                  </form>
+                )}
+              </Formik>
+            </>
+          )}
         </Paper>
       </Box>
     </Container>

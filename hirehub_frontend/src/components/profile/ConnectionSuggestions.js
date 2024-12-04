@@ -1,30 +1,64 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Avatar, Button, Paper, CircularProgress } from '@mui/material';
+import { Box, Typography, Avatar, Button, Paper, CircularProgress, IconButton } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import { userService } from '../../services/userService';
+import { toast } from 'react-toastify';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 
 const ConnectionSuggestions = () => {
-  // const [suggestions, setSuggestions] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-
-  // Placeholder data - will be replaced with real data later
-  const suggestions = [
+  const [suggestions, setSuggestions] = useState([
     {
       id: 1,
       first_name: 'John',
       last_name: 'Doe',
       current_work: 'Software Engineer at Tech Co',
-      profile_picture: 'https://via.placeholder.com/50'
+      profile_picture: 'https://via.placeholder.com/50',
+      is_following: false
     },
     {
       id: 2,
       first_name: 'Jane',
       last_name: 'Smith',
       current_work: 'Product Manager at Innovation Inc',
-      profile_picture: 'https://via.placeholder.com/50'
+      profile_picture: 'https://via.placeholder.com/50',
+      is_following: false
     }
-  ];
+  ]);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleProfileClick = (userId) => {
+    navigate(`/profile/${userId}`);
+  };
+
+  const handleFollow = async (userId) => {
+    try {
+      await userService.followUser(userId);
+      // Update the local state to reflect the change
+      setSuggestions(suggestions.map(user => 
+        user.id === userId ? { ...user, is_following: true } : user
+      ));
+      toast.success('Successfully followed user');
+    } catch (error) {
+      toast.error('Failed to follow user');
+      console.error('Follow error:', error);
+    }
+  };
+
+  const handleUnfollow = async (userId) => {
+    try {
+      await userService.followUser(userId); // Same endpoint handles both follow/unfollow
+      // Update the local state to reflect the change
+      setSuggestions(suggestions.map(user => 
+        user.id === userId ? { ...user, is_following: false } : user
+      ));
+      toast.success('Successfully unfollowed user');
+    } catch (error) {
+      toast.error('Failed to unfollow user');
+      console.error('Unfollow error:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -60,7 +94,7 @@ const ConnectionSuggestions = () => {
               alignItems: 'center',
               cursor: 'pointer',
             }}
-            // onClick={() => handleProfileClick(user.id)}
+            onClick={() => handleProfileClick(user.id)}
           >
             <Avatar
               src={user.profile_picture}
@@ -76,14 +110,13 @@ const ConnectionSuggestions = () => {
               </Typography>
             </Box>
           </Box>
-          <Button
-            variant="outlined"
+          <IconButton
+            color={user.is_following ? "primary" : "default"}
+            onClick={() => user.is_following ? handleUnfollow(user.id) : handleFollow(user.id)}
             size="small"
-            // onClick={() => user.is_following ? handleUnfollow(user.id) : handleFollow(user.id)}
-            sx={{ ml: 2 }}
           >
-            {user.is_following ? 'Unfollow' : 'Connect'}
-          </Button>
+            {user.is_following ? <PersonRemoveIcon /> : <PersonAddIcon />}
+          </IconButton>
         </Box>
       ))}
     </Paper>

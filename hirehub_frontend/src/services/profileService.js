@@ -54,7 +54,7 @@ export const profileService = {
       if (!userId) {
         throw new Error('No user ID available');
       }
-
+      console.log(`getting follow data for ${userId}`);
       const endpoint = `/users/${userId}/followers-following`;
       const response = await api.get(endpoint);
       return response.data;
