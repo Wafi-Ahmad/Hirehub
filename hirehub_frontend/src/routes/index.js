@@ -3,6 +3,8 @@ import { Routes, Route } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ProtectedRoute from './ProtectedRoute';
+import QuizUI from '../components/quiz/_QuizUI';
+
 
 // Lazy load pages for better performance
 const Login = React.lazy(() => import('../pages/auth/Login'));
@@ -16,6 +18,7 @@ const Network = React.lazy(() => import('../pages/network/Network'));
 const NotFound = React.lazy(() => import('../pages/NotFound'));
 const Unauthorized = React.lazy(() => import('../pages/Unauthorized'));
 
+
 function AppRoutes() {
   return (
     <Suspense fallback={<LoadingSpinner />}>
@@ -26,7 +29,6 @@ function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:uidb64/:token" element={<ResetPassword />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
-
         {/* Protected Routes - With Layout */}
         <Route
           path="/"
@@ -78,7 +80,16 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-
+        <Route
+        path="/quiz"
+        element={
+          <ProtectedRoute>
+          <Layout>
+            <QuizUI />
+          </Layout>
+          </ProtectedRoute>
+        }
+/>       
         {/* 404 Route */}
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -1,0 +1,82 @@
+[
+    {
+      "id": 1,
+      "question": "Which programming language is used for web development?",
+      "answers": ["Python", "JavaScript", "C++", "Java"],
+      "correctAnswer": 1
+    },
+    {
+      "id": 2,
+      "question": "What does HTML stand for?",
+      "answers": [
+        "Hyper Text Markup Language",
+        "High-Level Text Machine Language",
+        "Hyperlinks and Text Markup Language",
+        "Home Tool Markup Language"
+      ],
+      "correctAnswer": 0
+    },
+    {
+      "id": 3,
+      "question": "What is the purpose of CSS in web development?",
+      "answers": [
+        "Data Storage",
+        "Styling Web Pages",
+        "Programming Logic",
+        "Networking"
+      ],
+      "correctAnswer": 1
+    },
+    {
+      "id": 4,
+      "question": "What is React primarily used for?",
+      "answers": [
+        "Database Management",
+        "Creating User Interfaces",
+        "Server-Side Rendering",
+        "Machine Learning"
+      ],
+      "correctAnswer": 1
+    },
+    {
+      "id": 5,
+      "question": "Which company developed JavaScript?",
+      "answers": ["Google", "Netscape", "Microsoft", "Apple"],
+      "correctAnswer": 1
+    },
+    {
+      "id": 6,
+      "question": "What does SQL stand for?",
+      "answers": [
+        "Structured Query Language",
+        "Simple Query Language",
+        "Secure Query Language",
+        "Systematic Query Language"
+      ],
+      "correctAnswer": 0
+    },
+    {
+      "id": 7,
+      "question": "Which of the following is a NoSQL database?",
+      "answers": ["MongoDB", "MySQL", "PostgreSQL", "SQL Server"],
+      "correctAnswer": 0
+    },
+    {
+      "id": 8,
+      "question": "What is the output of 2 + '2' in JavaScript?",
+      "answers": ["4", "22", "NaN", "Error"],
+      "correctAnswer": 1
+    },
+    {
+      "id": 9,
+      "question": "What is the default port for HTTP?",
+      "answers": ["443", "80", "21", "25"],
+      "correctAnswer": 1
+    },
+    {
+      "id": 10,
+      "question": "Which of the following is a JavaScript framework?",
+      "answers": ["React", "Laravel", "Django", "Spring Boot"],
+      "correctAnswer": 0
+    }
+  ]  
