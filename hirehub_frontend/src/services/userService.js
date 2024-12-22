@@ -1,6 +1,19 @@
 import api from './api';
 
 export const userService = {
+  // Get connection recommendations
+  getConnectionRecommendations: async (limit = 5) => {
+    try {
+      const response = await api.get('/users/recommendations/', {
+        params: { limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching recommendations:', error);
+      throw error;
+    }
+  },
+
   // Follow a user
   followUser: async (userId) => {
     return api.post(`/users/follow/${userId}/`);

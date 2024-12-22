@@ -5,6 +5,7 @@ from recruitmentAPI.models.comment_model import Comment
 from django.core.cache import cache
 from django.conf import settings
 import time
+from django.db.models import Q
 
 class PostService:
     MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -77,25 +78,46 @@ class PostService:
             raise ValueError("Invalid video format. Supported formats: MP4, MOV")
 
     @staticmethod
-    def get_posts_paginated(cursor=None, limit=POSTS_PER_PAGE, user=None):
+    def get_posts_paginated(cursor=None, limit=POSTS_PER_PAGE, user=None, followed_only=False):
         """
-        Get paginated posts with caching and optimized queries
+        Get paginated posts with caching
         """
+        print(f"Debug - followed_only: {followed_only}")  # Debug log
+        
         # Generate cache key - simpler version for better reliability
-        cache_key = f"posts:list:{cursor}:{limit}"
+        cache_key = f"posts:list:{cursor}:{limit}:{followed_only}"
         if user:
             cache_key += f":{user.id}"
             
         # Try to get from cache
-        cached_result = cache.get(cache_key)
-        if cached_result:
-            return cached_result
+        # cached_result = cache.get(cache_key)
+        # if cached_result:
+        #     return cached_result
 
         # Build base query
         posts = Post.objects.filter(
             is_active=True,
             is_hidden=False
-        ).select_related(
+        )
+
+        # Filter posts by followed users if user is provided and followed_only is True
+        if user and followed_only:
+            following_ids = list(user.following.values_list('id', flat=True))
+            print(f"Debug - User {user.id} following IDs: {following_ids}")  # Debug log
+            
+            if not following_ids:
+                print(f"Debug - User is not following anyone, showing only their posts")  # Debug log
+                # If user is not following anyone, only show their own posts
+                posts = posts.filter(user=user)
+            else:
+                print(f"Debug - Showing posts from followed users and own posts")  # Debug log
+                # Show posts from followed users and own posts
+                posts = posts.filter(
+                    Q(user=user) |  # Include user's own posts
+                    Q(user__in=following_ids)  # Include posts from followed users
+                )
+
+        posts = posts.select_related(
             'user'
         ).prefetch_related(
             'likes'

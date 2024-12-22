@@ -26,11 +26,13 @@ class PostListView(APIView):
         """
         cursor = request.GET.get('cursor')
         limit = int(request.GET.get('limit', 10))
+        followed_only = request.GET.get('followed_only', '').lower() == 'true'
         
         result = PostService.get_posts_paginated(
             cursor=cursor,
             limit=limit,
-            user=request.user
+            user=request.user,
+            followed_only=followed_only
         )
         
         serializer = PostListSerializer(

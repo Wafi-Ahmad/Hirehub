@@ -1,32 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Avatar, Button, Paper, CircularProgress, IconButton } from '@mui/material';
+import { Box, Typography, Avatar, Paper, CircularProgress, IconButton, Tooltip } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { userService } from '../../services/userService';
 import { toast } from 'react-toastify';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
+import PeopleIcon from '@mui/icons-material/People';
 
 const ConnectionSuggestions = () => {
-  const [suggestions, setSuggestions] = useState([
-    {
-      id: 1,
-      first_name: 'John',
-      last_name: 'Doe',
-      current_work: 'Software Engineer at Tech Co',
-      profile_picture: 'https://via.placeholder.com/50',
-      is_following: false
-    },
-    {
-      id: 2,
-      first_name: 'Jane',
-      last_name: 'Smith',
-      current_work: 'Product Manager at Innovation Inc',
-      profile_picture: 'https://via.placeholder.com/50',
-      is_following: false
-    }
-  ]);
-  const [loading, setLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const fetchRecommendations = async () => {
+    try {
+      setLoading(true);
+      const data = await userService.getConnectionRecommendations(5);
+      setSuggestions(data);
+    } catch (error) {
+      console.error('Error fetching recommendations:', error);
+      toast.error('Failed to load recommendations');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecommendations();
+  }, []);
 
   const handleProfileClick = (userId) => {
     navigate(`/profile/${userId}`);
@@ -36,35 +37,41 @@ const ConnectionSuggestions = () => {
     try {
       await userService.followUser(userId);
       // Update the local state to reflect the change
-      setSuggestions(suggestions.map(user => 
-        user.id === userId ? { ...user, is_following: true } : user
-      ));
+      setSuggestions(prevSuggestions => 
+        prevSuggestions.filter(user => user.id !== userId)
+      );
       toast.success('Successfully followed user');
+      // Refresh recommendations
+      fetchRecommendations();
     } catch (error) {
       toast.error('Failed to follow user');
       console.error('Follow error:', error);
     }
   };
 
-  const handleUnfollow = async (userId) => {
-    try {
-      await userService.followUser(userId); // Same endpoint handles both follow/unfollow
-      // Update the local state to reflect the change
-      setSuggestions(suggestions.map(user => 
-        user.id === userId ? { ...user, is_following: false } : user
-      ));
-      toast.success('Successfully unfollowed user');
-    } catch (error) {
-      toast.error('Failed to unfollow user');
-      console.error('Unfollow error:', error);
-    }
-  };
-
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" p={2}>
-        <CircularProgress />
-      </Box>
+      <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+        <Box display="flex" justifyContent="center" p={2}>
+          <CircularProgress />
+        </Box>
+      </Paper>
+    );
+  }
+
+  if (!suggestions.length) {
+    return (
+      <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          People you may know
+        </Typography>
+        <Box display="flex" flexDirection="column" alignItems="center" py={2}>
+          <PeopleIcon sx={{ fontSize: 40, color: 'text.secondary', mb: 1 }} />
+          <Typography color="text.secondary">
+            No recommendations available at the moment
+          </Typography>
+        </Box>
+      </Paper>
     );
   }
 
@@ -93,6 +100,7 @@ const ConnectionSuggestions = () => {
               display: 'flex',
               alignItems: 'center',
               cursor: 'pointer',
+              flex: 1,
             }}
             onClick={() => handleProfileClick(user.id)}
           >
@@ -106,17 +114,22 @@ const ConnectionSuggestions = () => {
                 {user.first_name} {user.last_name}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {user.headline || user.current_position || 'No headline'}
+                {user.headline || user.current_work || 'No headline'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {user.mutual_connections_count} mutual connection{user.mutual_connections_count !== 1 ? 's' : ''}
               </Typography>
             </Box>
           </Box>
-          <IconButton
-            color={user.is_following ? "primary" : "default"}
-            onClick={() => user.is_following ? handleUnfollow(user.id) : handleFollow(user.id)}
-            size="small"
-          >
-            {user.is_following ? <PersonRemoveIcon /> : <PersonAddIcon />}
-          </IconButton>
+          <Tooltip title="Follow">
+            <IconButton
+              onClick={() => handleFollow(user.id)}
+              size="small"
+              sx={{ ml: 1 }}
+            >
+              <PersonAddIcon />
+            </IconButton>
+          </Tooltip>
         </Box>
       ))}
     </Paper>

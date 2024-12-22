@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
 from django.contrib.auth.hashers import check_password
+
+from recruitmentAPI.serializers.json_list_field import JSONListField
 from ..models.user_model import User  # Use relative import
 
 class UserSerializer(serializers.ModelSerializer):
@@ -75,6 +77,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     profile_picture = serializers.SerializerMethodField()
     cover_picture = serializers.SerializerMethodField()
+    skills = JSONListField()
 
     class Meta:
         model = User
@@ -156,4 +159,21 @@ class UserMinimalSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id', 'email', 'first_name', 'last_name', 'profile_picture']
+    
+class ConnectionRecommendationSerializer(serializers.ModelSerializer):
+    mutual_connections_count = serializers.IntegerField(read_only=True)
+    profile_picture = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'first_name', 'last_name', 
+            'profile_picture', 'current_work', 
+            'headline', 'mutual_connections_count'
+        ]
+
+    def get_profile_picture(self, obj):
+        if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
+            return self.context['request'].build_absolute_uri(obj.profile_picture.url)
+        return None
     

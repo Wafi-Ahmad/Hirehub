@@ -1,6 +1,14 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
-from django.apps import apps  # Import apps to dynamically get models
+from django.apps import apps
+import numpy as np  # Import apps to dynamically get models
+
+# Try to import ArrayField, use TextField as fallback
+try:
+    from django.contrib.postgres.fields import ArrayField
+    POSTGRES_AVAILABLE = True
+except ImportError:
+    POSTGRES_AVAILABLE = False
 
 # Custom user manager for handling user creation
 class UserManager(BaseUserManager):
@@ -65,7 +73,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     website = models.URLField(max_length=200, null=True, blank=True)
     
     # Professional information
-    headline = models.CharField(max_length=100, null=True, blank=True)  # e.g. "Senior Software Engineer at Google"
+    headline = models.CharField(max_length=100, null=True, blank=True)
     preferred_job_category = models.CharField(max_length=255, null=True, blank=True)
     preferred_job_type = models.CharField(max_length=10, choices=JOB_TYPE_CHOICES, default=ONSITE)
     desired_salary_range = models.CharField(max_length=50, null=True, blank=True)
@@ -109,6 +117,18 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True
     )
 
+    # Define embedding field based on database backend
+    profile_embedding = models.TextField(
+        null=True,
+        blank=True,
+        help_text="Vector embedding of user profile for similarity matching (stored as JSON string)"
+    )
+    embedding_updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the profile embedding was last updated"
+    )
+
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
@@ -121,40 +141,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
 
-    def has_perm(self, perm, obj=None):
-        """Does the user have a specific permission?"""
-        # Simplest possible answer: Yes, always
-        return True
+    def set_profile_embedding(self, embedding):
+        """Set the profile embedding, converting it to JSON string if needed."""
+        import json
+        self.profile_embedding = json.dumps(embedding.tolist())
 
-    def has_module_perms(self, app_label):
-        """Does the user have permissions to view the app `app_label`?"""
-        # Simplest possible answer: Yes, always
-        return True
-
-    @property
-    def is_admin(self):
-        """Is the user a member of staff?"""
-        return self.is_staff
-
-class RoleService:
-    @staticmethod
-    def assign_role(user_id, role):
-        try:
-            user = User.objects.get(pk=user_id)
-            if user.user_type != User.NORMAL_USER:
-                raise ValueError("Only normal users can be assigned roles.")
-            Role = apps.get_model('recruitmentAPI', 'Role')  # Dynamically get Role model
-            Role.objects.update_or_create(user=user, defaults={'role': role})
-            return {"message": f"Role {role} assigned to {user.email}."}
-        except User.DoesNotExist:
-            raise ValueError("User not found")
-
-    @staticmethod
-    def remove_role(user_id):
-        try:
-            Role = apps.get_model('recruitmentAPI', 'Role')  # Dynamically get Role model
-            role = Role.objects.get(user_id=user_id)
-            role.delete()
-            return {"message": "Role removed successfully."}
-        except Role.DoesNotExist:
-            raise ValueError("Role not found for this user")
+    def get_profile_embedding(self):
+        """Get the profile embedding as a Python object."""
+        import json
+        return np.array(json.loads(self.profile_embedding), dtype=np.float32) if self.profile_embedding else None
