@@ -31,10 +31,15 @@ export const PostProvider = ({ children }) => {
         const response = await profileService.getUserPosts(userId, nextCursor);
         responseData = response;
       } else {
-        // Fetch all posts
+        // Fetch posts from followed users and own posts
+        console.log('Fetching posts with params:', { cursor: nextCursor, followed_only: true });
         const response = await api.get('/posts/', {
-          params: { cursor: nextCursor }
+          params: { 
+            cursor: nextCursor,
+            followed_only: true  // New parameter to indicate we want only followed users' posts
+          }
         });
+        console.log('API Response:', response.data);
         responseData = response.data;
       }
       

@@ -66,7 +66,11 @@ const PostList = ({ userId = null }) => {
   if (!loading && (!posts || posts.length === 0)) {
     return (
       <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography>{userId ? 'No posts yet from this user.' : 'No posts yet. Be the first to share something!'}</Typography>
+        <Typography>
+          {userId 
+            ? 'No posts yet from this user.' 
+            : 'No posts to show. Follow some users to see their posts here, or create your own post!'}
+        </Typography>
       </Paper>
     );
   }

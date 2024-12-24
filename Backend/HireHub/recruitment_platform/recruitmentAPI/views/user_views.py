@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from ..services.user_services import UserService  # Use relative import
-from ..serializers.user_serializers import UserSerializer, CustomLoginSerializer, UserInterestSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, UserProfileSerializer  , PrivacySettingsSerializer, UserProfilePublicSerializer # Use relative import
+from ..serializers.user_serializers import UserSerializer, CustomLoginSerializer, UserInterestSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, UserProfileSerializer  , PrivacySettingsSerializer, UserProfilePublicSerializer, ConnectionRecommendationSerializer # Use relative import
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes
@@ -134,6 +134,7 @@ class UpdateUserProfileView(APIView):
     permission_classes = [IsAuthenticated, IsNormalUser]
 
     def put(self, request):
+        print(request.data)
         serializer = UserProfileSerializer(instance=request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -172,6 +173,7 @@ class UpdateBasicUserInfoView(APIView):
             # Save the updated user data
             print("####2")
             serializer.save()
+            UserService.update_user_embedding(user.id)
             print("####3")
             return Response(serializer.data)
         
@@ -412,3 +414,49 @@ class LogoutView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ConnectionRecommendationsView(APIView):
+    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
+
+    def get(self, request):
+        """
+        Get personalized connection recommendations using hybrid approach:
+        - Mutual connections
+        - Profile similarity (embeddings)
+        """
+        try:
+            limit = int(request.GET.get('limit', 5))
+            use_hybrid = request.GET.get('hybrid', 'true').lower() == 'true'
+            
+            if use_hybrid:
+                print("consolelog")
+                recommendations = UserService.get_hybrid_recommendations(
+                    user_id=request.user.id,
+                    limit=limit
+                )
+                print(recommendations)
+            else:
+                
+                recommendations = UserService.get_connection_recommendations(
+                    user_id=request.user.id,
+                    limit=limit
+                )
+            
+            serializer = ConnectionRecommendationSerializer(
+                recommendations,
+                many=True,
+                context={'request': request}
+            )
+            
+            return Response(serializer.data)
+            
+        except ValueError as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"error": "Failed to get recommendations"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
