@@ -4,7 +4,9 @@ from recruitmentAPI.views.user_views import (
     PasswordResetRequestView, PasswordResetConfirmView, UpdateUserProfileView,
     UpdateBasicUserInfoView, UpdatePrivacySettingsView, DeleteUserAccountView,
     ViewOwnProfileView, ViewUserProfileView, SearchProfilesView, SomeNormalUserView, SomeCompanyUserView,FollowUserView,
-    GetFollowersFollowingView, LogoutView
+    GetFollowersFollowingView, LogoutView,
+    ViewUserProfileView, SearchProfilesView, SomeNormalUserView, SomeCompanyUserView,FollowUserView,
+    GetFollowersFollowingView
 )
 
 urlpatterns = [
@@ -26,4 +28,9 @@ urlpatterns = [
     path('<int:user_id>/followers-following/', GetFollowersFollowingView.as_view(), name='followers-following'),
     path('me/followers-following/', GetFollowersFollowingView.as_view(), name='followers-following-me'),
     path('logout/', LogoutView.as_view(), name='logout'),
+    path('followers-following/', GetFollowersFollowingView.as_view(), name='followers-following'),
+    # path('profile/<int:user_id>/', GetUserProfileView.as_view(), name='get-user-profile'),
+    # path('profile/', GetUserProfileView.as_view(), name='get-own-profile'),
+    # path('stats/<int:user_id>/', GetUserStatsView.as_view(), name='get-user-stats'),
+    # path('stats/', GetUserStatsView.as_view(), name='get-own-stats'),
 ]

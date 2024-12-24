@@ -1,13 +1,30 @@
 import React, { useState } from 'react';
-import { AppBar, Toolbar, Box, IconButton, Menu, MenuItem, Avatar, Typography, Button } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { 
+  AppBar, 
+  Toolbar, 
+  Box, 
+  IconButton, 
+  Menu, 
+  MenuItem, 
+  Avatar, 
+  Typography, 
+  Button,
+  Tabs,
+  Tab,
+  useTheme
+} from '@mui/material';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import SearchBar from './SearchBar';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import WorkIcon from '@mui/icons-material/Work';
+import { USER_TYPES } from '../../utils/permissions';
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState(null);
 
   const handleMenu = (event) => {
@@ -29,18 +46,51 @@ const Navbar = () => {
     navigate(`/profile/me`);
   };
 
+  const getActiveTab = () => {
+    const path = location.pathname;
+    if (path === '/') return 0;
+    if (path.startsWith('/jobs')) return 1;
+    if (path.startsWith('/network')) return 2;
+    return 0;
+  };
+
   return (
-    <AppBar position="fixed">
+    <AppBar position="fixed" sx={{ zIndex: theme.zIndex.drawer + 1 }}>
       <Toolbar>
         {/* Logo/Brand */}
         <Typography
           variant="h6"
           component="div"
-          sx={{ cursor: 'pointer' }}
+          sx={{ 
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
           onClick={() => navigate('/')}
         >
+          <WorkIcon />
           HireHub
         </Typography>
+
+        {isAuthenticated && (
+          <Tabs 
+            value={getActiveTab()} 
+            sx={{ 
+              ml: 4,
+              '& .MuiTab-root': {
+                color: 'rgba(255, 255, 255, 0.7)',
+                '&.Mui-selected': {
+                  color: '#fff'
+                }
+              }
+            }}
+          >
+            <Tab label="Home" onClick={() => navigate('/')} />
+            <Tab label="Jobs" onClick={() => navigate('/jobs')} />
+            <Tab label="Network" onClick={() => navigate('/network')} />
+          </Tabs>
+        )}
 
         {/* Search Bar */}
         <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center' }}>
@@ -49,7 +99,16 @@ const Navbar = () => {
 
         {/* Auth Section */}
         {isAuthenticated ? (
-          <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {user?.userType === USER_TYPES.COMPANY && (
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => navigate('/jobs/create')}
+              >
+                Post Job
+              </Button>
+            )}
             <IconButton
               onClick={handleMenu}
               color="inherit"
@@ -83,11 +142,19 @@ const Navbar = () => {
             </Menu>
           </Box>
         ) : (
-          <Box>
-            <Button color="inherit" onClick={() => navigate('/login')}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button 
+              variant="outlined" 
+              color="inherit" 
+              onClick={() => navigate('/login')}
+            >
               Login
             </Button>
-            <Button color="inherit" onClick={() => navigate('/register')}>
+            <Button 
+              variant="contained" 
+              color="secondary" 
+              onClick={() => navigate('/register')}
+            >
               Register
             </Button>
           </Box>

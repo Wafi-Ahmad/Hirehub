@@ -80,16 +80,35 @@ WSGI_APPLICATION = 'recruitment_platform.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'hirehub',            
+#         'USER': 'wafi',               
+#         'PASSWORD': '1998',           
+#         'HOST': 'localhost',           
+#         'PORT': '3306',                
+#     }
+# }
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DATABASE_NAME', 'hirehub'),
-        'USER': os.environ.get('DATABASE_USER', 'wafi'),
-        'PASSWORD': os.environ.get('DATABASE_PASSWORD', '1998'),
-        'HOST': os.environ.get('DATABASE_HOST', 'localhost'),
-        'PORT': os.environ.get('DATABASE_PORT', '3306'),
+        # 'NAME': os.environ.get('DATABASE_NAME', 'hirehub'),
+        # 'USER': os.environ.get('DATABASE_USER', 'wafi'),
+        # 'PASSWORD': os.environ.get('DATABASE_PASSWORD', '1998'),
+        # 'HOST': os.environ.get('DATABASE_HOST', 'localhost'),
+        # 'PORT': os.environ.get('DATABASE_PORT', '3306'),
+#     }
+# }
+
+        'NAME': 'hirehub',  # Your database name
+        'USER': 'root',       # Your MySQL username
+        'PASSWORD': '2002',      # Your MySQL password
+        'HOST': 'localhost',              # Leave it as localhost if using local DB
+        'PORT': '3306',                   # Default MySQL port
     }
 }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -153,7 +172,7 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=90),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,

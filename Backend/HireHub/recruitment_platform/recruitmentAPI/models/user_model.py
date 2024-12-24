@@ -53,6 +53,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=30, null=True, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     company_name = models.CharField(max_length=100, null=True, blank=True)
+    industry = models.CharField(max_length=100, null=True, blank=True)  # Added field for industry
+    company_size = models.CharField(max_length=50, null=True, blank=True)  # Added field for company size
+    bio = models.TextField(null=True, blank=True)  # Added field for bio
     user_type = models.CharField(max_length=7, choices=USER_TYPE_CHOICES, default=NORMAL_USER)
     
     # Profile and cover pictures
@@ -135,6 +138,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     def is_admin(self):
         """Is the user a member of staff?"""
         return self.is_staff
+    
+    @property
+    def is_company(self):
+        """Is the user a company?"""
+        return self.user_type == User.COMPANY_USER
 
 class RoleService:
     @staticmethod

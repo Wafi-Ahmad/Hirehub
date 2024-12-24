@@ -19,6 +19,18 @@ class PostListView(APIView):
     permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
 
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from recruitmentAPI.permissions import IsNormalOrCompanyUser, IsCompanyUser
+from recruitmentAPI.serializers.post_serializers import PostListSerializer, PostDetailSerializer
+from recruitmentAPI.services.post_services import PostService
+
+class PostListView(APIView):
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsCompanyUser()]
+        return [IsAuthenticated(), IsNormalOrCompanyUser()]
 
     def get(self, request):
         """
@@ -119,7 +131,6 @@ class PostDetailView(APIView):
         Get detailed post view including initial comments
         """
         post = PostService.get_post_detail(post_id)
-
         if not post:
             return Response(
                 {"error": "Post not found"}, 

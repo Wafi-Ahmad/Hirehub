@@ -116,15 +116,18 @@ class PrivacySettingsSerializer(serializers.ModelSerializer):
 class UserProfilePublicSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'profile_picture', 'skills', 'experience', 'recent_work', 'current_work', 'contact_details', 'email']
+        fields = [
+            'id', 'email', 'first_name', 'last_name', 'profile_picture',
+            'company_name', 'industry', 'company_size', 'bio',
+            'skills', 'experience', 'recent_work', 'current_work',
+            'contact_details', 'user_type'
+        ]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-
-        # Check privacy settings and remove fields accordingly
         if not instance.is_profile_public:
-            return {"message": "This profile is private."}
-
+            return {'error': 'This profile is private'}
+        
         if not instance.show_email:
             data.pop('email', None)
         if not instance.show_skills:
@@ -135,9 +138,7 @@ class UserProfilePublicSerializer(serializers.ModelSerializer):
             data.pop('recent_work', None)
         if not instance.show_current_work:
             data.pop('current_work', None)
-        if not instance.contact_details:
-            data.pop('contact_details', None)
-
+        
         return data
     
 class FollowUserSerializer(serializers.Serializer):

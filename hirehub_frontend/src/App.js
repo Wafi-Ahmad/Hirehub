@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ProfileProvider } from './context/ProfileContext';
 import { ConnectionProvider } from './context/ConnectionContext';
 import { PostProvider } from './context/PostContext';
+import { JobProvider } from './context/JobContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import AppRoutes from './routes';
@@ -15,8 +16,10 @@ function App() {
         <ProfileProvider>
           <ConnectionProvider>
             <PostProvider>
-              <AppRoutes />
-              <ToastContainer position="top-right" autoClose={5000} />
+              <JobProvider>
+                <AppRoutes />
+                <ToastContainer position="top-right" autoClose={5000} />
+              </JobProvider>
             </PostProvider>
           </ConnectionProvider>
         </ProfileProvider>

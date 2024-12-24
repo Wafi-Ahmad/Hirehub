@@ -31,6 +31,7 @@ urlpatterns = [
     path('api/comments/', include('recruitmentAPI.urls.comment_urls')),
     path('api/connections/', include('recruitmentAPI.urls.connection_urls')),
     path('api/roles/', include('recruitmentAPI.urls.role_urls')),
+    path('api/jobs/', include('recruitmentAPI.urls.job_urls')),
     # JWT Authentication URLs
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
@@ -40,6 +41,7 @@ urlpatterns = [
     # Optional UI - you can use either Swagger or Redoc
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    # Auth URLs
 ]
 
 # Serve media files during development

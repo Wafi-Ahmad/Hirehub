@@ -5,7 +5,6 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import ProtectedRoute from './ProtectedRoute';
 import QuizUI from '../components/quiz/_QuizUI';
 
-
 // Lazy load pages for better performance
 const Login = React.lazy(() => import('../pages/auth/Login'));
 const Register = React.lazy(() => import('../pages/auth/Register'));
@@ -14,10 +13,11 @@ const ResetPassword = React.lazy(() => import('../pages/auth/ResetPassword'));
 const Home = React.lazy(() => import('../pages/Home'));
 const Profile = React.lazy(() => import('../pages/profile/Profile'));
 const Jobs = React.lazy(() => import('../pages/jobs/Jobs'));
+const CreateJobForm = React.lazy(() => import('../components/jobs/CreateJobForm'));
+const JobDetails = React.lazy(() => import('../pages/jobs/JobDetails'));
 const Network = React.lazy(() => import('../pages/network/Network'));
 const NotFound = React.lazy(() => import('../pages/NotFound'));
 const Unauthorized = React.lazy(() => import('../pages/Unauthorized'));
-
 
 function AppRoutes() {
   return (
@@ -29,6 +29,7 @@ function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:uidb64/:token" element={<ResetPassword />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
+
         {/* Protected Routes - With Layout */}
         <Route
           path="/"
@@ -71,6 +72,26 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/jobs/create"
+          element={
+            <ProtectedRoute allowedUserTypes={['Company']}>
+              <Layout>
+                <CreateJobForm />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/jobs/:id"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <JobDetails />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/network"
           element={
             <ProtectedRoute>
@@ -81,15 +102,15 @@ function AppRoutes() {
           }
         />
         <Route
-        path="/quiz"
-        element={
-          <ProtectedRoute>
-          <Layout>
-            <QuizUI />
-          </Layout>
-          </ProtectedRoute>
-        }
-/>       
+          path="/quiz"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <QuizUI />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
         {/* 404 Route */}
         <Route path="*" element={<NotFound />} />
       </Routes>
