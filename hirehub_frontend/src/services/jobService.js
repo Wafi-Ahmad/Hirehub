@@ -20,25 +20,20 @@ axios.interceptors.request.use(
 class JobService {
   // Get all jobs with optional filters and pagination
   async getJobs(params = {}) {
-    const { cursor, limit = 10, ...filters } = params;
     const queryParams = new URLSearchParams();
     
-    // Add cursor and limit if provided
-    if (cursor) queryParams.append('cursor', cursor);
-    if (limit) queryParams.append('limit', limit);
-    
-    // Add filters
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value) {
-        if (Array.isArray(value)) {
-          // Handle arrays (like skills)
-          value.forEach(v => queryParams.append(key, v));
-        } else {
-          queryParams.append(key, value);
-        }
+    // Handle parameters
+    Object.entries(params).forEach(([key, value]) => {
+      if (key === 'skills' && Array.isArray(value)) {
+        // Add each skill as a separate query parameter
+        value.forEach(skill => {
+          queryParams.append('skills', skill);
+        });
+      } else if (value) {
+        queryParams.append(key, value);
       }
     });
-    
+
     return axios.get(`${JOB_API}?${queryParams.toString()}`);
   }
 

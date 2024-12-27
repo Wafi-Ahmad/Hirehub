@@ -40,21 +40,34 @@ const JobList = ({ filters }) => {
         setLoadingMore(true);
       } else {
         setLoading(true);
-        setJobs([]); // Reset jobs when filters change
+        setJobs([]);
       }
 
-      const processedFilters = {
-        ...filters,
-        skills: filters.skills ? filters.skills.split(',').map(s => s.trim()) : undefined
-      };
+      // Clean and format filters
+      const cleanFilters = Object.entries(filters).reduce((acc, [key, value]) => {
+        if (key === 'skills' && value) {
+          // Convert comma-separated string to array and clean it
+          const skillsArray = value
+            .split(',')
+            .map(skill => skill.trim())
+            .filter(skill => skill.length > 0);
+          
+          if (skillsArray.length > 0) {
+            // Send as array instead of joined string
+            acc[key] = skillsArray;
+          }
+        } else if (value && typeof value === 'string') {
+          acc[key] = value.trim();
+        } else if (value) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
 
       const response = await jobService.getJobs({
-        ...processedFilters,
+        ...cleanFilters,
         cursor
       });
-
-      console.log('Search filters:', processedFilters);
-      console.log('Search response:', response.data);
 
       setJobs(prev => cursor ? [...prev, ...response.data.jobs] : response.data.jobs);
       setNextCursor(response.data.next_cursor);

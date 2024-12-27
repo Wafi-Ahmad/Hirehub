@@ -79,4 +79,11 @@ Backend/HireHub/env
 Backend/HireHub/recruitment_platform/media
 
 
+**/settings.py
+
+**/local_settings.py
+
+**/migrations/
+**/migrations/*
+
 */lib

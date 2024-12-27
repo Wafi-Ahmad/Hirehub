@@ -67,39 +67,49 @@ class JobPostViewSet(viewsets.ViewSet):
             OpenApiParameter(name='min_salary', description='Minimum salary', required=False, type=float),
             OpenApiParameter(name='max_salary', description='Maximum salary', required=False, type=float),
             OpenApiParameter(name='skills', description='Required skills (comma-separated)', required=False, type=str),
+            OpenApiParameter(name='cursor', description='Pagination cursor (ISO8601 datetime)', required=False, type=str),
+            OpenApiParameter(name='limit', description='Number of results per page', required=False, type=int),
         ],
         responses=JobResponseSerializer(many=True)
     )
     def list(self, request):
-        """
-        List and search jobs with **cursor-based** pagination.
-        
-        Pass ?cursor=<ISO8601 datetime> to get the next page
-        older than that created_at date.
-        Pass ?limit=<int> to control how many items returned per page.
-        """
-        # Parse the query params using your existing serializer
-        search_serializer = JobSearchSerializer(data=request.query_params)
-        search_serializer.is_valid(raise_exception=True)
-        
-        filters = search_serializer.validated_data
-
-        # Retrieve optional cursor and limit from the request
-        cursor = request.query_params.get('cursor')   # ISO8601 string
-        limit = request.query_params.get('limit') or 10  # default to 10 if not provided
-
+        """List and search jobs with cursor-based pagination."""
         try:
-            limit = int(limit)
-        except (ValueError, TypeError):
-            limit = 10
+            print("Request query params:", request.query_params)  # Debug log
+            # Convert comma-separated skills to list if present
+            if 'skills' in request.query_params:
+                skills = request.query_params.getlist('skills')  # Use getlist instead of get
+                print("Parsed skills:", skills)  # Debug log
+                request.query_params._mutable = True
+                request.query_params['skills'] = skills
+                request.query_params._mutable = False
 
-        # Call the service which returns a dict { 'jobs': [...], 'next_cursor': <str|None> }
-        result = JobService.search_jobs(filters, cursor=cursor, limit=limit)
+            search_serializer = JobSearchSerializer(data=request.query_params)
+            if not search_serializer.is_valid():
+                # Instead of returning 400, just use empty filters
+                filters = {}
+            else:
+                filters = search_serializer.validated_data
+            
+            cursor = request.query_params.get('cursor')
+            
+            try:
+                limit = int(request.query_params.get('limit', 10))
+                limit = min(max(1, limit), 100)  # Ensure limit is between 1 and 100
+            except (ValueError, TypeError):
+                limit = 10
 
-        return Response({
-            'jobs': result['jobs'],
-            'next_cursor': result['next_cursor']
-        }, status=status.HTTP_200_OK)
+            result = JobService.search_jobs(filters, cursor=cursor, limit=limit)
+
+            return Response({
+                'jobs': result['jobs'],
+                'next_cursor': result['next_cursor']
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @extend_schema(responses=JobResponseSerializer)
     def retrieve(self, request, pk=None):

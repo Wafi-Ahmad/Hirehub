@@ -1,23 +1,47 @@
-asgiref==3.8.1
-attrs==24.2.0
-cffi==1.17.1
-cryptography==43.0.3
+# Core Django
 Django==5.1.3
 django-cors-headers==4.6.0
 djangorestframework==3.15.2
 djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.6.0
+
+# Database Adapters
+mysqlclient==2.2.6
+PyMySQL==1.1.1
+psycopg2-binary==2.9.9  # Added for PostgreSQL support
+
+# Image Processing
+pillow==11.0.0
+python-magic==0.4.27  # Added for file type validation
+
+# API Documentation
 drf-spectacular==0.27.2
-inflection==0.5.1
+uritemplate==4.1.1
+
+# Security & Authentication
+cryptography==43.0.3
+PyJWT==2.10.0
+cffi==1.17.1
+pycparser==2.22
+
+# Data Processing
+numpy  # Add version constraint
+PyYAML==6.0.2
+
+# JSON Schema
 jsonschema==4.23.0
 jsonschema-specifications==2024.10.1
-mysqlclient==2.2.6
-pillow==11.0.0
-pycparser==2.22
-PyJWT==2.10.0
-PyMySQL==1.1.1
-PyYAML==6.0.2
 referencing==0.35.1
+
+# Utilities
+asgiref==3.8.1
+attrs==24.2.0
+inflection==0.5.1
 rpds-py==0.21.0
 sqlparse==0.5.2
 tzdata==2024.2
 uritemplate==4.1.1
+
+
+sentence-transformers>=2.2.2
+huggingface-hub>=0.19.0 

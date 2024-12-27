@@ -19,7 +19,12 @@ class JobPost(models.Model):
     description = models.TextField()
     
     # Skills and Requirements
-    required_skills = models.TextField(null=True, blank=True)
+    required_skills = models.CharField(
+        max_length=500,  # Reasonable length for storing multiple skills
+        null=True, 
+        blank=True,
+        help_text="Comma-separated list of required skills"
+    )
     experience_level = models.CharField(max_length=20, choices=EXPERIENCE_LEVELS)
     
     # Employment Details
@@ -85,3 +90,27 @@ class JobPost(models.Model):
         if not self.expires_at:
             self.expires_at = timezone.now() + timezone.timedelta(days=30)
         super().save(*args, **kwargs)
+
+    def set_required_skills(self, skills):
+        """Store skills as a comma-separated string with proper formatting"""
+        if isinstance(skills, list):
+            # Clean and format each skill
+            cleaned_skills = [skill.strip() for skill in skills if skill.strip()]
+            self.required_skills = ','.join(cleaned_skills)
+        else:
+            self.required_skills = skills
+
+    def get_required_skills(self):
+        """Get skills as a list"""
+        if not self.required_skills:
+            return []
+        return [skill.strip() for skill in self.required_skills.split(',')]
+
+    def clean(self):
+        """Validate and clean the skills data"""
+        if self.required_skills:
+            # Clean and validate skills
+            skills = [skill.strip() for skill in self.required_skills.split(',') if skill.strip()]
+            # Ensure proper format
+            self.required_skills = ','.join(skills)
+        super().clean()
