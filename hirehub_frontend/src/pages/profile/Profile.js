@@ -16,6 +16,7 @@ import {
   Link,
   Alert,
   Tooltip,
+  Switch,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -24,6 +25,7 @@ import SchoolIcon from '@mui/icons-material/School';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import PhoneIcon from '@mui/icons-material/Phone';
+import EmailIcon from '@mui/icons-material/Email';
 import LanguageIcon from '@mui/icons-material/Language';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
@@ -51,6 +53,25 @@ const Profile = () => {
   const { clearPosts } = usePost();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
+  const handlePrivacyChange = async (setting, value) => {
+    try {
+      const response = await userService.updatePrivacySettings({
+        [setting]: value
+      });
+      
+      // Update local state
+      setProfileData(prev => ({
+        ...prev,
+        [setting]: value
+      }));
+      
+      toast.success('Privacy setting updated successfully');
+    } catch (error) {
+      console.error('Error updating privacy setting:', error);
+      toast.error('Failed to update privacy setting');
+    }
+  };
+
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -61,9 +82,7 @@ const Profile = () => {
         if (!id) {
           await fetchProfileData();
           // Update URL to reflect user's own profile ID if not already there
-          // if (!id && currentUser?.id) {
-          //   navigate(`/profile/me}`, { replace: true });
-          // }
+          navigate(`/profile/me`, { replace: true });
         } else {
           await fetchProfileData(id);
         }
@@ -160,11 +179,19 @@ const Profile = () => {
         </Typography>
         <Divider sx={{ mb: 2 }} />
         <Grid container spacing={2}>
-          {profileData?.phone && (isOwnProfile || profileData.show_phone) && (
+          {profileData?.phone && profileData.show_phone && (
             <Grid item xs={12} sm={6}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <PhoneIcon color="action" />
                 <Typography>{profileData.phone}</Typography>
+              </Box>
+            </Grid>
+          )}
+          {profileData?.email && profileData.show_email && (
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <EmailIcon color="action" />
+                <Typography>{profileData.email}</Typography>
               </Box>
             </Grid>
           )}
@@ -188,16 +215,6 @@ const Profile = () => {
               </Box>
             </Grid>
           )}
-          {profileData?.website && (
-            <Grid item xs={12} sm={6}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <LanguageIcon color="action" />
-                <Link href={profileData.website} target="_blank" rel="noopener">
-                  Personal Website
-                </Link>
-              </Box>
-            </Grid>
-          )}
         </Grid>
       </Paper>
     );
@@ -214,7 +231,7 @@ const Profile = () => {
           Work Experience
         </Typography>
         <Divider sx={{ mb: 2 }} />
-        {profileData?.current_work && (
+        {profileData?.current_work && profileData.show_current_work && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="subtitle1" color="primary" gutterBottom>
               Current Position
@@ -222,7 +239,7 @@ const Profile = () => {
             <Typography>{profileData.current_work}</Typography>
           </Box>
         )}
-        {profileData?.recent_work && (
+        {profileData?.recent_work && profileData.show_recent_work && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="subtitle1" color="primary" gutterBottom>
               Recent Work
@@ -230,7 +247,7 @@ const Profile = () => {
             <Typography>{profileData.recent_work}</Typography>
           </Box>
         )}
-        {profileData?.experience && (isOwnProfile || profileData.show_experience) && (
+        {profileData?.experience && profileData.show_experience && (
           <Box>
             <Typography variant="subtitle1" color="primary" gutterBottom>
               Experience
@@ -253,7 +270,7 @@ const Profile = () => {
           Education & Certifications
         </Typography>
         <Divider sx={{ mb: 2 }} />
-        {profileData?.education && (isOwnProfile || profileData.show_education) && (
+        {profileData?.education && profileData.show_education && (
           <Box sx={{ mb: 2 }}>
             <Typography variant="subtitle1" color="primary" gutterBottom>
               Education
@@ -263,7 +280,7 @@ const Profile = () => {
             </Typography>
           </Box>
         )}
-        {profileData?.certifications && (isOwnProfile || profileData.show_certifications) && (
+        {profileData?.certifications && profileData.show_certifications && (
           <Box>
             <Typography variant="subtitle1" color="primary" gutterBottom>
               Certifications
@@ -380,7 +397,7 @@ const Profile = () => {
 
             {/* Skills */}
             {Array.isArray(profileData?.skills) && profileData.skills.length > 0 && 
-             (isOwnProfile || profileData.show_skills) && (
+             profileData.show_skills && (
               <Stack 
                 direction="row" 
                 spacing={1} 
@@ -467,6 +484,8 @@ const Profile = () => {
           userId={profileData?.id} 
         />
       </Box>
+
+     
 
       {/* Edit Profile Dialog */}
       <EditProfileDialog

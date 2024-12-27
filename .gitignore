@@ -80,3 +80,6 @@ Backend/HireHub/recruitment_platform/media
 
 
 */lib
+
+# Ignore migrations folder
+Backend/HireHub/recruitment_platform/recruitmentAPI/migrations/
