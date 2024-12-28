@@ -43,32 +43,30 @@ const JobList = ({ filters }) => {
         setJobs([]);
       }
 
-      // Clean and format filters
+      // Clean and validate filters before sending
       const cleanFilters = Object.entries(filters).reduce((acc, [key, value]) => {
         if (key === 'skills' && value) {
-          // Convert comma-separated string to array and clean it
-          const skillsArray = value
+          // Split skills and clean them
+          const skills = value
             .split(',')
-            .map(skill => skill.trim())
-            .filter(skill => skill.length > 0);
+            .map(s => s.trim())
+            .filter(Boolean);  // Remove empty strings
           
-          if (skillsArray.length > 0) {
-            // Send as array instead of joined string
-            acc[key] = skillsArray;
+          if (skills.length > 0) {
+            acc[key] = skills[0];  // Send only the first skill for now
           }
         } else if (value && typeof value === 'string') {
-          acc[key] = value.trim();
+          const cleaned = value.trim();
+          if (cleaned) acc[key] = cleaned;
         } else if (value) {
           acc[key] = value;
         }
         return acc;
       }, {});
 
-      const response = await jobService.getJobs({
-        ...cleanFilters,
-        cursor
-      });
+      console.log('Clean filters:', cleanFilters);  // Debug log
 
+      const response = await jobService.getJobs(cleanFilters);
       setJobs(prev => cursor ? [...prev, ...response.data.jobs] : response.data.jobs);
       setNextCursor(response.data.next_cursor);
     } catch (error) {

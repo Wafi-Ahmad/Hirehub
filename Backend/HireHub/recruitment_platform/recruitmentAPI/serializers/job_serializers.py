@@ -72,20 +72,14 @@ class CreateJobSerializer(serializers.ModelSerializer):
         return instance
 
 class JobSearchSerializer(serializers.Serializer):
-    title = serializers.CharField(required=False, allow_blank=True, allow_null=True, min_length=None)
+    title = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     location = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     employment_type = serializers.ChoiceField(choices=EMPLOYMENT_TYPES, required=False, allow_null=True, allow_blank=True)
     location_type = serializers.ChoiceField(choices=LOCATION_TYPES, required=False, allow_null=True, allow_blank=True)
     experience_level = serializers.ChoiceField(choices=EXPERIENCE_LEVELS, required=False, allow_null=True, allow_blank=True)
     min_salary = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
     max_salary = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
-    skills = serializers.ListField(
-        child=serializers.CharField(max_length=50),
-        required=False,
-        allow_empty=True,
-        default=list,
-        max_length=10
-    )
+    skills = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     def validate(self, data):
         # Validate salary range if both are provided
@@ -103,20 +97,8 @@ class JobSearchSerializer(serializers.Serializer):
 
     def validate_skills(self, value):
         if value:
-            # Clean skills and validate length
-            cleaned_skills = []
-            seen = set()
-            for skill in value:
-                cleaned = skill.strip()
-                if len(cleaned) > 50:
-                    raise serializers.ValidationError("Each skill must be 50 characters or less")
-                if cleaned and cleaned.lower() not in seen:
-                    cleaned_skills.append(cleaned)
-                    seen.add(cleaned.lower())
-            if len(cleaned_skills) > 10:
-                raise serializers.ValidationError("Maximum 10 skills allowed")
-            return cleaned_skills
-        return []
+            return value.strip().lower()
+        return ''
 
 class JobResponseSerializer(serializers.ModelSerializer):
     required_skills = serializers.SerializerMethodField(read_only=True)  # Will receive list from service layer

@@ -75,39 +75,29 @@ class JobPostViewSet(viewsets.ViewSet):
     def list(self, request):
         """List and search jobs with cursor-based pagination."""
         try:
-            print("Request query params:", request.query_params)  # Debug log
-            # Convert comma-separated skills to list if present
-            if 'skills' in request.query_params:
-                skills = request.query_params.getlist('skills')  # Use getlist instead of get
-                print("Parsed skills:", skills)  # Debug log
-                request.query_params._mutable = True
-                request.query_params['skills'] = skills
-                request.query_params._mutable = False
+            filters = {}
+            
+            # Handle skills parameter
+            if skills := request.query_params.get('skills'):
+                if skills.strip():
+                    filters['skills'] = skills.strip()
 
-            search_serializer = JobSearchSerializer(data=request.query_params)
-            if not search_serializer.is_valid():
-                # Instead of returning 400, just use empty filters
-                filters = {}
-            else:
-                filters = search_serializer.validated_data
-            
+            # Handle other filters
+            for key in ['title', 'location', 'employment_type', 'location_type', 'experience_level']:
+                if value := request.query_params.get(key):
+                    filters[key] = value.strip()
+
+            # Handle pagination
             cursor = request.query_params.get('cursor')
-            
-            try:
-                limit = int(request.query_params.get('limit', 10))
-                limit = min(max(1, limit), 100)  # Ensure limit is between 1 and 100
-            except (ValueError, TypeError):
-                limit = 10
+            limit = int(request.query_params.get('limit', 10))
 
             result = JobService.search_jobs(filters, cursor=cursor, limit=limit)
+            return Response(result, status=status.HTTP_200_OK)
 
-            return Response({
-                'jobs': result['jobs'],
-                'next_cursor': result['next_cursor']
-            }, status=status.HTTP_200_OK)
         except Exception as e:
+            print(f"Error in job list view: {str(e)}")
             return Response(
-                {'error': str(e)},
+                {'error': 'Failed to fetch jobs'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 

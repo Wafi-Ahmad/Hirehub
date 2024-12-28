@@ -79,7 +79,6 @@ Backend/HireHub/env
 Backend/HireHub/recruitment_platform/media
 
 
-<<<<<<< HEAD
 **/settings.py
 
 **/local_settings.py
@@ -88,9 +87,7 @@ Backend/HireHub/recruitment_platform/media
 **/migrations/*
 
 */lib
-=======
 */lib
 
 # Ignore migrations folder
 Backend/HireHub/recruitment_platform/recruitmentAPI/migrations/
->>>>>>> 7ecfbd65e99f3a600bb97d9a494082a325d0dc8e

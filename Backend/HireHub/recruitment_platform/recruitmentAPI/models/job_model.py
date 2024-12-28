@@ -92,13 +92,12 @@ class JobPost(models.Model):
         super().save(*args, **kwargs)
 
     def set_required_skills(self, skills):
-        """Store skills as a comma-separated string with proper formatting"""
+        """Store skills as a comma-separated string without spaces"""
         if isinstance(skills, list):
-            # Clean and format each skill
-            cleaned_skills = [skill.strip() for skill in skills if skill.strip()]
-            self.required_skills = ','.join(cleaned_skills)
+            cleaned_skills = [skill.strip().lower() for skill in skills if skill.strip()]
+            self.required_skills = ','.join(cleaned_skills)  # No spaces between commas
         else:
-            self.required_skills = skills
+            self.required_skills = skills.lower() if skills else ''
 
     def get_required_skills(self):
         """Get skills as a list"""
