@@ -28,9 +28,13 @@ from recruitmentAPI.services.post_services import PostService
 
 class PostListView(APIView):
     def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
         if self.request.method == 'POST':
-            return [IsAuthenticated(), IsCompanyUser()]
-        return [IsAuthenticated(), IsNormalOrCompanyUser()]
+            # Allow both normal and company users to create posts
+            return [IsAuthenticated(), IsNormalOrCompanyUser()]
+        return [IsAuthenticated()]
 
     def get(self, request):
         """
