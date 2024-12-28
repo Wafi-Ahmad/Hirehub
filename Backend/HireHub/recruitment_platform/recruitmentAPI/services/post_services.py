@@ -268,3 +268,18 @@ class PostService:
         
         # Update feed version to invalidate all feed caches
         cache.set('post_feed_version', int(time.time()))
+
+    @staticmethod
+    def delete_post(post_id: int, user_id: int) -> bool:
+        """Delete a post"""
+        try:
+            post = Post.objects.get(id=post_id, user_id=user_id)
+            post.delete()
+            
+            # Clear post caches
+            cache.delete(f"post:detail:{post_id}")
+            cache.delete('post_feed_version')
+            
+            return True
+        except Post.DoesNotExist:
+            return False

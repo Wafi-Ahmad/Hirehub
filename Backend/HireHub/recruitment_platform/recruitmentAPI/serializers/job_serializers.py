@@ -165,8 +165,12 @@ class JobResponseSerializer(serializers.ModelSerializer):
         if not skills_str:
             return []
             
-        # Split by comma and clean each skill
-        return [skill.strip() for skill in skills_str.split(',') if skill.strip()]
+        # Handle both string and list inputs
+        if isinstance(skills_str, list):
+            return [skill.strip() for skill in skills_str if skill.strip()]
+        else:
+            # Split by comma and clean each skill
+            return [skill.strip() for skill in skills_str.split(',') if skill.strip()]
 
 
 class JobFeedbackSerializer(serializers.Serializer):

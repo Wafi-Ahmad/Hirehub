@@ -13,6 +13,8 @@ import {
   CircularProgress,
   Divider,
   Tooltip,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import {
   MoreVert as MoreVertIcon,
@@ -31,7 +33,7 @@ import { usePost } from '../../context/PostContext';
 import { formatTimeAgo } from '../../utils/dateUtils';
 import { useNavigate } from 'react-router-dom';
 
-const Post = ({ post }) => {
+const Post = ({ post, onDelete }) => {
   const { user: currentUser } = useAuth();
   const { updatePost } = usePost();
   const [isCommenting, setIsCommenting] = useState(false);
@@ -42,6 +44,8 @@ const Post = ({ post }) => {
   const [hasMoreComments, setHasMoreComments] = useState(true);
   const [showComments, setShowComments] = useState(false);
   const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = useState(null);
+  const isPostOwner = currentUser?.id === post.user.id;
 
   // Fetch comments when comments section is opened
   const fetchComments = async (cursor = null) => {
@@ -254,6 +258,26 @@ const Post = ({ post }) => {
     navigate(`/profile/${userId}`);
   };
 
+  const handleMenuClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await postService.deletePost(post.id);
+      toast.success('Post deleted successfully');
+      onDelete(post.id);
+    } catch (error) {
+      toast.error('Failed to delete post');
+      console.error('Error deleting post:', error);
+    }
+    handleMenuClose();
+  };
+
   return (
     <Card sx={{ mb: 3, borderRadius: 2 }}>
       <CardHeader
@@ -385,6 +409,21 @@ const Post = ({ post }) => {
             </Box>
           )}
         </Box>
+      )}
+
+      {isPostOwner && (
+        <>
+          <IconButton onClick={handleMenuClick}>
+            <MoreVertIcon />
+          </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
+          >
+            <MenuItem onClick={handleDelete}>Delete</MenuItem>
+          </Menu>
+        </>
       )}
     </Card>
   );

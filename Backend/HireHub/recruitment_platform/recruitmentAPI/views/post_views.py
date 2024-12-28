@@ -145,6 +145,34 @@ class PostDetailView(APIView):
 
         return Response(serializer.data)
 
+    def delete(self, request, post_id):
+        """Delete a post"""
+        try:
+            # Get the post
+            post = PostService.get_post_detail(post_id)
+            if not post:
+                return Response(
+                    {"error": "Post not found"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Check if user is the post owner
+            if post.user != request.user:
+                return Response(
+                    {"error": "You don't have permission to delete this post"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            # Delete the post
+            post.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 
 
 class PostLikeView(APIView):

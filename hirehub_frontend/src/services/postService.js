@@ -48,5 +48,10 @@ export const postService = {
   // Get a single post
   getPost: async (postId) => {
     return api.get(`/api/posts/${postId}/`);
+  },
+
+  // Add delete method to postService
+  async deletePost(postId) {
+    return api.delete(`/api/posts/${postId}/`);
   }
 };
