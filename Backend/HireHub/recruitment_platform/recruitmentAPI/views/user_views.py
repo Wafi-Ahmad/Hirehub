@@ -26,16 +26,24 @@ class RegisterUserView(APIView):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                user = UserService.create_user(
-                    email=serializer.validated_data['email'],
-                    first_name=serializer.validated_data['first_name'],
-                    last_name=serializer.validated_data['last_name'],
-                    password=serializer.validated_data['password'],
-                    date_of_birth=serializer.validated_data.get('date_of_birth'),
-                    company_name=serializer.validated_data.get('company_name'),
-                    user_type=serializer.validated_data['user_type'],
-                    #profile_picture=serializer.validated_data.get('profile_picture') #This should to remove , we don't need to add the picture while registration
-                )
+                # Extract common fields
+                user_data = {
+                    'email': serializer.validated_data['email'],
+                    'password': serializer.validated_data['password'],
+                    'user_type': serializer.validated_data['user_type']
+                }
+
+                # Add type-specific fields
+                if user_data['user_type'] == 'Company':
+                    user_data['company_name'] = serializer.validated_data.get('company_name')
+                else:  # Normal user
+                    user_data.update({
+                        'first_name': serializer.validated_data.get('first_name'),
+                        'last_name': serializer.validated_data.get('last_name'),
+                        'date_of_birth': serializer.validated_data.get('date_of_birth')
+                    })
+
+                user = UserService.create_user(**user_data)
                 return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
             except ValueError as e:
                 return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -52,7 +60,11 @@ class CustomLoginUserView(APIView):
                 "message": "Login successful",
                 "user": {
                     "email": user.email,
-                    "user_type": user.user_type
+                    "user_type": user.user_type,
+                    "profile_picture": user.profile_picture.url if user.profile_picture else None,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "company_name": user.company_name if user.user_type == 'Company' else None
                 },
                 "refresh": str(refresh),
                 "access": str(refresh.access_token),

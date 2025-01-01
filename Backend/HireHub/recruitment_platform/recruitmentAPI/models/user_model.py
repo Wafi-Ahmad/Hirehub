@@ -56,63 +56,70 @@ class User(AbstractBaseUser, PermissionsMixin):
         (REMOTE, 'Remote'),
     ]
 
+    # Base fields
     email = models.EmailField(unique=True)
+    user_type = models.CharField(max_length=7, choices=USER_TYPE_CHOICES, default=NORMAL_USER)
+    
+    # Normal user specific fields
     first_name = models.CharField(max_length=30, null=True, blank=True)
     last_name = models.CharField(max_length=30, null=True, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
+    preferred_job_category = models.CharField(max_length=255, null=True, blank=True)
+    preferred_job_type = models.CharField(max_length=10, choices=JOB_TYPE_CHOICES, default=ONSITE)
+    desired_salary_range = models.CharField(max_length=50, null=True, blank=True)
+    preferred_location = models.CharField(max_length=100, null=True, blank=True)
+    
+    # Company specific fields
     company_name = models.CharField(max_length=100, null=True, blank=True)
-    industry = models.CharField(max_length=100, null=True, blank=True)  # Added field for industry
-    company_size = models.CharField(max_length=50, null=True, blank=True)  # Added field for company size
-    bio = models.TextField(null=True, blank=True)  # Added field for bio
-    user_type = models.CharField(max_length=7, choices=USER_TYPE_CHOICES, default=NORMAL_USER)
+    industry = models.CharField(max_length=100, null=True, blank=True)
+    company_size = models.CharField(max_length=50, null=True, blank=True)
+    about_company = models.TextField(null=True, blank=True)  # For company description
+    specializations = models.TextField(null=True, blank=True)  # For company specialties
     
     # Profile and cover pictures
     profile_picture = models.ImageField(upload_to='profiles/avatars/', null=True, blank=True)
     cover_picture = models.ImageField(upload_to='profiles/covers/', null=True, blank=True)
     
-    # Bio and location
-    bio = models.TextField(null=True, blank=True)
+    # Shared contact and location fields
     location = models.CharField(max_length=100, null=True, blank=True)
     website = models.URLField(max_length=200, null=True, blank=True)
+    phone = models.CharField(max_length=20, null=True, blank=True)
+    linkedin_url = models.URLField(max_length=200, null=True, blank=True)
+    github_url = models.URLField(max_length=200, null=True, blank=True)
     
-    # Professional information
+    # Shared profile fields
     headline = models.CharField(max_length=100, null=True, blank=True)
-    preferred_job_category = models.CharField(max_length=255, null=True, blank=True)
-    preferred_job_type = models.CharField(max_length=10, choices=JOB_TYPE_CHOICES, default=ONSITE)
-    desired_salary_range = models.CharField(max_length=50, null=True, blank=True)
-    preferred_location = models.CharField(max_length=100, null=True, blank=True)
-
-    # Detailed profile information
+    bio = models.TextField(null=True, blank=True)
     skills = models.TextField(null=True, blank=True)
     experience = models.TextField(null=True, blank=True)
     education = models.TextField(null=True, blank=True)
     certifications = models.TextField(null=True, blank=True)
     recent_work = models.TextField(null=True, blank=True)
     current_work = models.TextField(null=True, blank=True)
-    
-    # Contact information
     contact_details = models.TextField(null=True, blank=True)
-    phone = models.CharField(max_length=20, null=True, blank=True)
-    linkedin_url = models.URLField(max_length=200, null=True, blank=True)
-    github_url = models.URLField(max_length=200, null=True, blank=True)
 
     # Privacy settings
     is_profile_public = models.BooleanField(default=True)
     show_email = models.BooleanField(default=True)
     show_phone = models.BooleanField(default=False)
+    show_bio = models.BooleanField(default=True)
     show_skills = models.BooleanField(default=True)
     show_experience = models.BooleanField(default=True)
     show_education = models.BooleanField(default=True)
     show_certifications = models.BooleanField(default=True)
     show_recent_work = models.BooleanField(default=True)
     show_current_work = models.BooleanField(default=True)
+    show_location = models.BooleanField(default=True)
+    show_website = models.BooleanField(default=True)
+    show_linkedin = models.BooleanField(default=True)
+    show_github = models.BooleanField(default=True)
 
     # Permissions
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
 
-    # Add this new field for following relationships
+    # Following relationships
     following = models.ManyToManyField(
         'self',
         related_name='followers',
@@ -120,7 +127,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True
     )
 
-    # Define embedding field based on database backend
+    # Profile embedding for recommendations
     profile_embedding = models.TextField(
         null=True,
         blank=True,
@@ -138,10 +145,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
     def __str__(self):
-        return self.email
+        if self.user_type == self.COMPANY_USER:
+            return self.company_name or self.email
+        return f"{self.first_name} {self.last_name}".strip() or self.email
 
     @property
     def full_name(self):
+        if self.user_type == self.COMPANY_USER:
+            return self.company_name
         return f"{self.first_name} {self.last_name}".strip()
 
     def set_profile_embedding(self, embedding):

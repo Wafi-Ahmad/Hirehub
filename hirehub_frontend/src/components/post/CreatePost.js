@@ -69,7 +69,10 @@ const CreatePost = ({ onPostCreated }) => {
   return (
     <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
       <Box sx={{ display: 'flex', gap: 2 }}>
-        <Avatar src={user?.profile_picture} />
+        <Avatar 
+          src={user?.profile_picture}
+          alt={user?.userType === 'Company' ? user?.company_name : `${user?.first_name} ${user?.last_name}`}
+        />
         <Box sx={{ flex: 1 }}>
           <form onSubmit={handleSubmit}>
             <TextField

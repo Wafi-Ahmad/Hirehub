@@ -10,18 +10,53 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'first_name', 'last_name', 'password', 'date_of_birth', 'company_name', 'user_type']
+        fields = ['email', 'password', 'user_type', 'company_name', 'first_name', 'last_name', 'date_of_birth']
+
+    def validate(self, data):
+        user_type = data.get('user_type')
+        
+        if user_type == 'Company':
+            # Validate company user
+            if not data.get('company_name'):
+                raise serializers.ValidationError({'company_name': 'Company name is required for company users'})
+            
+            # Remove individual user fields for company
+            if 'first_name' in data:
+                del data['first_name']
+            if 'last_name' in data:
+                del data['last_name']
+            if 'date_of_birth' in data:
+                del data['date_of_birth']
+                
+        elif user_type == 'Normal':
+            # Validate normal user
+            if not data.get('first_name'):
+                raise serializers.ValidationError({'first_name': 'First name is required for individual users'})
+            if not data.get('last_name'):
+                raise serializers.ValidationError({'last_name': 'Last name is required for individual users'})
+            
+            # Remove company fields
+            if 'company_name' in data:
+                del data['company_name']
+        
+        return data
 
     def create(self, validated_data):
         user = User(
             email=validated_data['email'],
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name'],
-            date_of_birth=validated_data.get('date_of_birth'),
-            company_name=validated_data.get('company_name'),
-            user_type=validated_data['user_type'],
+            user_type=validated_data['user_type']
         )
+        
+        if user.user_type == 'Company':
+            user.company_name = validated_data['company_name']
+        else:
+            user.first_name = validated_data['first_name']
+            user.last_name = validated_data['last_name']
+            if 'date_of_birth' in validated_data:
+                user.date_of_birth = validated_data['date_of_birth']
+            
         user.set_password(validated_data['password'])
+        user.save()
         return user
     
 
@@ -46,7 +81,11 @@ class CustomLoginSerializer(serializers.Serializer):
         # Return user information if successful
         return {
             "email": user.email,
-            "user_type": user.user_type
+            "user_type": user.user_type,
+            "profile_picture": user.profile_picture.url if user.profile_picture else None,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "company_name": user.company_name if user.user_type == 'Company' else None
         }    
 
 class UserInterestSerializer(serializers.ModelSerializer):
@@ -82,21 +121,37 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'email', 'first_name', 'last_name',
+            'id', 'email', 'user_type',
+            # Company specific fields
+            'company_name', 'industry', 'company_size', 'about_company', 'specializations',
+            # Normal user specific fields
+            'first_name', 'last_name',
+            # Common fields
             'profile_picture', 'cover_picture',
             'bio', 'location', 'website',
-            'headline', 'preferred_job_category',
-            'preferred_job_type', 'desired_salary_range',
-            'preferred_location', 'skills', 'experience',
+            'headline', 'skills', 'experience',
             'education', 'certifications',
             'recent_work', 'current_work',
-            'contact_details', 'phone',
-            'linkedin_url', 'github_url',
+            'phone', 'linkedin_url', 'github_url',
             'is_profile_public', 'show_email', 'show_phone',
             'show_skills', 'show_experience', 'show_education',
             'show_certifications', 'show_recent_work', 'show_current_work'
         ]
-        read_only_fields = ['id', 'email']
+        read_only_fields = ['id', 'email', 'user_type']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.user_type == 'Company':
+            # Remove individual user fields for company
+            fields_to_remove = ['first_name', 'last_name', 'date_of_birth']
+            for field in fields_to_remove:
+                data.pop(field, None)
+        else:
+            # Remove company fields for individual users
+            fields_to_remove = ['company_name', 'industry', 'company_size', 'about_company', 'specializations']
+            for field in fields_to_remove:
+                data.pop(field, None)
+        return data
 
     def get_profile_picture(self, obj):
         if obj.profile_picture and hasattr(obj.profile_picture, 'url'):

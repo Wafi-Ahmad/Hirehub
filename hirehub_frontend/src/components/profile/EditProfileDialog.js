@@ -30,12 +30,20 @@ const EditProfileDialog = ({ open, onClose }) => {
   const [errors, setErrors] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [formData, setFormData] = useState({
-    first_name: '',
-    last_name: '',
+    // Common fields for both user types
+    email: '',
+    headline: '',
     bio: '',
     location: '',
     website: '',
-    headline: '',
+    phone: '',
+    linkedin_url: '',
+    github_url: '',
+    
+    // Normal user specific fields
+    first_name: '',
+    last_name: '',
+    date_of_birth: '',
     preferred_job_category: '',
     preferred_job_type: '',
     desired_salary_range: '',
@@ -46,9 +54,15 @@ const EditProfileDialog = ({ open, onClose }) => {
     certifications: '',
     recent_work: '',
     current_work: '',
-    phone: '',
-    linkedin_url: '',
-    github_url: '',
+    
+    // Company specific fields
+    company_name: '',
+    industry: '',
+    company_size: '',
+    about_company: '',
+    specializations: '',
+    
+    // Privacy settings
     is_profile_public: true,
     show_email: true,
     show_phone: false,
@@ -67,29 +81,57 @@ const EditProfileDialog = ({ open, onClose }) => {
 
   useEffect(() => {
     if (profileData) {
-      setFormData(prev => ({
-        ...prev,
-        ...profileData,
-        skills: Array.isArray(profileData.skills) 
-          ? profileData.skills.join(', ') 
-          : profileData.skills || '',
-      }));
-      setPreviewProfile(profileData.profile_picture);
-      setPreviewCover(profileData.cover_picture);
+        // Convert skills array to string if it exists
+        const formattedData = {
+            ...profileData,
+            skills: Array.isArray(profileData.skills) 
+                ? profileData.skills.join(', ') 
+                : profileData.skills || '',
+        };
+
+        // Set form data based on user type
+        if (profileData.user_type === 'Company') {
+            // Remove normal user specific fields
+            delete formattedData.first_name;
+            delete formattedData.last_name;
+            delete formattedData.date_of_birth;
+            delete formattedData.preferred_job_category;
+            delete formattedData.preferred_job_type;
+            delete formattedData.desired_salary_range;
+            delete formattedData.preferred_location;
+        } else {
+            // Remove company specific fields
+            delete formattedData.company_name;
+            delete formattedData.industry;
+            delete formattedData.company_size;
+            delete formattedData.about_company;
+            delete formattedData.specializations;
+        }
+
+        setFormData(formattedData);
+        setPreviewProfile(profileData.profile_picture);
+        setPreviewCover(profileData.cover_picture);
     }
   }, [profileData]);
 
   const validateForm = () => {
     const newErrors = {};
     
-    // Check required fields
-    REQUIRED_FIELDS.forEach(field => {
-      if (!formData[field]?.trim()) {
-        newErrors[field] = 'This field is required';
+    // Check required fields based on user type
+    if (profileData?.user_type === 'Company') {
+      if (!formData.company_name?.trim()) {
+        newErrors.company_name = 'Company name is required';
       }
-    });
+    } else {
+      if (!formData.first_name?.trim()) {
+        newErrors.first_name = 'First name is required';
+      }
+      if (!formData.last_name?.trim()) {
+        newErrors.last_name = 'Last name is required';
+      }
+    }
 
-    // Validate URLs
+    // Validate URLs if provided
     const urlFields = ['website', 'linkedin_url', 'github_url'];
     const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
     
@@ -174,9 +216,20 @@ const EditProfileDialog = ({ open, onClose }) => {
     try {
       const form = new FormData();
       
-      // Append text fields
+      // Append text fields based on user type
       Object.keys(formData).forEach(key => {
         if (formData[key] !== null && formData[key] !== undefined) {
+          // Skip normal user fields for company users
+          if (profileData?.user_type === 'Company' && 
+              ['first_name', 'last_name', 'date_of_birth'].includes(key)) {
+            return;
+          }
+          // Skip company fields for normal users
+          if (profileData?.user_type === 'Normal' && 
+              ['company_name', 'industry', 'company_size', 'about_company', 'specializations'].includes(key)) {
+            return;
+          }
+
           if (key === 'skills') {
             const skillsArray = formData[key].split(',').map(s => s.trim()).filter(Boolean);
             form.append(key, JSON.stringify(skillsArray));
@@ -213,6 +266,167 @@ const EditProfileDialog = ({ open, onClose }) => {
     }
   };
 
+  const renderCompanyFields = () => {
+    if (profileData?.user_type !== 'Company') return null;
+
+    return (
+      <>
+        <Grid item xs={12}>
+          <Typography variant="h6" sx={{ mt: 2 }}>Company Information</Typography>
+          <Divider sx={{ my: 1 }} />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Company Name"
+            name="company_name"
+            value={formData.company_name}
+            onChange={handleInputChange}
+            required
+          />
+        </Grid>
+        <Grid item xs={6}>
+          <TextField
+            fullWidth
+            label="Industry"
+            name="industry"
+            value={formData.industry}
+            onChange={handleInputChange}
+          />
+        </Grid>
+        <Grid item xs={6}>
+          <TextField
+            fullWidth
+            label="Company Size"
+            name="company_size"
+            value={formData.company_size}
+            onChange={handleInputChange}
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="About Company"
+            name="about_company"
+            multiline
+            rows={3}
+            value={formData.about_company}
+            onChange={handleInputChange}
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Specializations"
+            name="specializations"
+            multiline
+            rows={3}
+            value={formData.specializations}
+            onChange={handleInputChange}
+          />
+        </Grid>
+      </>
+    );
+  };
+
+  const renderNormalUserFields = () => {
+    if (profileData?.user_type !== 'Normal') return null;
+
+    return (
+      <>
+        <Grid item xs={12}>
+          <Typography variant="h6" sx={{ mt: 2 }}>Personal Information</Typography>
+          <Divider sx={{ my: 1 }} />
+        </Grid>
+        <Grid item xs={6}>
+          <TextField
+            fullWidth
+            label="First Name"
+            name="first_name"
+            value={formData.first_name}
+            onChange={handleInputChange}
+            required
+          />
+        </Grid>
+        <Grid item xs={6}>
+          <TextField
+            fullWidth
+            label="Last Name"
+            name="last_name"
+            value={formData.last_name}
+            onChange={handleInputChange}
+            required
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Skills (comma-separated)"
+            name="skills"
+            value={formData.skills}
+            onChange={handleInputChange}
+            helperText="Enter skills separated by commas"
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Experience"
+            name="experience"
+            multiline
+            rows={3}
+            value={formData.experience}
+            onChange={handleInputChange}
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Education"
+            name="education"
+            multiline
+            rows={3}
+            value={formData.education}
+            onChange={handleInputChange}
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Certifications"
+            name="certifications"
+            multiline
+            rows={2}
+            value={formData.certifications}
+            onChange={handleInputChange}
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Current Work"
+            name="current_work"
+            multiline
+            rows={2}
+            value={formData.current_work}
+            onChange={handleInputChange}
+          />
+        </Grid>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            label="Recent Work"
+            name="recent_work"
+            multiline
+            rows={2}
+            value={formData.recent_work}
+            onChange={handleInputChange}
+          />
+        </Grid>
+      </>
+    );
+  };
+
   return (
     <>
       <Dialog 
@@ -226,7 +440,7 @@ const EditProfileDialog = ({ open, onClose }) => {
       >
         <DialogTitle>
           <Typography variant="h5" component="div">
-            Edit Profile
+            Edit {profileData?.user_type === 'Company' ? 'Company' : 'Profile'}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             * Required fields
@@ -235,90 +449,80 @@ const EditProfileDialog = ({ open, onClose }) => {
         
         <DialogContent>
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-            {/* Cover Picture */}
-            <Box sx={{ position: 'relative', mb: 4, height: 200, bgcolor: 'grey.100' }}>
-              {previewCover && (
-                <Box
-                  component="img"
-                  src={previewCover}
-                  sx={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                  }}
-                />
-              )}
-              <IconButton
-                sx={{ 
-                  position: 'absolute', 
-                  bottom: 8, 
-                  right: 8,
-                  bgcolor: 'background.paper',
-                  '&:hover': { bgcolor: 'background.default' }
-                }}
-                component="label"
-              >
-                <input
-                  hidden
-                  accept="image/*"
-                  type="file"
-                  onChange={(e) => handleFileChange(e, 'cover')}
-                />
-                <PhotoCamera />
-              </IconButton>
-            </Box>
-
-            {/* Profile Picture */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-              <Avatar
-                src={previewProfile}
-                sx={{ width: 100, height: 100, mr: 2 }}
-              />
-              <IconButton 
-                component="label"
-                sx={{
-                  bgcolor: 'background.paper',
-                  '&:hover': { bgcolor: 'background.default' }
-                }}
-              >
-                <input
-                  hidden
-                  accept="image/*"
-                  type="file"
-                  onChange={(e) => handleFileChange(e, 'profile')}
-                />
-                <PhotoCamera />
-              </IconButton>
-            </Box>
-
+            {/* Profile Pictures Section */}
             <Grid container spacing={2}>
+              {/* Cover Picture */}
+              <Grid item xs={12}>
+                <Box sx={{ position: 'relative', mb: 4, height: 200, bgcolor: 'grey.100' }}>
+                  {previewCover && (
+                    <Box
+                      component="img"
+                      src={previewCover}
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  )}
+                  <IconButton
+                    sx={{ 
+                      position: 'absolute', 
+                      bottom: 8, 
+                      right: 8,
+                      bgcolor: 'background.paper',
+                      '&:hover': { bgcolor: 'background.default' }
+                    }}
+                    component="label"
+                  >
+                    <input
+                      hidden
+                      accept="image/*"
+                      type="file"
+                      onChange={(e) => handleFileChange(e, 'cover')}
+                    />
+                    <PhotoCamera />
+                  </IconButton>
+                </Box>
+              </Grid>
+
+              {/* Profile Picture */}
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                  <Avatar
+                    src={previewProfile}
+                    sx={{ width: 100, height: 100, mr: 2 }}
+                  />
+                  <IconButton 
+                    component="label"
+                    sx={{
+                      bgcolor: 'background.paper',
+                      '&:hover': { bgcolor: 'background.default' }
+                    }}
+                  >
+                    <input
+                      hidden
+                      accept="image/*"
+                      type="file"
+                      onChange={(e) => handleFileChange(e, 'profile')}
+                    />
+                    <PhotoCamera />
+                  </IconButton>
+                </Box>
+              </Grid>
+
               {/* Basic Information */}
               <Grid item xs={12}>
                 <Typography variant="h6">Basic Information</Typography>
                 <Divider sx={{ my: 1 }} />
               </Grid>
-              <Grid item xs={6}>
+              <Grid item xs={12}>
                 <TextField
-                  required
                   fullWidth
-                  label="First Name"
-                  name="first_name"
-                  value={formData.first_name}
+                  label="Headline"
+                  name="headline"
+                  value={formData.headline}
                   onChange={handleInputChange}
-                  error={!!errors.first_name}
-                  helperText={errors.first_name}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  required
-                  fullWidth
-                  label="Last Name"
-                  name="last_name"
-                  value={formData.last_name}
-                  onChange={handleInputChange}
-                  error={!!errors.last_name}
-                  helperText={errors.last_name}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -353,116 +557,10 @@ const EditProfileDialog = ({ open, onClose }) => {
                 />
               </Grid>
 
-              {/* Professional Information */}
-              <Grid item xs={12}>
-                <Typography variant="h6" sx={{ mt: 2 }}>Professional Information</Typography>
-                <Divider sx={{ my: 1 }} />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Headline"
-                  name="headline"
-                  value={formData.headline}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Preferred Job Category"
-                  name="preferred_job_category"
-                  value={formData.preferred_job_category}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  label="Preferred Job Type"
-                  name="preferred_job_type"
-                  value={formData.preferred_job_type}
-                  onChange={handleInputChange}
-                />
-              </Grid>
+              {/* Render fields based on user type */}
+              {renderCompanyFields()}
+              {renderNormalUserFields()}
 
-              {/* Skills and Experience */}
-              <Grid item xs={12}>
-                <Typography variant="h6" sx={{ mt: 2 }}>Skills and Experience</Typography>
-                <Divider sx={{ my: 1 }} />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Skills (comma-separated)"
-                  name="skills"
-                  value={formData.skills}
-                  onChange={handleInputChange}
-                  helperText="Enter skills separated by commas"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Experience"
-                  name="experience"
-                  multiline
-                  rows={3}
-                  value={formData.experience}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Education"
-                  name="education"
-                  multiline
-                  rows={3}
-                  value={formData.education}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Certifications"
-                  name="certifications"
-                  multiline
-                  rows={2}
-                  value={formData.certifications}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-
-              {/* Work Information */}
-              <Grid item xs={12}>
-                <Typography variant="h6" sx={{ mt: 2 }}>Work Information</Typography>
-                <Divider sx={{ my: 1 }} />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Current Work"
-                  name="current_work"
-                  multiline
-                  rows={2}
-                  value={formData.current_work}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Recent Work"
-                  name="recent_work"
-                  multiline
-                  rows={2}
-                  value={formData.recent_work}
-                  onChange={handleInputChange}
-                />
-              </Grid>
-              
               {/* Contact Information */}
               <Grid item xs={12}>
                 <Typography variant="h6" sx={{ mt: 2 }}>Contact Information</Typography>
@@ -539,30 +637,6 @@ const EditProfileDialog = ({ open, onClose }) => {
                     />
                   }
                   label="Show Phone"
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.show_skills}
-                      onChange={handleInputChange}
-                      name="show_skills"
-                    />
-                  }
-                  label="Show Skills"
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.show_experience}
-                      onChange={handleInputChange}
-                      name="show_experience"
-                    />
-                  }
-                  label="Show Experience"
                 />
               </Grid>
             </Grid>

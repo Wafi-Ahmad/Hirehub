@@ -24,6 +24,16 @@ export const AuthProvider = ({ children }) => {
         return null;
       }
 
+      // Ensure profile picture has full URL
+      if (userData.profile_picture && !userData.profile_picture.startsWith('http')) {
+        userData.profile_picture = `http://localhost:8000${userData.profile_picture}`;
+      }
+
+      // Ensure userType is normalized
+      if (userData.user_type && !userData.userType) {
+        userData.userType = userData.user_type;
+      }
+
       console.log('Successfully loaded user data:', userData);
       return userData;
     } catch (error) {
@@ -139,23 +149,47 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (userData) => {
+  const login = async (loginResponse) => {
     try {
-      // Ensure we have all required fields
-      if (!userData || !userData.id) {
-        throw new Error('Invalid user data');
+      console.log('Login function called with:', loginResponse);
+      
+      // Validate login response structure
+      if (!loginResponse?.id || !loginResponse?.user || !loginResponse?.access) {
+        console.error('Invalid login response structure:', {
+          hasId: !!loginResponse?.id,
+          hasUser: !!loginResponse?.user,
+          hasAccess: !!loginResponse?.access,
+          response: loginResponse
+        });
+        throw new Error('Invalid login response data');
       }
       
-      console.log('Logging in with user data:', userData);
+      // Process user data
+      const userData = {
+        id: loginResponse.id,
+        ...loginResponse.user,
+        profile_picture: loginResponse.user.profile_picture 
+          ? `http://localhost:8000${loginResponse.user.profile_picture}`
+          : null,
+        userType: loginResponse.user.user_type
+      };
       
-      // Store user data in localStorage first
+      console.log('Processed user data:', userData);
+      
+      // Store auth data
       localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('userId', userData.id);
+      localStorage.setItem('userId', loginResponse.id.toString());
+      localStorage.setItem('token', loginResponse.access);
+      localStorage.setItem('refresh', loginResponse.refresh);
       
-      // Then update state
+      // Update API client
+      api.defaults.headers.common['Authorization'] = `Bearer ${loginResponse.access}`;
+      
+      // Update state
       setUser(userData);
       setIsAuthenticated(true);
-      api.defaults.headers.common['Authorization'] = `Bearer ${localStorage.getItem('token')}`;
+      
+      console.log('Login successful, state updated');
       return true;
     } catch (error) {
       console.error('Login error:', error);

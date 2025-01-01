@@ -23,18 +23,44 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
 // Simple frontend validation
-const validationSchema = Yup.object({
+const validationSchema = Yup.object().shape({
   email: Yup.string()
     .email('Invalid email address')
     .required('Email is required'),
   password: Yup.string()
     .required('Password is required'),
-  first_name: Yup.string()
-    .required('First name is required'),
-  last_name: Yup.string()
-    .required('Last name is required'),
   user_type: Yup.string()
     .required('Please select user type'),
+  company_name: Yup.string()
+    .when('user_type', {
+      is: 'Company',
+      then: () => Yup.string().required('Company name is required'),
+      otherwise: () => Yup.string()
+    }),
+  first_name: Yup.string()
+    .when('user_type', {
+      is: 'Normal',
+      then: () => Yup.string().required('First name is required'),
+      otherwise: () => Yup.string()
+    }),
+  last_name: Yup.string()
+    .when('user_type', {
+      is: 'Normal',
+      then: () => Yup.string().required('Last name is required'),
+      otherwise: () => Yup.string()
+    })
+}).test('at-least-one-name', null, function(value) {
+  if (value.user_type === 'Company' && !value.company_name) {
+    return new Yup.ValidationError('Company name is required', null, 'company_name');
+  }
+  if (value.user_type === 'Normal' && (!value.first_name || !value.last_name)) {
+    return new Yup.ValidationError(
+      'First name and last name are required',
+      null,
+      value.first_name ? 'last_name' : 'first_name'
+    );
+  }
+  return true;
 });
 
 const Register = () => {
@@ -42,7 +68,6 @@ const Register = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [userType, setUserType] = useState('NORMAL');
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
@@ -55,11 +80,14 @@ const Register = () => {
       const registrationData = {
         email: values.email,
         password: values.password,
-        first_name: values.first_name,
-        last_name: values.last_name,
         user_type: values.user_type,
-        date_of_birth: values.user_type === 'NORMAL' ? formattedDate : null,
-        company_name: values.user_type === 'COMPANY' ? values.company_name : null
+        ...(values.user_type === 'Normal' ? {
+          first_name: values.first_name,
+          last_name: values.last_name,
+          date_of_birth: formattedDate
+        } : {
+          company_name: values.company_name
+        })
       };
 
       console.log('Sending registration data:', registrationData);
@@ -68,7 +96,7 @@ const Register = () => {
       console.log('Registration response:', response.data);
       
       toast.success('Registration successful!');
-      navigate('/login'); // Navigate to login instead of auto-login
+      navigate('/login');
     } catch (error) {
       console.error('Registration error:', error.response?.data || error);
       const errorMessage = error.response?.data?.error || 
@@ -92,9 +120,9 @@ const Register = () => {
             initialValues={{
               email: '',
               password: '',
+              user_type: 'Normal',
               first_name: '',
               last_name: '',
-              user_type: 'Normal',
               company_name: '',
               date_of_birth: ''
             }}
@@ -103,22 +131,35 @@ const Register = () => {
           >
             {({ handleSubmit, isSubmitting, values, setFieldValue }) => (
               <form onSubmit={handleSubmit} noValidate>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <Field
-                      component={FormInput}
-                      name="first_name"
-                      label="First Name"
+                <Box sx={{ my: 2 }}>
+                  <RadioGroup
+                    row
+                    name="user_type"
+                    value={values.user_type}
+                    onChange={(e) => {
+                      setFieldValue('user_type', e.target.value);
+                      // Clear fields when switching user type
+                      if (e.target.value === 'Company') {
+                        setFieldValue('first_name', '');
+                        setFieldValue('last_name', '');
+                        setFieldValue('date_of_birth', '');
+                      } else {
+                        setFieldValue('company_name', '');
+                      }
+                    }}
+                  >
+                    <FormControlLabel 
+                      value="Normal" 
+                      control={<Radio />} 
+                      label="Job Seeker" 
                     />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Field
-                      component={FormInput}
-                      name="last_name"
-                      label="Last Name"
+                    <FormControlLabel 
+                      value="Company" 
+                      control={<Radio />} 
+                      label="Employer" 
                     />
-                  </Grid>
-                </Grid>
+                  </RadioGroup>
+                </Box>
 
                 <Box sx={{ my: 2 }}>
                   <Field
@@ -138,47 +179,41 @@ const Register = () => {
                   />
                 </Box>
 
-                <Box sx={{ my: 2 }}>
-                  <RadioGroup
-                    row
-                    name="user_type"
-                    value={values.user_type}
-                    onChange={(e) => {
-                      setFieldValue('user_type', e.target.value);
-                      setUserType(e.target.value);
-                    }}
-                  >
-                    <FormControlLabel 
-                      value="Normal" 
-                      control={<Radio />} 
-                      label="Job Seeker" 
-                    />
-                    <FormControlLabel 
-                      value="Company" 
-                      control={<Radio />} 
-                      label="Employer" 
-                    />
-                  </RadioGroup>
-                </Box>
+                {values.user_type === 'Normal' ? (
+                  <>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6}>
+                        <Field
+                          component={FormInput}
+                          name="first_name"
+                          label="First Name"
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <Field
+                          component={FormInput}
+                          name="last_name"
+                          label="Last Name"
+                        />
+                      </Grid>
+                    </Grid>
 
-                {values.user_type === 'Company' && (
+                    <Box sx={{ my: 2 }}>
+                      <Field
+                        component={FormInput}
+                        name="date_of_birth"
+                        type="date"
+                        label="Date of Birth"
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Box>
+                  </>
+                ) : (
                   <Box sx={{ my: 2 }}>
                     <Field
                       component={FormInput}
                       name="company_name"
                       label="Company Name"
-                    />
-                  </Box>
-                )}
-
-                {values.user_type === 'Normal' && (
-                  <Box sx={{ my: 2 }}>
-                    <Field
-                      component={FormInput}
-                      name="date_of_birth"
-                      type="date"
-                      label="Date of Birth"
-                      InputLabelProps={{ shrink: true }}
                     />
                   </Box>
                 )}

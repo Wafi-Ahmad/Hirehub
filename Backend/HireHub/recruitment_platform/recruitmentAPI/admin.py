@@ -9,23 +9,43 @@ class UserAdmin(admin.ModelAdmin):
     search_fields = ('email', 'first_name', 'last_name', 'company_name')
     fieldsets = (
         ('Basic Information', {
-            'fields': ('email', 'password', 'first_name', 'last_name', 'date_of_birth', 'profile_picture')
+            'fields': ('email', 'password', 'user_type')
         }),
-        ('User Type & Company', {
-            'fields': ('user_type', 'company_name')
+        ('Normal User Fields', {
+            'fields': ('first_name', 'last_name', 'date_of_birth'),
+            'classes': ('collapse',),
         }),
         ('Job Preferences', {
-            'fields': ('preferred_job_category', 'preferred_job_type', 'desired_salary_range', 'preferred_location')
+            'fields': ('preferred_job_category', 'preferred_job_type', 
+                      'desired_salary_range', 'preferred_location'),
+            'classes': ('collapse',),
+        }),
+        ('Company Fields', {
+            'fields': ('company_name', 'industry', 'company_size', 'about_company', 'specializations'),
+            'classes': ('collapse',),
+        }),
+        ('Profile Media', {
+            'fields': ('profile_picture', 'cover_picture'),
+            'classes': ('collapse',),
+        }),
+        ('Contact & Location', {
+            'fields': ('location', 'website', 'phone', 'linkedin_url', 'github_url', 'contact_details'),
+            'classes': ('collapse',),
         }),
         ('Profile Details', {
-            'fields': ('skills', 'experience', 'recent_work', 'current_work', 'contact_details')
+            'fields': ('headline', 'bio', 'skills', 'experience', 'education', 'certifications', 
+                      'recent_work', 'current_work'),
+            'classes': ('collapse',),
         }),
         ('Privacy Settings', {
-            'fields': ('is_profile_public', 'show_email', 'show_skills', 'show_experience', 
-                      'show_recent_work', 'show_current_work')
+            'fields': ('is_profile_public', 'show_email', 'show_phone', 'show_skills', 
+                      'show_experience', 'show_education', 'show_certifications', 
+                      'show_recent_work', 'show_current_work'),
+            'classes': ('collapse',),
         }),
         ('Permissions', {
-            'fields': ('is_active', 'is_staff', 'is_superuser')
+            'fields': ('is_active', 'is_staff', 'is_superuser'),
+            'classes': ('collapse',),
         }),
     )
     

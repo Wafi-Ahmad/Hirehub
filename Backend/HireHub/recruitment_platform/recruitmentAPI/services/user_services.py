@@ -181,24 +181,33 @@ class UserService:
             raise e
 
     @staticmethod
-    def create_user(email, first_name, last_name, password, **extra_fields):
+    def create_user(email, password, user_type, **extra_fields):
         """
         Handle the business logic of creating a user.
         """
         if User.objects.filter(email=email).exists():
             raise ValueError('A user with this email already exists.')
 
-        profile_picture = extra_fields.pop('profile_picture', None)
+        # Create user with basic fields
         user = User.objects.create_user(
             email=email,
-            first_name=first_name,
-            last_name=last_name,
             password=password,
-            **extra_fields
+            user_type=user_type
         )
-        if profile_picture:
-            user.profile_picture = profile_picture
-            user.save()
+
+        # Set type-specific fields
+        if user_type == 'Company':
+            user.company_name = extra_fields.get('company_name')
+            if not user.company_name:
+                raise ValueError('Company name is required for company users')
+        else:  # Normal user
+            user.first_name = extra_fields.get('first_name')
+            user.last_name = extra_fields.get('last_name')
+            user.date_of_birth = extra_fields.get('date_of_birth')
+            if not user.first_name or not user.last_name:
+                raise ValueError('First name and last name are required for normal users')
+
+        user.save()
         return user
 
     @staticmethod

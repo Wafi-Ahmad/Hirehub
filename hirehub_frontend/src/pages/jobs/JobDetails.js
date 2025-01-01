@@ -51,6 +51,10 @@ const JobDetails = () => {
     return type ? type.label : value;
   };
 
+  const handleApply = () => {
+    navigate(`/jobs/${id}/quiz`);
+  };
+
   if (loading) {
     return (
       <Container maxWidth="lg" sx={{ mt: 12, mb: 4 }}>
@@ -228,9 +232,9 @@ const JobDetails = () => {
                 variant="contained"
                 color="primary"
                 size="large"
-                onClick={() => {/* Handle apply action */}}
+                onClick={handleApply}
               >
-                Apply Now
+                Take Quiz & Apply
               </Button>
             </Box>
           )}

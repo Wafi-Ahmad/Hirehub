@@ -43,7 +43,7 @@ const Navbar = () => {
 
   const handleProfile = () => {
     handleClose();
-    navigate(`/profile/me`);
+    navigate(`/profile/${user.id}`);
   };
 
   const getActiveTab = () => {
@@ -118,7 +118,7 @@ const Navbar = () => {
               {user?.profile_picture ? (
                 <Avatar 
                   src={user.profile_picture}
-                  alt={`${user.first_name} ${user.last_name}`}
+                  alt={user.userType === USER_TYPES.COMPANY ? user.company_name : `${user.first_name} ${user.last_name}`}
                 />
               ) : (
                 <AccountCircleIcon />

@@ -41,15 +41,7 @@ const Login = () => {
       console.log('Login response:', response.data);
       
       if (response.data.access) {
-        localStorage.setItem('token', response.data.access);
-        localStorage.setItem('refresh', response.data.refresh);
-        
-        await login({
-          id: response.data.id,
-          email: response.data.user.email,
-          userType: response.data.user.user_type
-        });
-        
+        await login(response.data);
         toast.success('Login successful!');
         navigate('/home');
       }

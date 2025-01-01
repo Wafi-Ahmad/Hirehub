@@ -2,27 +2,45 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "./_Quiz.css";
 
-function QuizUI() {
-  const [questions, setQuestions] = useState([]);
+function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(60);
   const [leaveCount, setLeaveCount] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [showingResult, setShowingResult] = useState(false);
+  const [answerOrder, setAnswerOrder] = useState({});
 
   const navigate = useNavigate();
 
+  // Initialize random order for answers
   useEffect(() => {
-    fetch("/quizData.json")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
+    if (questions.length > 0) {
+      const newAnswerOrder = {};
+      questions.forEach(question => {
+        // Create array [0,1,2,3] and shuffle it
+        const order = Array.from({ length: question.answers.length }, (_, i) => i);
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [order[i], order[j]] = [order[j], order[i]];
         }
-        return response.json();
-      })
-      .then((data) => setQuestions(data))
-      .catch((error) => console.error("Error fetching quiz data:", error));
-  }, []);
+        newAnswerOrder[question.id] = order;
+        
+        // Debug logs
+        console.log('Question:', question.id);
+        console.log('Original answers:', question.answers);
+        console.log('Shuffled order:', order);
+        console.log('Will display in this order:', order.map(i => question.answers[i]));
+      });
+      setAnswerOrder(newAnswerOrder);
+    }
+  }, [questions]);
+
+  useEffect(() => {
+    if (previousAttempt) {
+      setShowingResult(true);
+    }
+  }, [previousAttempt]);
 
   const handleNextQuestion = useCallback(() => {
     setSelectedAnswer(null);
@@ -30,9 +48,9 @@ function QuizUI() {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
     } else {
-      alert(`Quiz completed! Your score: ${score}/${questions.length}`);
+      onSubmit(answers);
     }
-  }, [currentQuestionIndex, questions.length, score]);
+  }, [currentQuestionIndex, questions.length, answers, onSubmit]);
 
   useEffect(() => {
     if (timeLeft > 0) {
@@ -49,17 +67,14 @@ function QuizUI() {
         setLeaveCount((prevCount) => {
           const newCount = prevCount + 1;
 
-          // If the user has left the tab 3 times, redirect them to the home page
           if (newCount >= 3) {
-            setScore(0); // Reset score
             alert(
               "You have left the quiz 3 times. You are being redirected to the home page. Better luck next time!"
             );
-            navigate("/"); // Redirect to the home page
+            navigate("/");
             return newCount;
           }
 
-          // Otherwise, skip to the next question
           alert("You left the quiz! Skipping to the next question.");
           handleNextQuestion();
           return newCount;
@@ -68,32 +83,64 @@ function QuizUI() {
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [handleNextQuestion, navigate]);
 
-  const handleAnswer = (index) => {
-    if (index === questions[currentQuestionIndex].correctAnswer) {
-      setScore((prevScore) => prevScore + 1);
-    }
-    setSelectedAnswer(index);
+  const handleAnswer = (shuffledIndex) => {
+    if (disabled) return;
+    
+    const currentQuestion = questions[currentQuestionIndex];
+    const order = answerOrder[currentQuestion.id];
+    // Convert shuffled index back to original index
+    const originalIndex = order.indexOf(shuffledIndex);
+    
+    // Debug logs
+    console.log('Question ID:', currentQuestion.id);
+    console.log('Clicked shuffled index:', shuffledIndex);
+    console.log('Maps to original index:', originalIndex);
+    console.log('Answer clicked:', currentQuestion.answers[originalIndex]);
+    
+    const newAnswers = {
+      ...answers,
+      [currentQuestion.id]: originalIndex + 1
+    };
+    setAnswers(newAnswers);
+    setSelectedAnswer(shuffledIndex);
 
     setTimeout(() => {
-      handleNextQuestion();
+      if (currentQuestionIndex === questions.length - 1) {
+        onSubmit(newAnswers);
+      } else {
+        handleNextQuestion();
+      }
     }, 1000);
   };
 
-  if (questions.length === 0) {
-    return <p>Loading quiz...</p>;
+  if (showingResult && previousAttempt) {
+    return (
+      <div className="quiz-container">
+        <h2 className="quiz-title">Previous Attempt Result</h2>
+        <div className="quiz-result">
+          <p><strong>Score:</strong> {previousAttempt.result.score}%</p>
+          <p><strong>Status:</strong> {previousAttempt.result.passed ? 'Passed' : 'Failed'}</p>
+          <p><strong>Completed:</strong> {new Date(previousAttempt.result.completed_at).toLocaleString()}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!questions.length || Object.keys(answerOrder).length === 0) {
+    return <div className="quiz-container"><p>No questions available.</p></div>;
   }
 
   const currentQuestion = questions[currentQuestionIndex];
+  const currentOrder = answerOrder[currentQuestion.id];
 
   return (
     <div className="quiz-container">
-      <h2 className="quiz-title">Quiz</h2>
+      <h2 className="quiz-title">Technical Assessment</h2>
       <div className="progress-bar">
         <span
           style={{
@@ -110,27 +157,22 @@ function QuizUI() {
           <strong>Time Left: {timeLeft}s</strong>
         </p>
         <ul className="quiz-options">
-          {currentQuestion.answers.map((answer, index) => (
+          {currentOrder.map((originalIndex, shuffledIndex) => (
             <li
-              key={index}
-              onClick={() => handleAnswer(index)}
+              key={shuffledIndex}
+              onClick={() => handleAnswer(shuffledIndex)}
               className={`quiz-option ${
-                selectedAnswer === index
-                  ? index === currentQuestion.correctAnswer
-                    ? "selected"
-                    : "incorrect"
-                  : ""
-              }`}
+                selectedAnswer === shuffledIndex ? "selected" : ""
+              } ${disabled ? 'disabled' : ''}`}
             >
               <div className="option-label">
-                {String.fromCharCode(65 + index)}
+                {String.fromCharCode(65 + shuffledIndex)}
               </div>
-              <div className="option-text">{answer}</div>
+              <div className="option-text">{currentQuestion.answers[originalIndex]}</div>
             </li>
           ))}
         </ul>
       </div>
-      {/* Feedback about leave count */}
       <p className="leave-count-warning">
         {leaveCount > 0 && leaveCount < 3
           ? `Warning: You have left the quiz ${leaveCount} time(s).`

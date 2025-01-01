@@ -8,6 +8,7 @@ from django.core.cache import cache
 from ..models.job_model import JobPost
 from ..models import User
 from ..serializers.job_serializers import JobResponseSerializer, CreateJobSerializer
+from .quiz_services import QuizService
 import re
 
 class JobService:
@@ -47,16 +48,22 @@ class JobService:
             
             job.save()
 
+            # Generate quiz for the job
+            try:
+                QuizService.generate_quiz(job.id)
+            except Exception as e:
+                print(f"Failed to generate quiz: {str(e)}")
+                # Don't fail job creation if quiz generation fails
+                # We can regenerate it later if needed
+
             # Invalidate job list cache
             cache.delete_many([
                 'jobs:list:recent',
                 f'jobs:company:{user.id}:list'
             ])
-            print(job.required_skills)
-            res =  JobResponseSerializer(job).data
-            print(res.get('required_skills'))
-            return res
             
+            res = JobResponseSerializer(job).data
+            return res
 
         except User.DoesNotExist:
             raise ValidationError("Invalid user")

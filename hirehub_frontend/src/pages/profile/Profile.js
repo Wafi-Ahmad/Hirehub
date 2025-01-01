@@ -294,6 +294,61 @@ const Profile = () => {
     );
   };
 
+  const renderCompanyProfile = () => {
+    if (!profileData || profileData.user_type !== 'Company') return null;
+
+    return (
+      <>
+        <Paper sx={{ p: 3, mt: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Company Information
+          </Typography>
+          <Divider sx={{ mb: 2 }} />
+          
+          {profileData.industry && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" color="primary" gutterBottom>
+                Industry
+              </Typography>
+              <Typography>{profileData.industry}</Typography>
+            </Box>
+          )}
+
+          {profileData.company_size && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" color="primary" gutterBottom>
+                Company Size
+              </Typography>
+              <Typography>{profileData.company_size}</Typography>
+            </Box>
+          )}
+
+          {profileData.about_company && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" color="primary" gutterBottom>
+                About Company
+              </Typography>
+              <Typography style={{ whiteSpace: 'pre-line' }}>
+                {profileData.about_company}
+              </Typography>
+            </Box>
+          )}
+
+          {profileData.specializations && (
+            <Box>
+              <Typography variant="subtitle1" color="primary" gutterBottom>
+                Specializations
+              </Typography>
+              <Typography style={{ whiteSpace: 'pre-line' }}>
+                {profileData.specializations}
+              </Typography>
+            </Box>
+          )}
+        </Paper>
+      </>
+    );
+  };
+
   if (error) {
     return (
       <Container maxWidth="lg">
@@ -366,7 +421,9 @@ const Profile = () => {
           {/* Basic Info */}
           <Box sx={{ textAlign: 'center', mt: 2 }}>
             <Typography variant="h5" gutterBottom>
-              {`${profileData?.first_name} ${profileData?.last_name}`}
+              {profileData?.user_type === 'Company' 
+                ? profileData.company_name
+                : `${profileData?.first_name} ${profileData?.last_name}`}
             </Typography>
             
             {profileData?.headline && (
@@ -395,7 +452,7 @@ const Profile = () => {
               </Typography>
             )}
 
-            {/* Skills */}
+            {/* Skills/Specializations */}
             {Array.isArray(profileData?.skills) && profileData.skills.length > 0 && 
              profileData.show_skills && (
               <Stack 
@@ -421,35 +478,6 @@ const Profile = () => {
               </Stack>
             )}
 
-            {/* Job Preferences */}
-            {(profileData?.preferred_job_category || profileData?.preferred_job_type) && (
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="subtitle1" color="primary" gutterBottom>
-                  Job Preferences
-                </Typography>
-                <Grid container spacing={2} justifyContent="center">
-                  {profileData?.preferred_job_category && (
-                    <Grid item>
-                      <Chip
-                        icon={<WorkIcon />}
-                        label={profileData.preferred_job_category}
-                        variant="outlined"
-                      />
-                    </Grid>
-                  )}
-                  {profileData?.preferred_job_type && (
-                    <Grid item>
-                      <Chip
-                        icon={<WorkIcon />}
-                        label={profileData.preferred_job_type}
-                        variant="outlined"
-                      />
-                    </Grid>
-                  )}
-                </Grid>
-              </Box>
-            )}
-
             {/* Follow Stats */}
             <Grid container spacing={4} sx={{ mt: 3, justifyContent: 'center' }}>
               <Grid item>
@@ -465,14 +493,17 @@ const Profile = () => {
         </Box>
       </Paper>
 
+      {/* Render company-specific profile if it's a company */}
+      {renderCompanyProfile()}
+
       {/* Contact Information */}
       {renderContactInfo()}
 
-      {/* Work Experience */}
-      {renderWorkExperience()}
+      {/* Work Experience - only show for normal users */}
+      {profileData?.user_type !== 'Company' && renderWorkExperience()}
 
-      {/* Education & Certifications */}
-      {renderEducation()}
+      {/* Education & Certifications - only show for normal users */}
+      {profileData?.user_type !== 'Company' && renderEducation()}
 
       {/* Posts */}
       <Box sx={{ mt: 3 }}>
@@ -484,8 +515,6 @@ const Profile = () => {
           userId={profileData?.id} 
         />
       </Box>
-
-     
 
       {/* Edit Profile Dialog */}
       <EditProfileDialog

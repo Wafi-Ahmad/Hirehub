@@ -4,6 +4,7 @@ import Layout from '../components/layout/Layout';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ProtectedRoute from './ProtectedRoute';
 import QuizUI from '../components/quiz/_QuizUI';
+import JobQuiz from '../pages/jobs/JobQuiz';
 
 // Lazy load pages for better performance
 const Login = React.lazy(() => import('../pages/auth/Login'));
@@ -107,6 +108,16 @@ function AppRoutes() {
             <ProtectedRoute>
               <Layout>
                 <QuizUI />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/jobs/:jobId/quiz"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <JobQuiz />
               </Layout>
             </ProtectedRoute>
           }
