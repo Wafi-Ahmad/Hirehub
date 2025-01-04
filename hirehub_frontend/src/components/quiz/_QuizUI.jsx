@@ -5,7 +5,7 @@ import "./_Quiz.css";
 function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(45);
   const [leaveCount, setLeaveCount] = useState(0);
   const [answers, setAnswers] = useState({});
   const [showingResult, setShowingResult] = useState(false);
@@ -19,7 +19,7 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
       const newAnswerOrder = {};
       questions.forEach(question => {
         // Create array [0,1,2,3] and shuffle it
-        const order = Array.from({ length: question.answers.length }, (_, i) => i);
+        const order = Array.from({ length: 4 }, (_, i) => i);
         for (let i = order.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [order[i], order[j]] = [order[j], order[i]];
@@ -44,7 +44,7 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
 
   const handleNextQuestion = useCallback(() => {
     setSelectedAnswer(null);
-    setTimeLeft(60);
+    setTimeLeft(45);
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
     } else {
@@ -93,18 +93,11 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
     
     const currentQuestion = questions[currentQuestionIndex];
     const order = answerOrder[currentQuestion.id];
-    // Convert shuffled index back to original index
-    const originalIndex = order.indexOf(shuffledIndex);
-    
-    // Debug logs
-    console.log('Question ID:', currentQuestion.id);
-    console.log('Clicked shuffled index:', shuffledIndex);
-    console.log('Maps to original index:', originalIndex);
-    console.log('Answer clicked:', currentQuestion.answers[originalIndex]);
+    const originalIndex = order[shuffledIndex];
     
     const newAnswers = {
       ...answers,
-      [currentQuestion.id]: originalIndex + 1
+      [currentQuestion.id]: originalIndex
     };
     setAnswers(newAnswers);
     setSelectedAnswer(shuffledIndex);
@@ -140,22 +133,24 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
 
   return (
     <div className="quiz-container">
-      <h2 className="quiz-title">Technical Assessment</h2>
+      {/*<h2 className="quiz-title">Technical Assessment</h2>*/}
       <div className="progress-bar">
         <span
           style={{
-            width: `${((currentQuestionIndex + 1) / questions.length) * 100}%`,
+            width: `${((currentQuestionIndex + 1) / questions.length) * 100}%`
           }}
         ></span>
       </div>
-      <div>
-        <p>
-          Question {currentQuestionIndex + 1}/{questions.length}:
-        </p>
-        <h3>{currentQuestion.question}</h3>
-        <p className="quiz-timer">
-          <strong>Time Left: {timeLeft}s</strong>
-        </p>
+      <div className="quiz-content">
+        <div className="quiz-header">
+          <p className="question-counter">
+            Question {currentQuestionIndex + 1}/{questions.length}
+          </p>
+          <p className="quiz-timer">
+            <strong>Time Left: {timeLeft}s</strong>
+          </p>
+        </div>
+        <h3 className="question-text">{currentQuestion.question}</h3>
         <ul className="quiz-options">
           {currentOrder.map((originalIndex, shuffledIndex) => (
             <li
@@ -163,7 +158,7 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
               onClick={() => handleAnswer(shuffledIndex)}
               className={`quiz-option ${
                 selectedAnswer === shuffledIndex ? "selected" : ""
-              } ${disabled ? 'disabled' : ''}`}
+              } ${disabled || selectedAnswer !== null ? 'disabled' : ''}`}
             >
               <div className="option-label">
                 {String.fromCharCode(65 + shuffledIndex)}
@@ -173,11 +168,13 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
           ))}
         </ul>
       </div>
-      <p className="leave-count-warning">
-        {leaveCount > 0 && leaveCount < 3
-          ? `Warning: You have left the quiz ${leaveCount} time(s).`
-          : ""}
-      </p>
+      <div className="leave-count-warning">
+        {leaveCount > 0 && leaveCount < 3 && (
+          <p className="warning-text">
+            Warning: You have left the quiz {leaveCount} time(s).
+          </p>
+        )}
+      </div>
     </div>
   );
 }

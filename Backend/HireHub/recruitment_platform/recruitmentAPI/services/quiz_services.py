@@ -21,22 +21,50 @@ class QuizService:
                 "messages": [
                     {
                         "role": "system",
-                        "content": "You are a technical interviewer creating multiple choice questions. Follow these rules strictly:\n"
-                                 "1. ALWAYS put the correct answer as the first option (index 0)\n"
-                                 "2. Keep questions and answers concise and focused\n"
-                                 "3. Each answer should be under 15 words\n"
-                                 "4. Make all answers plausible but ensure only the first one is correct\n"
-                                 "5. Ensure answers are distinct from each other\n"
-                                 "6. Format answers consistently\n"
-                                 "7. The correct answer must always be the first choice (index 0)"
+                        "content": (
+                            "You are an expert at creating job-specific quiz questions. "
+                            f"Create questions appropriate for {job.experience_level} level candidates. "
+                            "For entry-level positions, focus on basic concepts and fundamental skills. "
+                            "For mid-level positions, include practical scenarios and problem-solving. "
+                            "For senior positions, focus on strategic thinking and complex scenarios."
+                        )
                     },
                     {
                         "role": "user",
-                        "content": f"Create 10 concise multiple choice questions for a {job.title} position. "
-                                 f"Description of the job: {job.description}. "
-                                 f"Focus on these skills: {job.required_skills}. "
-                                 f"Level: {job.experience_level}. "
-                                 f"Keep answers brief and direct aligning with the job description and skills and Level of the job and always make the correct answer is the first choice."
+                        "content": (
+                            f"Create 10 multiple choice questions for a {job.title} position.\n\n"
+                            f"Job Description: {job.description}\n"
+                            f"Required Skills: {job.required_skills}\n"
+                            f"Experience Level: {job.experience_level}\n\n"
+                            "Requirements:\n"
+                            "1. Each answer must be a complete phrase\n"
+                            "2. Make answers specific and job-related\n"
+                            "3. Avoid any single-letter or number-only answers\n"
+                            "4. No cross-references between answers\n"
+                            "5. Difficulty level must match the experience level:\n"
+                            "   - Entry Level: Basic concepts and fundamentals\n"
+                            "   - Mid Level: Practical scenarios and problem-solving\n"
+                            "   - Senior Level: Strategic decisions and complex situations\n\n"
+                            "Format the response as a JSON object with this structure:\n"
+                            "{\n"
+                            "  \"questions\": [\n"
+                            "    {\n"
+                            "      \"id\": 1,\n"
+                            "      \"question\": \"What is the best approach for [scenario]?\",\n"
+                            "      \"answers\": [\n"
+                            "        \"[Correct answer as a complete phrase]\",\n"
+                            "        \"[Wrong answer 1 as a complete phrase]\",\n"
+                            "        \"[Wrong answer 2 as a complete phrase]\",\n"
+                            "        \"[Wrong answer 3 as a complete phrase]\"\n"
+                            "      ]\n"
+                            "    }\n"
+                            "  ]\n"
+                            "}\n\n"
+                            "Example difficulty levels:\n"
+                            "Entry Level: 'What is the first step when greeting a customer?'\n"
+                            "Mid Level: 'How would you handle a customer who is comparing prices with competitors?'\n"
+                            "Senior Level: 'What strategy would you implement to improve team performance during low seasons?'\n"
+                        )
                     }
                 ],
                 "response_format": {
@@ -72,7 +100,7 @@ class QuizService:
                     }
                 },
                 "temperature": 0.7,
-                "max_tokens": 1500,
+                "max_tokens": 2000,
                 "stream": False
             }
 
@@ -81,7 +109,7 @@ class QuizService:
                 response = requests.post(
                     "http://localhost:1234/v1/chat/completions",
                     json=prompt,
-                    timeout=120
+                    timeout=180
                 )
                 
                 if response.status_code != 200:
@@ -108,10 +136,15 @@ class QuizService:
 
                 # Process questions
                 questions = questions_data['questions']
-                for i, q in enumerate(questions, 1):
-                    # The first answer is always correct (no need to shuffle)
-                    q['correctAnswer'] = 1  # Always 1 since correct answer is always first
-                    q['id'] = i
+                for i, q in enumerate(questions):
+                    # Validate answer format
+                    for answer in q['answers']:
+                        if len(answer.split()) < 3 or answer.strip() in ['A', 'B', 'C', 'D'] or 'same as' in answer.lower():
+                            print(f"Invalid answer format detected: {answer}")
+                            raise ValidationError(f"Invalid answer format in question {i}")
+                    
+                    q['correctAnswer'] = 0  # First answer (index 0) is correct
+                    q['id'] = i  # Zero-based indexing to match frontend
 
                 # Shuffle questions order only (not the answers)
                 random.shuffle(questions)
