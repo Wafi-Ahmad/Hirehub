@@ -75,12 +75,18 @@ class PostDetailSerializer(PostListSerializer):
         fields = PostListSerializer.Meta.fields + ['top_level_comments']
 
     def get_top_level_comments(self, obj):
-        # Get first page of comments
-        comments = obj.comments.filter(parent_comment=None)\
-                             .select_related('user')\
-                             .prefetch_related('likes')[:5]
+        # Get comments directly from the prefetched cache if available
+        if hasattr(obj, '_prefetched_objects_cache') and 'comments' in obj._prefetched_objects_cache:
+            comments = obj._prefetched_objects_cache['comments']
+        else:
+            # Fallback to querying if not prefetched
+            comments = obj.comments.filter(parent_comment=None)\
+                                 .select_related('user')\
+                                 .prefetch_related('likes')\
+                                 .order_by('-created_at')[:5]
+        
         return CommentSerializer(
-            comments, 
-            many=True, 
+            comments,
+            many=True,
             context=self.context
         ).data

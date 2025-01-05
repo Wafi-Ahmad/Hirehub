@@ -9,6 +9,7 @@ from ..models.job_model import JobPost
 from ..models import User
 from ..serializers.job_serializers import JobResponseSerializer, CreateJobSerializer
 from .quiz_services import QuizService
+from ..models.notification_model import Notification
 import re
 
 class JobService:
@@ -47,6 +48,27 @@ class JobService:
             )
             
             job.save()
+
+            # Create notifications for all users
+            # Get all users except the company that posted the job
+            users = User.objects.exclude(id=user_id).filter(is_active=True)
+            
+            # Create notifications in bulk
+            notifications = [
+                Notification(
+                    recipient=recipient,
+                    sender=user,
+                    notification_type='NEW_JOB_POST',
+                    content=f'posted a new job: {job.title}',
+                    related_object_id=job.id,
+                    related_object_type='JobPost'
+                )
+                for recipient in users
+            ]
+            
+            # Bulk create notifications
+            if notifications:
+                Notification.objects.bulk_create(notifications)
 
             # Generate quiz for the job
             try:

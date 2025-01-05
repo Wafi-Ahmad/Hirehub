@@ -1,81 +1,35 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import connectionService from '../services/connectionService';
+import { toast } from 'react-toastify';
 
 const ConnectionContext = createContext();
 
 export const ConnectionProvider = ({ children }) => {
-  const [connections, setConnections] = useState({
-    sent: [],
-    received: [],
-    connected: []
-  });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-  const sendConnectionRequest = useCallback(async (receiverId) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await connectionService.sendRequest(receiverId);
-      setConnections(prev => ({
-        ...prev,
-        sent: [...prev.sent, { id: response.request_id, receiverId }]
-      }));
-      return response;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    const handleConnectionRequest = async (requestId, action) => {
+        setLoading(true);
+        try {
+            await connectionService.handleRequest(requestId, action);
+            toast.success(`Connection request ${action.toLowerCase()}ed successfully`);
+            return true;
+        } catch (error) {
+            console.error('Error handling connection request:', error);
+            toast.error(error.response?.data?.error || 'Failed to handle connection request');
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const handleConnectionRequest = useCallback(async (requestId, action) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await connectionService.handleRequest(requestId, action);
-      // Update connections state based on action
-      if (action === 'ACCEPT') {
-        setConnections(prev => ({
-          ...prev,
-          connected: [...prev.connected, requestId],
-          received: prev.received.filter(req => req.id !== requestId)
-        }));
-      } else {
-        setConnections(prev => ({
-          ...prev,
-          received: prev.received.filter(req => req.id !== requestId)
-        }));
-      }
-      return response;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const value = {
-    connections,
-    loading,
-    error,
-    sendConnectionRequest,
-    handleConnectionRequest
-  };
-
-  return (
-    <ConnectionContext.Provider value={value}>
-      {children}
-    </ConnectionContext.Provider>
-  );
+    return (
+        <ConnectionContext.Provider value={{
+            loading,
+            handleConnectionRequest
+        }}>
+            {children}
+        </ConnectionContext.Provider>
+    );
 };
 
-export const useConnection = () => {
-  const context = useContext(ConnectionContext);
-  if (!context) {
-    throw new Error('useConnection must be used within a ConnectionProvider');
-  }
-  return context;
-}; 
+export const useConnection = () => useContext(ConnectionContext); 

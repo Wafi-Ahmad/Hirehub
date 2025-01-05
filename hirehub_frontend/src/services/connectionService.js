@@ -1,11 +1,9 @@
-import axios from 'axios';
+import api from './api';
 
 const connectionService = {
   sendRequest: async (receiverId) => {
     try {
-      const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/send-request/${receiverId}/`
-      );
+      const response = await api.post(`/api/connections/send-request/${receiverId}/`);
       return response.data;
     } catch (error) {
       throw error;
@@ -14,22 +12,18 @@ const connectionService = {
 
   handleRequest: async (requestId, action) => {
     try {
-      const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/handle-request/${requestId}/`,
-        { action }
-      );
+      const response = await api.post(`/api/connections/handle-request/${requestId}/`, {
+        action: action
+      });
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  // Get connection status with a user
   getConnectionStatus: async (userId) => {
     try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/connection-status/${userId}/`
-      );
+      const response = await api.get(`/api/connections/status/${userId}/`);
       return response.data;
     } catch (error) {
       throw error;
@@ -37,4 +31,4 @@ const connectionService = {
   }
 };
 
-export default connectionService; 
+export default connectionService;

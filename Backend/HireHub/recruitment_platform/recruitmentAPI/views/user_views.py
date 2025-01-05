@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from ..services.user_services import UserService  # Use relative import
+from ..services.notification_services import NotificationService
 from ..serializers.user_serializers import UserSerializer, CustomLoginSerializer, UserInterestSerializer, PasswordResetRequestSerializer, PasswordResetConfirmSerializer, UserProfileSerializer  , PrivacySettingsSerializer, UserProfilePublicSerializer, ConnectionRecommendationSerializer # Use relative import
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -15,6 +16,7 @@ from django.db.models import Q
 import logging
 from recruitmentAPI.permissions import IsNormalUser, IsCompanyUser, IsNormalOrCompanyUser
 from django.conf import settings
+from ..models.notification_model import Notification
 
 User = get_user_model()
 
@@ -362,6 +364,17 @@ class FollowUserView(APIView):
             else:
                 # Follow
                 current_user.following.add(user_to_follow)
+                
+                # Create notification for the user being followed
+                Notification.objects.create(
+                    recipient=user_to_follow,
+                    sender=current_user,
+                    notification_type='NEW_FOLLOWER',
+                    content='started following you',
+                    related_object_id=current_user.id,
+                    related_object_type='User'
+                )
+                
                 return Response({
                     "message": "Successfully followed user",
                     "is_following": True,

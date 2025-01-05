@@ -5,6 +5,7 @@ from .role_model import Role
 from .connection_model import ConnectionRequest
 from .job_model import JobPost
 from .quiz_model import Quiz, QuizAttempt
+from .notification_model import Notification
 
 __all__ = [
     'User',
@@ -14,5 +15,6 @@ __all__ = [
     'ConnectionRequest',
     'JobPost',
     'Quiz',
-    'QuizAttempt'
+    'QuizAttempt',
+    'Notification'  
 ]

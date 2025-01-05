@@ -4,13 +4,15 @@ from .comment_urls import urlpatterns as comment_urls
 from .connection_urls import urlpatterns as connection_urls
 from .role_urls import urlpatterns as role_urls
 from .job_urls import urlpatterns as job_urls
+from .notification_urls import urlpatterns as notification_urls
 from django.urls import path, include
 
 urlpatterns = [
     path('user/', include(user_urls)),
-    path('post/', include(post_urls)),
+    path('posts/', include(post_urls)),
     path('comment/', include(comment_urls)),
     path('connection/', include(connection_urls)),
     path('role/', include(role_urls)),
     path('job/', include(job_urls)),
+    path('notification/', include(notification_urls)),
 ]

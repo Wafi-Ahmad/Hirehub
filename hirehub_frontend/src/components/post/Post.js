@@ -32,6 +32,7 @@ import { useAuth } from '../../context/AuthContext';
 import { usePost } from '../../context/PostContext';
 import { formatTimeAgo } from '../../utils/dateUtils';
 import { useNavigate } from 'react-router-dom';
+import Comments from '../comments/Comments';
 
 const Post = ({ post, onDelete }) => {
   const { user: currentUser } = useAuth();
@@ -54,9 +55,15 @@ const Post = ({ post, onDelete }) => {
       const response = await commentService.getComments(post.id, cursor);
       
       if (response?.data?.comments) {
-        setComments(prev => cursor ? [...prev, ...response.data.comments] : response.data.comments);
+        const newComments = response.data.comments;
+        setComments(prev => cursor ? [...prev, ...newComments] : newComments);
         setCommentCursor(response.data.next_cursor);
         setHasMoreComments(!!response.data.next_cursor);
+        
+        // Show comments section automatically if there are comments
+        if (newComments.length > 0) {
+          setShowComments(true);
+        }
       }
     } catch (error) {
       console.error('Failed to load comments:', error);
@@ -66,7 +73,7 @@ const Post = ({ post, onDelete }) => {
     }
   };
 
-  // Load comments when comment section is opened
+  // Load comments when show comments is toggled
   useEffect(() => {
     if (showComments && comments.length === 0) {
       fetchComments();
@@ -77,7 +84,7 @@ const Post = ({ post, onDelete }) => {
     if (!commentContent.trim()) return;
 
     try {
-      const response = await commentService.createComment(post.id, commentContent);
+      const response = await commentService.createComment(post.id, commentContent.trim());
       
       if (response?.data) {
         // Update local state first
@@ -89,6 +96,9 @@ const Post = ({ post, onDelete }) => {
         const newCommentCount = (post.comments_count || 0) + 1;
         updatePost(post.id, { comments_count: newCommentCount });
         
+        // Show comments section if not already shown
+        setShowComments(true);
+        
         toast.success('Comment added successfully');
       }
     } catch (error) {
@@ -97,49 +107,62 @@ const Post = ({ post, onDelete }) => {
     }
   };
 
-  const handleCommentLike = async (commentId, newLikeCount) => {
-    setComments(prevComments => 
-      prevComments.map(comment => {
-        if (comment.id === commentId) {
-          return {
-            ...comment,
-            is_liked: !comment.is_liked,
-            likes_count: newLikeCount
-          };
-        }
-        if (comment.replies?.length > 0) {
-          return {
-            ...comment,
-            replies: comment.replies.map(reply =>
-              reply.id === commentId
-                ? {
-                    ...reply,
-                    is_liked: !reply.is_liked,
-                    likes_count: newLikeCount
-                  }
-                : reply
-            )
-          };
-        }
-        return comment;
-      })
-    );
+  const handleCommentLike = async (commentId) => {
+    try {
+      const response = await commentService.toggleLike(commentId);
+      
+      if (response?.data) {
+        setComments(prevComments => 
+          prevComments.map(comment => {
+            if (comment.id === commentId) {
+              return {
+                ...comment,
+                is_liked: !comment.is_liked,
+                likes_count: response.data.likes_count
+              };
+            }
+            if (comment.replies?.length > 0) {
+              return {
+                ...comment,
+                replies: comment.replies.map(reply =>
+                  reply.id === commentId
+                    ? {
+                        ...reply,
+                        is_liked: !reply.is_liked,
+                        likes_count: response.data.likes_count
+                      }
+                    : reply
+                )
+              };
+            }
+            return comment;
+          })
+        );
+      }
+    } catch (error) {
+      console.error('Failed to toggle comment like:', error);
+      toast.error('Failed to update like');
+    }
   };
 
   const handleDeleteComment = async (commentId) => {
     try {
       await commentService.deleteComment(commentId);
       
+      // Update local state
       setComments(prevComments => {
         const filteredComments = prevComments.filter(c => c.id !== commentId);
-        return filteredComments.map(comment => ({
+        const updatedComments = filteredComments.map(comment => ({
           ...comment,
           replies: comment.replies?.filter(reply => reply.id !== commentId) || []
         }));
+        return updatedComments;
       });
       
+      // Update post comment count
       const newCommentCount = Math.max(0, (post.comments_count || 0) - 1);
       updatePost(post.id, { comments_count: newCommentCount });
+      
       toast.success('Comment deleted successfully');
     } catch (error) {
       console.error('Failed to delete comment:', error);
@@ -164,7 +187,14 @@ const Post = ({ post, onDelete }) => {
       });
 
       // Make API call
-      await postService.toggleLike(post.id);
+      const response = await postService.toggleLike(post.id);
+      
+      // Update with actual server response if different
+      if (response?.data?.likes_count !== newLikeCount) {
+        updatePost(post.id, {
+          likes_count: response.data.likes_count
+        });
+      }
     } catch (error) {
       console.error('Failed to update like:', error);
       toast.error('Failed to update like');
@@ -279,7 +309,7 @@ const Post = ({ post, onDelete }) => {
   };
 
   return (
-    <Card sx={{ mb: 3, borderRadius: 2 }}>
+    <Card sx={{ mb: 2 }}>
       <CardHeader
         avatar={
           <Avatar 
@@ -332,98 +362,79 @@ const Post = ({ post, onDelete }) => {
       <Divider />
       
       <CardActions disableSpacing>
-        <Box sx={{ width: '100%', display: 'flex', gap: 2 }}>
-          <Button
-            startIcon={
-              <ThumbUpIcon 
-                sx={{ 
-                  color: post.is_liked ? 'primary.main' : 'inherit'
-                }}
-              />
-            }
-            onClick={handleLikePost}
-            size="small"
-            sx={{
-              color: post.is_liked ? 'primary.main' : 'inherit',
-              '&:hover': {
-                backgroundColor: 'rgba(25, 118, 210, 0.04)'
-              }
-            }}
-          >
-            {post.likes_count || 0} {post.likes_count === 1 ? 'Like' : 'Likes'}
-          </Button>
-          <Button
-            startIcon={<CommentIcon />}
-            onClick={() => setShowComments(!showComments)}
-            size="small"
-          >
-            {post.comments_count || 0} Comments
-          </Button>
-        </Box>
+        <IconButton 
+          onClick={handleLikePost}
+          color={post.is_liked ? "primary" : "default"}
+        >
+          <ThumbUpIcon />
+        </IconButton>
+        <Typography variant="body2" color="text.secondary">
+          {post.likes_count || 0}
+        </Typography>
+        
+        <IconButton onClick={() => setShowComments(!showComments)}>
+          <CommentIcon />
+        </IconButton>
+        <Typography variant="body2" color="text.secondary">
+          {post.comments_count || 0}
+        </Typography>
       </CardActions>
 
       {showComments && (
-        <Box sx={{ p: 2, pt: 0 }}>
-          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-            <Avatar 
-              src={currentUser?.profile_picture} 
-              sx={{ width: 32, height: 32 }}
+        <Box sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', mb: 2 }}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Write a comment..."
+              value={commentContent}
+              onChange={(e) => setCommentContent(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleComment();
+                }
+              }}
             />
-            <Box sx={{ flex: 1 }}>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Write a comment..."
-                value={commentContent}
-                onChange={(e) => setCommentContent(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleComment();
-                  }
-                }}
-              />
-            </Box>
+            <Button 
+              variant="contained" 
+              sx={{ ml: 1 }}
+              onClick={handleComment}
+              disabled={!commentContent.trim()}
+            >
+              Post
+            </Button>
           </Box>
 
-          {comments.map((comment) => (
-            <Comment
-              key={comment.id}
-              comment={comment}
-              postId={post.id}
-              onDelete={handleDeleteComment}
-              onLike={handleCommentLike}
-              currentUser={currentUser}
-            />
-          ))}
-
-          {hasMoreComments && (
-            <Box sx={{ textAlign: 'center', mt: 2 }}>
-              <Button
-                size="small"
-                onClick={() => fetchComments(commentCursor)}
-                disabled={loadingComments}
-              >
-                {loadingComments ? <CircularProgress size={20} /> : 'Load more comments'}
-              </Button>
+          {loadingComments ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+              <CircularProgress size={24} />
             </Box>
+          ) : (
+            <>
+              {comments.map((comment) => (
+                <Comment
+                  key={comment.id}
+                  comment={comment}
+                  onLike={handleCommentLike}
+                  onDelete={handleDeleteComment}
+                  onReply={handleComment}
+                  currentUser={currentUser}
+                />
+              ))}
+              
+              {hasMoreComments && (
+                <Button
+                  fullWidth
+                  onClick={() => fetchComments(commentCursor)}
+                  disabled={loadingComments}
+                >
+                  Load More Comments
+                </Button>
+              )}
+            </>
           )}
         </Box>
-      )}
-
-      {isPostOwner && (
-        <>
-          <IconButton onClick={handleMenuClick}>
-            <MoreVertIcon />
-          </IconButton>
-          <Menu
-            anchorEl={anchorEl}
-            open={Boolean(anchorEl)}
-            onClose={handleMenuClose}
-          >
-            <MenuItem onClick={handleDelete}>Delete</MenuItem>
-          </Menu>
-        </>
       )}
     </Card>
   );

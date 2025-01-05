@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.conf import settings
 import time
 from django.db.models import Q
+from ..models.notification_model import Notification
 
 class PostService:
     MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -41,6 +42,17 @@ class PostService:
                 post_data['media_type'] = 'both'
 
             post = Post.objects.create(**post_data)
+            
+            # Create notifications for followers using IDs
+            for follower_id in user.followers.values_list('id', flat=True):
+                Notification.objects.create(
+                    recipient_id=follower_id,
+                    sender_id=user.id,
+                    notification_type='NEW_POST',
+                    content='created a new post',
+                    related_object_id=post.id,
+                    related_object_type='Post'
+                )
             
             # Delete all feed-related caches
             keys_to_delete = [
@@ -203,26 +215,37 @@ class PostService:
             return cached_post
 
         try:
+            # Get the post with all necessary relations
             post = Post.objects.select_related(
                 'user'
             ).prefetch_related(
-                'likes',
-                Prefetch(
-                    'comments',
-                    queryset=Comment.objects.filter(
-                        parent_comment=None
-                    ).select_related(
-                        'user'
-                    ).prefetch_related(
-                        'likes'
-                    )[:5]
-                )
+                'likes'
             ).get(
                 id=post_id,
                 is_active=True,
                 is_hidden=False
             )
 
+            # Fetch top-level comments with all necessary relations
+            comments = list(Comment.objects.filter(
+                post_id=post_id,
+                parent_comment=None
+            ).select_related(
+                'user'
+            ).prefetch_related(
+                'likes'
+            ).order_by('-created_at')[:5])
+
+            # Manually set the prefetched comments
+            post._prefetched_objects_cache = {
+                'comments': comments
+            }
+
+            # Add user-specific data
+            if user:
+                post.user_has_liked = user in post.likes.all()
+
+            # Cache the result
             cache.set(cache_key, post, PostService.CACHE_TTL)
             return post
 
@@ -242,6 +265,16 @@ class PostService:
             else:
                 post.add_like(user)
                 action = 'liked'
+                # Create notification for post owner
+                if post.user != user:  # Don't notify if user likes their own post
+                    Notification.objects.create(
+                        recipient=post.user,
+                        sender=user,
+                        notification_type='POST_LIKE',
+                        content='liked your post',
+                        related_object_id=post.id,
+                        related_object_type='Post'
+                    )
             
             post.update_counts()
             

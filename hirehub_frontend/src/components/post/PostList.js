@@ -1,13 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import { Box, Button, CircularProgress, Paper, Typography } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { usePost } from '../../context/PostContext';
 import Post from './Post';
 
 const PostList = ({ userId = null }) => {
   const { posts, loading, error, hasMore, cursor, fetchPosts, clearPosts } = usePost();
   const navigate = useNavigate();
+  const location = useLocation();
   const prevUserIdRef = useRef(userId);
+  const postRefs = useRef({});
 
   useEffect(() => {
     const loadPosts = async () => {
@@ -19,18 +21,30 @@ const PostList = ({ userId = null }) => {
       
       // Fetch new posts
       await fetchPosts(null, userId);
+
+      // Handle scrolling to specific post if needed
+      if (location.state?.scrollToPostId) {
+        setTimeout(() => {
+          const postElement = postRefs.current[location.state.scrollToPostId];
+          if (postElement) {
+            postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (location.state.highlightPost) {
+              postElement.style.animation = 'highlight 2s';
+            }
+          }
+        }, 500);
+      }
     };
 
     loadPosts();
 
     // Cleanup function
     return () => {
-      // Only clear if we're actually changing users
       if (prevUserIdRef.current !== userId) {
         clearPosts();
       }
     };
-  }, [userId, fetchPosts, clearPosts]);
+  }, [userId, fetchPosts, clearPosts, location.state]);
 
   const loadMorePosts = () => {
     if (cursor) {
@@ -77,8 +91,20 @@ const PostList = ({ userId = null }) => {
 
   return (
     <Box>
+      <style>
+        {`
+          @keyframes highlight {
+            0% { background-color: rgba(25, 118, 210, 0.1); }
+            100% { background-color: transparent; }
+          }
+        `}
+      </style>
       {posts.map((post) => (
-        <Box key={post.id} sx={{ mb: 2 }}>
+        <Box 
+          key={post.id} 
+          sx={{ mb: 2 }}
+          ref={el => postRefs.current[post.id] = el}
+        >
           <Post post={post} />
         </Box>
       ))}

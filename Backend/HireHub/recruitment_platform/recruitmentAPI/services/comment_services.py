@@ -6,6 +6,8 @@ from recruitmentAPI.models.comment_model import Comment
 
 from recruitmentAPI.models.post_model import Post
 
+from ..models.notification_model import Notification
+
 
 
 class CommentService:
@@ -68,6 +70,28 @@ class CommentService:
 
             
 
+            # Create notification for post owner
+
+            if post.user_id != user.id:  # Don't notify if user comments on their own post
+
+                Notification.objects.create(
+
+                    recipient_id=post.user_id,
+
+                    sender_id=user.id,
+
+                    notification_type='POST_COMMENT',
+
+                    content='commented on your post',
+
+                    related_object_id=post.id,
+
+                    related_object_type='Post'
+
+                )
+
+            
+
             return comment
 
         except Post.DoesNotExist:
@@ -121,6 +145,28 @@ class CommentService:
                 parent_comment=parent_comment
 
             )
+
+            
+
+            # Create notification for comment owner
+
+            if parent_comment.user_id != user.id:  # Don't notify if user replies to their own comment
+
+                Notification.objects.create(
+
+                    recipient_id=parent_comment.user_id,
+
+                    sender_id=user.id,
+
+                    notification_type='COMMENT_REPLY',
+
+                    content='replied to your comment',
+
+                    related_object_id=parent_comment.post.id,
+
+                    related_object_type='Post'
+
+                )
 
             
 
@@ -271,6 +317,26 @@ class CommentService:
                 comment.add_like(user)
 
                 action = 'liked'
+
+                # Create notification for comment owner
+
+                if comment.user_id != user.id:  # Don't notify if user likes their own comment
+
+                    Notification.objects.create(
+
+                        recipient_id=comment.user_id,
+
+                        sender_id=user.id,
+
+                        notification_type='COMMENT_LIKE',
+
+                        content='liked your comment',
+
+                        related_object_id=comment.post.id,
+
+                        related_object_type='Post'
+
+                    )
 
             
 

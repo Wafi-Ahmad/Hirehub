@@ -7,6 +7,7 @@ import numpy as np
 import json
 from django.conf import settings
 import torch
+from ..models.notification_model import Notification
 
 class UserService:
     # Initialize the embedding model (will be loaded only once)
@@ -339,3 +340,38 @@ class UserService:
         except Exception as e:
             print(f"Error in get_connection_recommendations: {str(e)}")
             raise e
+
+    @staticmethod
+    def handle_follow(current_user, user_to_follow):
+        """Handle follow/unfollow action and create notification"""
+        is_following = current_user.following.filter(id=user_to_follow.id).exists()
+
+        if is_following:
+            # Unfollow
+            current_user.following.remove(user_to_follow)
+            return {
+                "message": "Successfully unfollowed user",
+                "is_following": False,
+                "followers_count": user_to_follow.followers.count(),
+                "following_count": user_to_follow.following.count()
+            }
+        else:
+            # Follow
+            current_user.following.add(user_to_follow)
+            
+            # Create notification
+            Notification.objects.create(
+                recipient=user_to_follow,
+                sender=current_user,
+                notification_type='NEW_FOLLOWER',
+                content='started following you',
+                related_object_id=current_user.id,
+                related_object_type='User'
+            )
+            
+            return {
+                "message": "Successfully followed user",
+                "is_following": True,
+                "followers_count": user_to_follow.followers.count(),
+                "following_count": user_to_follow.following.count()
+            }

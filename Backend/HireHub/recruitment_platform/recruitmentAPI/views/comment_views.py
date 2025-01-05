@@ -256,7 +256,9 @@ class CommentLikeView(APIView):
 
                 "message": f"Comment {action} successfully",
 
-                "likes_count": comment.likes_count
+                "likes_count": comment.likes_count,
+
+                "is_liked": action == 'liked'
 
             })
 

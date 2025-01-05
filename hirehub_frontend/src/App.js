@@ -5,8 +5,8 @@ import { ProfileProvider } from './context/ProfileContext';
 import { ConnectionProvider } from './context/ConnectionContext';
 import { PostProvider } from './context/PostContext';
 import { JobProvider } from './context/JobContext';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { NotificationProvider } from './context/NotificationContext';
+import { Toaster } from 'react-hot-toast';
 import AppRoutes from './routes';
 
 function App() {
@@ -17,8 +17,10 @@ function App() {
           <ConnectionProvider>
             <PostProvider>
               <JobProvider>
-                <AppRoutes />
-                <ToastContainer position="top-right" autoClose={5000} />
+                <NotificationProvider>
+                  <AppRoutes />
+                  <Toaster position="top-right" />
+                </NotificationProvider>
               </JobProvider>
             </PostProvider>
           </ConnectionProvider>

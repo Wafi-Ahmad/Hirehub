@@ -19,6 +19,7 @@ import SearchBar from './SearchBar';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import WorkIcon from '@mui/icons-material/Work';
 import { USER_TYPES } from '../../utils/permissions';
+import NotificationMenu from '../notifications/NotificationMenu';
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -100,6 +101,7 @@ const Navbar = () => {
         {/* Auth Section */}
         {isAuthenticated ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <NotificationMenu />
             {user?.userType === USER_TYPES.COMPANY && (
               <Button
                 variant="contained"
