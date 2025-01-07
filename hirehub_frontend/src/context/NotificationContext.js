@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { notificationService } from '../services/notificationService';
 import { toast } from 'react-hot-toast';
+import { useAuth } from './AuthContext';
 
 const NotificationContext = createContext(null);
 
@@ -13,11 +14,14 @@ export const useNotification = () => {
 };
 
 export const NotificationProvider = ({ children }) => {
+    const { isAuthenticated } = useAuth();
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(false);
 
     const fetchNotifications = async () => {
+        if (!isAuthenticated) return;
+        
         try {
             setLoading(true);
             const response = await notificationService.getNotifications();
@@ -25,20 +29,27 @@ export const NotificationProvider = ({ children }) => {
             setUnreadCount(response.data.unread_count);
         } catch (error) {
             console.error('Error fetching notifications:', error);
-            toast.error('Failed to fetch notifications');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchNotifications();
-        // Set up polling for new notifications
-        const interval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
-        return () => clearInterval(interval);
-    }, []);
+        if (isAuthenticated) {
+            fetchNotifications();
+            // Set up polling for new notifications only when authenticated
+            const interval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
+            return () => clearInterval(interval);
+        } else {
+            // Clear notifications when not authenticated
+            setNotifications([]);
+            setUnreadCount(0);
+        }
+    }, [isAuthenticated]);
 
     const markAsRead = async (notificationId) => {
+        if (!isAuthenticated) return;
+        
         try {
             await notificationService.markAsRead([notificationId]);
             setNotifications(prev => 

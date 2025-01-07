@@ -14,6 +14,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import connectionService from '../../services/connectionService';
 import { formatTimeAgo } from '../../utils/dateUtils';
@@ -21,6 +22,7 @@ import { formatTimeAgo } from '../../utils/dateUtils';
 const NotificationMenu = () => {
     const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = useState(null);
+    const { isAuthenticated } = useAuth();
     const { 
         notifications, 
         markAsRead, 
@@ -29,6 +31,11 @@ const NotificationMenu = () => {
         setUnreadCount,
         unreadCount
     } = useNotification();
+
+    // Don't render anything if not authenticated
+    if (!isAuthenticated) {
+        return null;
+    }
 
     const handleClick = (event) => {
         setAnchorEl(event.currentTarget);

@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { commentService } from '../../services/commentService';
 import { toast } from 'react-toastify';
 import { formatDistanceToNow } from 'date-fns';
+import Comment from '../post/Comment';  // Import the reply Comment component
 
 const Comments = ({ postId, onCommentAdded }) => {
     const { user } = useAuth();
@@ -71,19 +72,34 @@ const Comments = ({ postId, onCommentAdded }) => {
         }
     };
 
+    // Handle Like for both comments and replies
     const handleLikeComment = async (commentId) => {
         try {
             const response = await commentService.toggleLike(commentId);
-            setComments(prev => prev.map(comment => {
-                if (comment.id === commentId) {
-                    return {
-                        ...comment,
-                        is_liked: !comment.is_liked,
-                        likes_count: response.data.likes_count
-                    };
-                }
-                return comment;
-            }));
+            const newIsLiked = response.data.is_liked;
+            const newLikesCount = parseInt(response.data.likes_count);
+
+            // Console log to check updates
+            console.log('Comment Liked:', commentId, newIsLiked, newLikesCount);
+
+            // Update both comments and replies state
+            setComments(prevComments =>
+                prevComments.map(comment => {
+                    if (comment.id === commentId) {
+                        // Update main comment
+                        return { ...comment, is_liked: newIsLiked, likes_count: newLikesCount };
+                    }
+                    if (comment.replies && comment.replies.length > 0) {
+                        const updatedReplies = comment.replies.map(reply =>
+                            reply.id === commentId
+                                ? { ...reply, is_liked: newIsLiked, likes_count: newLikesCount }
+                                : reply
+                        );
+                        return { ...comment, replies: updatedReplies };
+                    }
+                    return comment;
+                })
+            );
         } catch (error) {
             console.error('Failed to like comment:', error);
             toast.error('Failed to update like');
@@ -108,14 +124,14 @@ const Comments = ({ postId, onCommentAdded }) => {
         <Box sx={{ p: 2 }}>
             {/* Comment Input */}
             <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
-                <Avatar 
-                    src={user?.profile_image} 
+                <Avatar
+                    src={user?.profile_image}
                     alt={user?.full_name}
                     sx={{ width: 32, height: 32 }}
                 />
-                <Box 
-                    component="form" 
-                    onSubmit={handleSubmitComment} 
+                <Box
+                    component="form"
+                    onSubmit={handleSubmitComment}
                     sx={{ flex: 1, display: 'flex', gap: 1 }}
                 >
                     <TextField
@@ -126,9 +142,9 @@ const Comments = ({ postId, onCommentAdded }) => {
                         onChange={(e) => setNewComment(e.target.value)}
                         disabled={submitting}
                     />
-                    <Button 
-                        type="submit" 
-                        variant="contained" 
+                    <Button
+                        type="submit"
+                        variant="contained"
                         size="small"
                         disabled={submitting || !newComment.trim()}
                     >
@@ -141,8 +157,8 @@ const Comments = ({ postId, onCommentAdded }) => {
             {comments.map(comment => (
                 <Box key={comment.id} sx={{ mb: 2 }}>
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Avatar 
-                            src={comment.user.profile_image} 
+                        <Avatar
+                            src={comment.user.profile_image}
                             alt={comment.user.full_name}
                             sx={{ width: 32, height: 32 }}
                         />
@@ -156,8 +172,8 @@ const Comments = ({ postId, onCommentAdded }) => {
                                 </Typography>
                             </Box>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                <IconButton 
-                                    size="small" 
+                                <IconButton
+                                    size="small"
                                     onClick={() => handleLikeComment(comment.id)}
                                     color={comment.is_liked ? "primary" : "default"}
                                 >
@@ -170,8 +186,8 @@ const Comments = ({ postId, onCommentAdded }) => {
                                     {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                                 </Typography>
                                 {comment.user.id === user?.id && (
-                                    <IconButton 
-                                        size="small" 
+                                    <IconButton
+                                        size="small"
                                         onClick={() => handleDeleteComment(comment.id)}
                                         color="error"
                                     >
@@ -179,6 +195,18 @@ const Comments = ({ postId, onCommentAdded }) => {
                                     </IconButton>
                                 )}
                             </Box>
+
+                            {/* Replies Section */}
+                            {comment.replies?.map(reply => (
+                                <Box key={reply.id} sx={{ ml: 4, mt: 1 }}>
+                                    <Comment
+                                        comment={reply}
+                                        onLike={handleLikeComment} // Ensure correct handler is passed
+                                        onDelete={handleDeleteComment}
+                                        currentUser={user}
+                                    />
+                                </Box>
+                            ))}
                         </Box>
                     </Box>
                 </Box>
@@ -187,8 +215,8 @@ const Comments = ({ postId, onCommentAdded }) => {
             {/* Load More Button */}
             {hasMore && (
                 <Box sx={{ textAlign: 'center', mt: 2 }}>
-                    <Button 
-                        onClick={fetchComments} 
+                    <Button
+                        onClick={fetchComments}
                         disabled={loading}
                         size="small"
                     >
@@ -200,4 +228,4 @@ const Comments = ({ postId, onCommentAdded }) => {
     );
 };
 
-export default Comments; 
+export default Comments;

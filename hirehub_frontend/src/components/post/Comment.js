@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -18,13 +18,18 @@ import { formatTimeAgo } from '../../utils/dateUtils';
 import { commentService } from '../../services/commentService';
 import { toast } from 'react-toastify';
 
-const Comment = ({ comment, onLike, onDelete, onReply, currentUser }) => {
+const Comment = ({ comment: initialComment, onLike, onDelete, onReply, currentUser }) => {
   const [replyContent, setReplyContent] = useState('');
   const [showReplyInput, setShowReplyInput] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [replies, setReplies] = useState(comment.replies || []);
+  const [replies, setReplies] = useState(initialComment.replies || []);
   const [showReplies, setShowReplies] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+  const [commentState, setCommentState] = useState(initialComment);
+
+  useEffect(() => {
+    setCommentState(initialComment);
+  }, [initialComment]);
 
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -37,21 +42,38 @@ const Comment = ({ comment, onLike, onDelete, onReply, currentUser }) => {
   const handleLike = async () => {
     if (isLiking) return;
     try {
-      setIsLiking(true);
-      await onLike(comment.id);
+        setIsLiking(true);
+        const response = await commentService.toggleLike(commentState.id);
+
+        const updatedComment = {
+            ...commentState,
+            is_liked: response.data.is_liked,
+            likes_count: response.data.likes_count,
+        };
+        setCommentState(updatedComment); // Update local state for the comment
+
+        // If it's a reply being liked, ensure the replies list updates
+        setReplies((prevReplies) =>
+            prevReplies.map((reply) =>
+                reply.id === commentState.id
+                    ? { ...reply, is_liked: response.data.is_liked, likes_count: response.data.likes_count }
+                    : reply
+            )
+        );
     } catch (error) {
-      console.error('Failed to like comment:', error);
-      toast.error('Failed to like comment');
+        console.error('Failed to like reply:', error);
+        toast.error('Failed to like reply');
     } finally {
-      setIsLiking(false);
+        setIsLiking(false);
     }
-  };
+};
+
 
   const handleReply = async () => {
     if (!replyContent.trim()) return;
 
     try {
-      const response = await commentService.createReply(comment.id, replyContent.trim());
+      const response = await commentService.createReply(commentState.id, replyContent.trim());
       
       if (response?.data) {
         setReplies(prev => [...prev, response.data]);
@@ -68,15 +90,15 @@ const Comment = ({ comment, onLike, onDelete, onReply, currentUser }) => {
 
   const handleDelete = () => {
     handleMenuClose();
-    onDelete(comment.id);
+    onDelete(commentState.id);
   };
 
   return (
     <Box sx={{ mb: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
         <Avatar
-          src={comment.user.profile_picture}
-          alt={comment.user.username}
+          src={commentState.user.profile_picture}
+          alt={commentState.user.username}
           sx={{ width: 32, height: 32 }}
         />
         <Box sx={{ flex: 1 }}>
@@ -89,10 +111,10 @@ const Comment = ({ comment, onLike, onDelete, onReply, currentUser }) => {
             }}
           >
             <Typography variant="subtitle2">
-              {comment.user.username}
+              {commentState.user.username}
             </Typography>
             <Typography variant="body2">
-              {comment.content}
+              {commentState.content}
             </Typography>
           </Box>
           
@@ -101,12 +123,12 @@ const Comment = ({ comment, onLike, onDelete, onReply, currentUser }) => {
               size="small"
               onClick={handleLike}
               disabled={isLiking}
-              color={comment.is_liked ? "primary" : "default"}
+              color={commentState.is_liked ? "primary" : "default"}
             >
               <ThumbUpIcon fontSize="small" />
             </IconButton>
             <Typography variant="caption">
-              {comment.likes_count || 0}
+              {commentState.likes_count || 0}
             </Typography>
             <Button
               size="small"
@@ -116,10 +138,10 @@ const Comment = ({ comment, onLike, onDelete, onReply, currentUser }) => {
               Reply
             </Button>
             <Typography variant="caption" color="text.secondary">
-              {formatTimeAgo(comment.created_at)}
+              {formatTimeAgo(commentState.created_at)}
             </Typography>
             
-            {(currentUser?.id === comment.user.id) && (
+            {(currentUser?.id === commentState.user.id) && (
               <>
                 <IconButton size="small" onClick={handleMenuClick}>
                   <MoreVertIcon fontSize="small" />
