@@ -39,19 +39,23 @@ const JobQuiz = () => {
             setLoading(true);
             setError(null);
             const data = await quizService.getJobQuiz(jobId);
-            if (data.message === "You have already attempted this quiz") {
-                setPreviousAttempt(data.result);
-                setError("You have already attempted this quiz");
-            } else {
-                setQuizData(data);
-            }
+            setQuizData(data);
         } catch (err) {
             console.error('Quiz load error:', err);
-            setError(err.message || 'Failed to load quiz');
-            if (err.message === "You have already attempted this quiz" && err.result) {
-                setPreviousAttempt(err.result);
+            if (err.response?.data?.message === 'You have already taken this quiz') {
+                const result = err.response.data;
+                setPreviousAttempt({
+                    message: result.message,
+                    score: result.score,
+                    correct_count: result.correct_count,
+                    total_questions: result.total_questions
+                });
+                if (result.score >= PASS_THRESHOLD) {
+                    setShowCVUpload(true);
+                }
+            } else {
+                setError(err.message || 'Failed to load quiz');
             }
-            toast.error(err.message || 'Failed to load quiz');
         } finally {
             setLoading(false);
         }
@@ -60,17 +64,17 @@ const JobQuiz = () => {
     const handleSubmit = async (answers) => {
         try {
             setSubmitting(true);
-            if (!quizData?.quiz_id) {
+            if (!quizData?.id) {
                 throw new Error('Quiz ID not found');
             }
 
-            // Convert answers object to use string keys
+            // Convert answers to match backend format
             const formattedAnswers = {};
             Object.entries(answers).forEach(([key, value]) => {
                 formattedAnswers[key.toString()] = value;
             });
 
-            const result = await quizService.submitQuiz(quizData.quiz_id, formattedAnswers);
+            const result = await quizService.submitQuiz(jobId, formattedAnswers);
             setQuizResult(result);
             setPreviousAttempt(result);
             if (result.score >= PASS_THRESHOLD) {
@@ -78,7 +82,12 @@ const JobQuiz = () => {
             }
         } catch (err) {
             console.error('Quiz submission error:', err);
-            toast.error(err.message || 'Failed to submit quiz');
+            if (err.response?.data) {
+                setPreviousAttempt(err.response.data);
+                setError(err.response.data.message);
+            } else {
+                setError(err.message || 'Failed to submit quiz');
+            }
         } finally {
             setSubmitting(false);
         }
@@ -177,7 +186,7 @@ const JobQuiz = () => {
         <Container maxWidth="lg" sx={{ mt: 12, mb: 4 }}>
             {quizData && (
                 <QuizUI
-                    questions={quizData.questions}
+                    questions={quizData.questions.questions}
                     onSubmit={handleSubmit}
                     submitting={submitting}
                 />

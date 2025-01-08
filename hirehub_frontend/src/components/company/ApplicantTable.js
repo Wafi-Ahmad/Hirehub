@@ -27,6 +27,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import PersonIcon from '@mui/icons-material/Person';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { quizService } from '../../services/quizService';
+import moment from 'moment';
 
 const ApplicantTable = ({ jobId }) => {
     const [applicants, setApplicants] = useState([]);
@@ -74,13 +75,11 @@ const ApplicantTable = ({ jobId }) => {
     const handleCVClick = (cvUrl, action) => {
         if (!cvUrl) return;
         
-        const fullUrl = cvUrl.startsWith('http') ? cvUrl : `${process.env.REACT_APP_API_URL}${cvUrl}`;
-        
         if (action === 'view') {
-            setSelectedCV(fullUrl);
+            setSelectedCV(cvUrl);
             setOpenCVDialog(true);
         } else if (action === 'download') {
-            window.open(fullUrl, '_blank');
+            window.open(cvUrl, '_blank');
         }
     };
 
@@ -137,7 +136,7 @@ const ApplicantTable = ({ jobId }) => {
                                     <TableCell>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                             <Avatar
-                                                src={applicant.profile_picture ? `${process.env.REACT_APP_API_URL}${applicant.profile_picture}` : undefined}
+                                                src={applicant.profile_picture}
                                                 alt={applicant.full_name}
                                             >
                                                 {!applicant.profile_picture && <PersonIcon />}
@@ -145,7 +144,7 @@ const ApplicantTable = ({ jobId }) => {
                                             <Link
                                                 component="button"
                                                 variant="body1"
-                                                onClick={() => handleProfileClick(applicant.user_id)}
+                                                onClick={() => handleProfileClick(applicant.id)}
                                                 underline="hover"
                                             >
                                                 {applicant.full_name}
@@ -154,39 +153,37 @@ const ApplicantTable = ({ jobId }) => {
                                     </TableCell>
                                     <TableCell>{applicant.email}</TableCell>
                                     <TableCell align="center">
-                                        <Typography
-                                            color={applicant.quiz_score >= 70 ? 'success.main' : 'error.main'}
-                                            fontWeight="bold"
-                                        >
+                                        <Typography color={applicant.quiz_score >= 60 ? 'success.main' : 'error.main'}>
                                             {applicant.quiz_score}%
                                         </Typography>
                                     </TableCell>
                                     <TableCell align="center">
-                                        <Typography
-                                            color={applicant.match_score >= 70 ? 'success.main' : 'warning.main'}
-                                            fontWeight="bold"
-                                        >
-                                            {(applicant.match_score).toFixed(1)}%
+                                        <Typography color={applicant.match_score >= 70 ? 'success.main' : 'warning.main'}>
+                                            {Math.round(applicant.match_score)}%
                                         </Typography>
                                     </TableCell>
                                     <TableCell align="center">
-                                        {applicant.cv_url && (
-                                            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                                        {applicant.cv_url ? (
+                                            <Box>
                                                 <Tooltip title="View CV">
-                                                    <IconButton onClick={() => handleCVClick(applicant.cv_url, 'view')}>
+                                                    <IconButton onClick={() => handleCVClick(applicant.cv_url, 'view')} size="small">
                                                         <VisibilityIcon />
                                                     </IconButton>
                                                 </Tooltip>
                                                 <Tooltip title="Download CV">
-                                                    <IconButton onClick={() => handleCVClick(applicant.cv_url, 'download')}>
+                                                    <IconButton onClick={() => handleCVClick(applicant.cv_url, 'download')} size="small">
                                                         <DescriptionIcon />
                                                     </IconButton>
                                                 </Tooltip>
                                             </Box>
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary">
+                                                No CV uploaded
+                                            </Typography>
                                         )}
                                     </TableCell>
                                     <TableCell align="center">
-                                        {new Date(applicant.applied_date).toLocaleDateString()}
+                                        {moment(applicant.applied_at).format('MMM DD, YYYY')}
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -206,14 +203,14 @@ const ApplicantTable = ({ jobId }) => {
             <Dialog
                 open={openCVDialog}
                 onClose={handleCloseCVDialog}
-                maxWidth="lg"
+                maxWidth="md"
                 fullWidth
             >
                 <DialogTitle>CV Preview</DialogTitle>
                 <DialogContent>
                     <iframe
                         src={selectedCV}
-                        style={{ width: '100%', height: '80vh', border: 'none' }}
+                        style={{ width: '100%', height: '70vh', border: 'none' }}
                         title="CV Preview"
                     />
                 </DialogContent>

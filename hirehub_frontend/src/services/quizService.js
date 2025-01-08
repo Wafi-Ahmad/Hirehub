@@ -6,17 +6,16 @@ export const quizService = {
             const response = await api.get(`/jobs/${jobId}/quiz/`);
             return response.data;
         } catch (error) {
-            if (error.response?.status === 400 && error.response?.data?.message === 'You have already attempted this quiz') {
-                error.result = error.response.data.result;
+            if (error.response?.status === 400) {
                 throw error;
             }
             throw error.response?.data || error.message;
         }
     },
 
-    submitQuiz: async (quizId, answers) => {
+    submitQuiz: async (jobId, answers) => {
         try {
-            const response = await api.post(`/jobs/quiz/${quizId}/submit/`, { answers });
+            const response = await api.post(`/jobs/${jobId}/quiz/submit/`, { answers });
             return response.data;
         } catch (error) {
             console.error('Quiz submission error:', error.response?.data || error);
@@ -24,9 +23,9 @@ export const quizService = {
         }
     },
 
-    getQuizResult: async (quizId) => {
+    getQuizResult: async (jobId) => {
         try {
-            const response = await api.get(`/jobs/quiz/${quizId}/result/`);
+            const response = await api.get(`/jobs/${jobId}/quiz/result/`);
             return response.data;
         } catch (error) {
             throw error.response?.data || error.message;
