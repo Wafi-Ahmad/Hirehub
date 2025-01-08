@@ -142,8 +142,12 @@ class JobApplicantsView(APIView):
         try:
             job = get_object_or_404(JobPost, pk=job_id)
             
-            # Get applicants for this job through quiz attempts
-            quiz_attempts = QuizAttempt.objects.filter(quiz__job=job).select_related('user')
+            # Get applicants who passed the quiz
+            quiz = get_object_or_404(Quiz, job=job)
+            quiz_attempts = QuizAttempt.objects.filter(
+                quiz__job=job,
+                score__gte=quiz.passing_score
+            ).select_related('user')
             
             applicants_data = []
             for attempt in quiz_attempts:
@@ -160,7 +164,7 @@ class JobApplicantsView(APIView):
                     'match_score': JobMatchingService.calculate_match_score(job, applicant),
                     'cv_url': cv_url,
                     'profile_picture': profile_picture_url,
-                    'applied_at': applicant.cv_upload_date or attempt.started_at  # Use CV upload date if available, otherwise quiz start date
+                    'applied_at': applicant.cv_upload_date or attempt.started_at
                 })
             
             return Response(applicants_data)

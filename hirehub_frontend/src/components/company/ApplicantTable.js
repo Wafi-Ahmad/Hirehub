@@ -26,8 +26,11 @@ import { useNavigate } from 'react-router-dom';
 import DescriptionIcon from '@mui/icons-material/Description';
 import PersonIcon from '@mui/icons-material/Person';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import EmailIcon from '@mui/icons-material/Email';
 import { quizService } from '../../services/quizService';
+import { jobService } from '../../services/jobService';
 import moment from 'moment';
+import { toast } from 'react-toastify';
 
 const ApplicantTable = ({ jobId }) => {
     const [applicants, setApplicants] = useState([]);
@@ -83,6 +86,16 @@ const ApplicantTable = ({ jobId }) => {
         }
     };
 
+    const handleSendJobOffer = async (applicantId) => {
+        try {
+            await jobService.sendJobOffer(jobId, applicantId);
+            toast.success('Job offer sent successfully');
+        } catch (error) {
+            console.error('Error sending job offer:', error);
+            toast.error(error.response?.data?.message || 'Failed to send job offer');
+        }
+    };
+
     const handleCloseCVDialog = () => {
         setOpenCVDialog(false);
         setSelectedCV(null);
@@ -125,6 +138,7 @@ const ApplicantTable = ({ jobId }) => {
                             <TableCell align="center">Match Score</TableCell>
                             <TableCell align="center">CV</TableCell>
                             <TableCell align="center">Applied Date</TableCell>
+                            <TableCell align="center">Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -184,6 +198,16 @@ const ApplicantTable = ({ jobId }) => {
                                     </TableCell>
                                     <TableCell align="center">
                                         {moment(applicant.applied_at).format('MMM DD, YYYY')}
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            startIcon={<EmailIcon />}
+                                            onClick={() => handleSendJobOffer(applicant.id)}
+                                        >
+                                            Send Job Offer
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}

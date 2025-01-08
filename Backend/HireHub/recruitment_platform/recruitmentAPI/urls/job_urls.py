@@ -1,6 +1,7 @@
 from django.urls import path
 from ..views.job_views import JobListView, JobView
 from ..views.quiz_views import QuizView, QuizSubmissionView, QuizResultView, JobApplicantsView
+from ..views.job_offer_views import SendJobOfferView
 
 urlpatterns = [
     # Job URLs
@@ -14,4 +15,5 @@ urlpatterns = [
     
     # Applicant URLs
     path('<int:job_id>/applicants/', JobApplicantsView.as_view(), name='job-applicants'),
+    path('<int:job_id>/send-offer/<int:applicant_id>/', SendJobOfferView.as_view(), name='send-job-offer'),
 ]

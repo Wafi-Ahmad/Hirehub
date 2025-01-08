@@ -87,6 +87,16 @@ class JobService {
   async getJobApplicants(jobId) {
     return axios.get(`${JOB_API}/${jobId}/applicants/`);
   }
+
+  // Send job offer to applicant
+  async sendJobOffer(jobId, applicantId) {
+    try {
+      const response = await axios.post(`${JOB_API}/${jobId}/send-offer/${applicantId}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  }
 }
 
 export const jobService = new JobService(); 
