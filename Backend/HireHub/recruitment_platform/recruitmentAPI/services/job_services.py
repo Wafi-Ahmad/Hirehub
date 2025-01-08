@@ -248,3 +248,37 @@ class JobService:
             cache.delete('jobs:list:recent')
 
         return expired_count
+
+    @staticmethod
+    def get_job_applicants(job_id: int) -> List[Dict[str, Any]]:
+        """Get all applicants for a specific job with their quiz results"""
+        try:
+            # Get job with posted_by user details
+            job = JobPost.objects.select_related('posted_by').get(id=job_id)
+            if not job.quiz:
+                return []
+                
+            # Get all quiz attempts for this job with user details
+            quiz_attempts = job.quiz.attempts.select_related('user').all()
+            
+            applicants_data = []
+            for attempt in quiz_attempts:
+                user = attempt.user
+                # Only include users who are normal users (job seekers)
+                if user.user_type == user.NORMAL_USER:
+                    applicant_data = {
+                        'id': user.id,
+                        'full_name': f"{user.first_name} {user.last_name}".strip() or user.email,
+                        'email': user.email,
+                        'profile_picture': user.profile_picture.url if hasattr(user, 'profile_picture') and user.profile_picture else None,
+                        'cv_url': user.cv_file.url if hasattr(user, 'cv_file') and user.cv_file else None,
+                        'quiz_score': attempt.score,
+                        'match_score': attempt.ai_matching_score if hasattr(attempt, 'ai_matching_score') else 0,
+                        'applied_date': attempt.completed_at.isoformat() if attempt.completed_at else None
+                    }
+                    applicants_data.append(applicant_data)
+            
+            return applicants_data
+            
+        except JobPost.DoesNotExist:
+            raise ValidationError("Job not found")

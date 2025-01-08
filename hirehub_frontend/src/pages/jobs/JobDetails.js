@@ -1,5 +1,8 @@
-import React, { useEffect } from 'react';
+// React and Router imports
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+
+// Material-UI Components
 import {
   Container,
   Paper,
@@ -13,24 +16,30 @@ import {
   Tooltip,
   Skeleton
 } from '@mui/material';
-import {
-  LocationOn as LocationIcon,
-  Work as WorkIcon,
-  BusinessCenter as BusinessIcon,
-  Bookmark as BookmarkIcon,
-  BookmarkBorder as BookmarkBorderIcon,
-  ArrowBack as ArrowBackIcon
-} from '@mui/icons-material';
+
+// Material-UI Icons
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import WorkIcon from '@mui/icons-material/Work';
+import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import PeopleIcon from '@mui/icons-material/People';
+import QuizIcon from '@mui/icons-material/Quiz';
+
+// Context and Constants
 import { useJob } from '../../context/JobContext';
 import { useAuth } from '../../context/AuthContext';
 import { USER_TYPES } from '../../utils/permissions';
-import { EMPLOYMENT_TYPES, LOCATION_TYPES, EXPERIENCE_LEVELS } from '../../constants/jobConstants';
+import { LOCATION_TYPES, EMPLOYMENT_TYPES, EXPERIENCE_LEVELS } from '../../constants/jobConstants';
+import ApplicantTable from '../../components/company/ApplicantTable';
 
 const JobDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { selectedJob, getJobById, saveJob, loading, error } = useJob();
   const { user } = useAuth();
+  const [showApplicants, setShowApplicants] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -114,7 +123,7 @@ const JobDetails = () => {
           <Typography variant="h4" component="h1" sx={{ flex: 1 }}>
             {selectedJob.title}
           </Typography>
-          {user?.userType !== USER_TYPES.COMPANY && (
+          {user?.user_type !== "Company" && (
             <Tooltip title={selectedJob.is_saved ? "Remove from saved" : "Save job"}>
               <IconButton onClick={handleSave}>
                 {selectedJob.is_saved ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
@@ -131,7 +140,7 @@ const JobDetails = () => {
           <Grid container spacing={2} alignItems="center">
             <Grid item>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <LocationIcon color="action" />
+                <LocationOnIcon color="action" />
                 <Typography>
                   {selectedJob.location} ({getTypeLabel(selectedJob.location_type, LOCATION_TYPES)})
                 </Typography>
@@ -147,7 +156,7 @@ const JobDetails = () => {
             </Grid>
             <Grid item>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <BusinessIcon color="action" />
+                <BusinessCenterIcon color="action" />
                 <Typography>
                   {getTypeLabel(selectedJob.experience_level, EXPERIENCE_LEVELS)}
                 </Typography>
@@ -158,53 +167,41 @@ const JobDetails = () => {
 
         <Divider sx={{ my: 3 }} />
 
-        {/* Salary Range */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Salary Range
-          </Typography>
-          <Typography variant="h5" color="primary">
-            ${selectedJob.salary_min.toLocaleString()} - ${selectedJob.salary_max.toLocaleString()} / year
-          </Typography>
-        </Box>
+        {/* Job Description */}
+        <Typography variant="h6" gutterBottom>
+          Description
+        </Typography>
+        <Typography variant="body1" paragraph>
+          {selectedJob.description}
+        </Typography>
 
         {/* Required Skills */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Required Skills
-          </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {selectedJob.required_skills.map((skill, index) => (
-              <Chip 
-                key={index} 
-                label={skill}
-                variant="outlined"
-                sx={{ 
-                  borderRadius: '16px',
-                  '&:hover': {
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)'
-                  }
-                }}
-              />
-            ))}
-          </Box>
-        </Box>
-
-        {/* Job Description */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            Job Description
-          </Typography>
-          <Typography 
-            variant="body1" 
-            sx={{ 
-              whiteSpace: 'pre-line',
-              color: 'text.secondary',
-              lineHeight: 1.8
-            }}
-          >
-            {selectedJob.description}
-          </Typography>
+        <Typography variant="h6" gutterBottom>
+          Required Skills
+        </Typography>
+        <Box sx={{ mb: 3 }}>
+          {Array.isArray(selectedJob.required_skills) 
+            ? selectedJob.required_skills.map((skill, index) => (
+                <Chip
+                  key={index}
+                  label={skill}
+                  sx={{ m: 0.5 }}
+                  color="primary"
+                  variant="outlined"
+                />
+              ))
+            : typeof selectedJob.required_skills === 'string'
+              ? selectedJob.required_skills.split(',').map((skill, index) => (
+                  <Chip
+                    key={index}
+                    label={skill.trim()}
+                    sx={{ m: 0.5 }}
+                    color="primary"
+                    variant="outlined"
+                  />
+                ))
+              : null
+          }
         </Box>
 
         {/* Apply Section */}
@@ -219,15 +216,9 @@ const JobDetails = () => {
               </Typography>
             )}
           </Box>
-          {user?.userType !== USER_TYPES.COMPANY && (
+
+          {user?.user_type === "Normal" && (
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button
-                variant="outlined"
-                color="primary"
-                onClick={handleSave}
-              >
-                {selectedJob.is_saved ? 'Saved' : 'Save Job'}
-              </Button>
               <Button
                 variant="contained"
                 color="primary"
@@ -238,8 +229,28 @@ const JobDetails = () => {
               </Button>
             </Box>
           )}
+
+          {user?.user_type === "Company" && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<PeopleIcon />}
+              onClick={() => setShowApplicants(!showApplicants)}
+            >
+              {showApplicants ? 'Hide Applicants' : 'View Applicants'}
+            </Button>
+          )}
         </Box>
       </Paper>
+
+      {showApplicants && user?.user_type === "Company" && (
+        <Paper elevation={3} sx={{ p: 4, mt: 3 }}>
+          <Typography variant="h5" gutterBottom>
+            Job Applicants
+          </Typography>
+          <ApplicantTable jobId={id} />
+        </Paper>
+      )}
     </Container>
   );
 };

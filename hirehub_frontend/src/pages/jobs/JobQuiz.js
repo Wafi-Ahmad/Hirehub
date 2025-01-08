@@ -7,11 +7,17 @@ import {
     Box,
     Button,
     CircularProgress,
-    Alert
+    Alert,
+    Divider
 } from '@mui/material';
 import QuizUI from '../../components/quiz/_QuizUI';
 import { quizService } from '../../services/quizService';
 import { toast } from 'react-toastify';
+import CVUpload from '../../components/cv/CVUpload';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+
+const PASS_THRESHOLD = 70; // 70% is passing score
 
 const JobQuiz = () => {
     const { jobId } = useParams();
@@ -22,6 +28,7 @@ const JobQuiz = () => {
     const [quizResult, setQuizResult] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [previousAttempt, setPreviousAttempt] = useState(null);
+    const [showCVUpload, setShowCVUpload] = useState(false);
 
     useEffect(() => {
         loadQuiz();
@@ -31,25 +38,20 @@ const JobQuiz = () => {
         try {
             setLoading(true);
             setError(null);
-            console.log("jobId", jobId);
             const data = await quizService.getJobQuiz(jobId);
-            console.log("data", data);
-            setQuizData(data);
-            console.log("quizData", data);
-        } catch (err) {
-            // Check if this is a previous attempt error (status 400)
-            console.log("err", err);
-            console.log("err.result", err.result);
-            // console.log("err.response.data", err.response.data);
-            // console.log("err.response.data.message", err.response.data.message);
-            console.log("err.message", err.message);
-            if (err?.message === "You have already attempted this quiz") {
-                setPreviousAttempt(err.result);
-                console.log("previousAttempt", err.result);
+            if (data.message === "You have already attempted this quiz") {
+                setPreviousAttempt(data.result);
+                setError("You have already attempted this quiz");
             } else {
-                setError(err.response?.data?.message || err.error || 'Failed to load quiz');
-                toast.error(err.response?.data?.message || err.error || 'Failed to load quiz');
+                setQuizData(data);
             }
+        } catch (err) {
+            console.error('Quiz load error:', err);
+            setError(err.message || 'Failed to load quiz');
+            if (err.message === "You have already attempted this quiz" && err.result) {
+                setPreviousAttempt(err.result);
+            }
+            toast.error(err.message || 'Failed to load quiz');
         } finally {
             setLoading(false);
         }
@@ -58,141 +60,130 @@ const JobQuiz = () => {
     const handleSubmit = async (answers) => {
         try {
             setSubmitting(true);
-            const result = await quizService.submitQuiz(quizData.quiz_id, answers);
+            if (!quizData?.quiz_id) {
+                throw new Error('Quiz ID not found');
+            }
+
+            // Convert answers object to use string keys
+            const formattedAnswers = {};
+            Object.entries(answers).forEach(([key, value]) => {
+                formattedAnswers[key.toString()] = value;
+            });
+
+            const result = await quizService.submitQuiz(quizData.quiz_id, formattedAnswers);
             setQuizResult(result);
-            
-            if (result.passed) {
-                toast.success('Congratulations! You passed the quiz!');
-            } else {
-                toast.info('Unfortunately, you did not pass the quiz. You can try again later.');
+            setPreviousAttempt(result);
+            if (result.score >= PASS_THRESHOLD) {
+                setShowCVUpload(true);
             }
         } catch (err) {
-            toast.error(err.error || 'Failed to submit quiz');
+            console.error('Quiz submission error:', err);
+            toast.error(err.message || 'Failed to submit quiz');
         } finally {
             setSubmitting(false);
         }
     };
 
-    const handleBack = () => {
-        navigate(`/jobs/${jobId}`);
+    const renderQuizResults = () => {
+        const result = previousAttempt || quizResult;
+        const score = result?.score || 0;
+        const hasPassed = score >= PASS_THRESHOLD;
+
+        return (
+            <Paper elevation={3} sx={{ p: 4, maxWidth: 600, mx: 'auto', mt: 4 }}>
+                <Typography variant="h4" gutterBottom align="center">
+                    Quiz Results
+                </Typography>
+                
+                <Box sx={{ textAlign: 'center', my: 3 }}>
+                    <Typography variant="h5" color={hasPassed ? "success.main" : "error.main"}>
+                        Score: {score}%
+                    </Typography>
+                    <Typography variant="body1" sx={{ mt: 1 }}>
+                        Correct Answers: {result?.correct_count} out of {result?.total_questions}
+                    </Typography>
+                </Box>
+
+                <Divider sx={{ my: 3 }} />
+
+                <Box sx={{ my: 3 }}>
+                    {hasPassed ? (
+                        <>
+                            <Alert severity="success" sx={{ mb: 3 }}>
+                                Congratulations! You've successfully passed the quiz. You can now proceed with uploading your CV to complete your job application.
+                            </Alert>
+                            {!showCVUpload ? (
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    startIcon={<CloudUploadIcon />}
+                                    fullWidth
+                                    onClick={() => setShowCVUpload(true)}
+                                    sx={{ mb: 2 }}
+                                >
+                                    Upload Your CV
+                                </Button>
+                            ) : (
+                                <CVUpload jobId={jobId} />
+                            )}
+                        </>
+                    ) : (
+                        <Alert severity="info">
+                            Unfortunately, you didn't pass the quiz. You need a score of {PASS_THRESHOLD}% or higher to proceed. You can try again later.
+                        </Alert>
+                    )}
+                </Box>
+
+                <Button
+                    variant="outlined"
+                    startIcon={<ArrowBackIcon />}
+                    onClick={() => navigate(`/jobs/${jobId}`)}
+                    fullWidth
+                >
+                    Back to Job
+                </Button>
+            </Paper>
+        );
     };
 
     if (loading) {
         return (
-            <Container maxWidth="md" sx={{ mt: 12, mb: 4 }}>
-                <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-                    <CircularProgress />
-                </Box>
-            </Container>
-        );
-    }
-
-    if (previousAttempt) {
-        return (
-            <Container maxWidth="md" sx={{ mt: 12, mb: 4 }}>
-                <Paper elevation={3} sx={{ p: 4 }}>
-                    <Typography variant="h4" gutterBottom>
-                        Previous Quiz Attempt
-                    </Typography>
-                    <Alert severity="info" sx={{ mb: 3 }}>
-                        You have already attempted this quiz
-                    </Alert>
-                    <Box sx={{ mb: 3 }}>
-                        <Typography variant="h5" color={previousAttempt.passed ? "success.main" : "error.main"} gutterBottom>
-                            Score: {previousAttempt.score}%
-                        </Typography>
-                        <Typography variant="body1" gutterBottom>
-                            Status: {previousAttempt.passed ? 'Passed' : 'Failed'}
-                        </Typography>
-                        <Typography variant="body1" gutterBottom>
-                            Completed: {new Date(previousAttempt.completed_at).toLocaleString()}
-                        </Typography>
-                    </Box>
-                    <Button variant="contained" onClick={handleBack}>
-                        Back to Job
-                    </Button>
-                </Paper>
+            <Container sx={{ mt: 12, display: 'flex', justifyContent: 'center' }}>
+                <CircularProgress />
             </Container>
         );
     }
 
     if (error) {
         return (
-            <Container maxWidth="md" sx={{ mt: 12, mb: 4 }}>
-                <Alert severity="error" sx={{ mb: 2 }}>
-                    {error}
-                </Alert>
-                <Button variant="outlined" onClick={handleBack}>
+            <Container sx={{ mt: 12 }}>
+                <Alert severity="error">{error}</Alert>
+                <Button
+                    variant="outlined"
+                    onClick={() => navigate(`/jobs/${jobId}`)}
+                    sx={{ mt: 2 }}
+                >
                     Back to Job
                 </Button>
             </Container>
         );
     }
 
+    if (previousAttempt || quizResult) {
+        return renderQuizResults();
+    }
+
     return (
-        <Container maxWidth="md" sx={{ mt: 12, mb: 4 }}>
-            <Paper elevation={3} sx={{ p: 4 }}>
-                {!quizResult ? (
-                    <>
-                        <Typography variant="h4" gutterBottom>
-                            Job Application Quiz
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                            Please complete this quiz to proceed with your job application.
-                            Passing score: {quizData?.passing_score}%
-                        </Typography>
-                        
-                        <QuizUI
-                            questions={quizData?.questions || []}
-                            onSubmit={handleSubmit}
-                            disabled={submitting}
-                        />
-                    </>
-                ) : (
-                    <Box>
-                        <Typography variant="h4" gutterBottom>
-                            Quiz Results
-                        </Typography>
-                        <Typography variant="h5" color={quizResult.passed ? "success.main" : "error.main"} gutterBottom>
-                            Score: {quizResult.score}%
-                        </Typography>
-                        <Typography variant="body1" gutterBottom>
-                            Correct Answers: {quizResult.correct_answers} out of {quizResult.total_questions}
-                        </Typography>
-                        
-                        {quizResult.passed ? (
-                            <Alert severity="success" sx={{ mt: 2, mb: 2 }}>
-                                Congratulations! You've passed the quiz and can proceed with your application.
-                            </Alert>
-                        ) : (
-                            <Alert severity="info" sx={{ mt: 2, mb: 2 }}>
-                                Unfortunately, you didn't pass the quiz. You can try again later.
-                            </Alert>
-                        )}
-                        
-                        <Box sx={{ mt: 3 }}>
-                            <Button
-                                variant="contained"
-                                onClick={handleBack}
-                                sx={{ mr: 2 }}
-                            >
-                                Back to Job
-                            </Button>
-                            {quizResult.passed && (
-                                <Button
-                                    variant="contained"
-                                    color="success"
-                                    onClick={() => {/* Handle application submission */}}
-                                >
-                                    Continue Application
-                                </Button>
-                            )}
-                        </Box>
-                    </Box>
-                )}
-            </Paper>
+        <Container maxWidth="lg" sx={{ mt: 12, mb: 4 }}>
+            {quizData && (
+                <QuizUI
+                    questions={quizData.questions}
+                    onSubmit={handleSubmit}
+                    submitting={submitting}
+                />
+            )}
         </Container>
     );
 };
 
-export default JobQuiz; 
+export default JobQuiz;

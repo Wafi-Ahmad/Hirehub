@@ -20,42 +20,9 @@ class JobPagination(PageNumberPagination):
     page_size_query_param = 'page_size'
     max_page_size = 100
 
-class JobPostViewSet(viewsets.ViewSet):
+class JobListView(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
     pagination_class = JobPagination
-    
-    def get_permissions(self):
-        """
-        Instantiates and returns the list of permissions that this view requires.
-        """
-        if self.action == 'create':
-            permission_classes = [IsAuthenticated, IsCompanyUser]
-        elif self.action in ['update', 'partial_update', 'destroy']:
-            permission_classes = [IsAuthenticated, IsJobOwner]
-        else:
-            permission_classes = [IsAuthenticated]
-        return [permission() for permission in permission_classes]
-
-    @extend_schema(
-        request=CreateJobSerializer,
-        responses={201: JobResponseSerializer}
-    )
-    def create(self, request):
-        """Create a new job posting"""
-        serializer = CreateJobSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        try:
-            job = JobService.create_job(
-                validated_data=serializer.validated_data,
-                user_id=request.user.id
-            )
-            response_serializer = JobResponseSerializer(job)
-            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-        except ValidationError as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
     @extend_schema(
         parameters=[
@@ -100,6 +67,47 @@ class JobPostViewSet(viewsets.ViewSet):
                 {'error': 'Failed to fetch jobs'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    @extend_schema(
+        request=CreateJobSerializer,
+        responses={201: JobResponseSerializer}
+    )
+    def create(self, request):
+        """Create a new job posting"""
+        if not hasattr(request.user, 'company'):
+            return Response(
+                {'error': 'Only company users can create jobs'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = CreateJobSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            job = JobService.create_job(
+                validated_data=serializer.validated_data,
+                user_id=request.user.id
+            )
+            response_serializer = JobResponseSerializer(job)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+class JobView(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['update', 'partial_update', 'destroy']:
+            permission_classes = [IsAuthenticated, IsJobOwner]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     @extend_schema(responses=JobResponseSerializer)
     def retrieve(self, request, pk=None):

@@ -1,11 +1,12 @@
 from django.urls import path
-from recruitmentAPI.views.user_views import (
+from ..views.user_views import (
     RegisterUserView, CustomLoginUserView, UpdateUserInterestsView,
     PasswordResetRequestView, PasswordResetConfirmView, UpdateUserProfileView,
     UpdateBasicUserInfoView, UpdatePrivacySettingsView, DeleteUserAccountView,
     ViewOwnProfileView, ViewUserProfileView, SearchProfilesView, SomeNormalUserView, SomeCompanyUserView,FollowUserView,
     GetFollowersFollowingView, LogoutView, ConnectionRecommendationsView
 )
+from ..views import cv_views
 
 urlpatterns = [
     path('register/', RegisterUserView.as_view(), name='register_user'),
@@ -28,4 +29,5 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
     path('followers-following/', GetFollowersFollowingView.as_view(), name='followers-following'),
     path('recommendations/', ConnectionRecommendationsView.as_view(), name='connection-recommendations'),
+    path('cv/', cv_views.CVUploadView.as_view(), name='cv-upload'),
 ]

@@ -1,15 +1,14 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
-from .job_model import JobPost
 
 User = get_user_model()
 
 class Quiz(models.Model):
     job = models.OneToOneField(
-        JobPost,
+        'recruitmentAPI.JobPost',
         on_delete=models.CASCADE,
-        related_name='quiz'
+        related_name='job_quiz'
     )
     questions = models.JSONField(
         help_text="Array of questions with their answers and correct answer"
@@ -59,8 +58,7 @@ class QuizAttempt(models.Model):
 
     class Meta:
         ordering = ['-started_at']
-        # Ensure a user can only have one attempt per quiz
         unique_together = ['quiz', 'user']
 
     def __str__(self):
-        return f"{self.user.email}'s attempt at {self.quiz}" 
+        return f"{self.user.email}'s attempt at {self.quiz}"

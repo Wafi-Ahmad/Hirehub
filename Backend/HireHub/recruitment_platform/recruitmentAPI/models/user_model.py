@@ -58,11 +58,11 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # Base fields
     email = models.EmailField(unique=True)
+    first_name = models.CharField(max_length=30, null=True, blank=True)
+    last_name = models.CharField(max_length=30, null=True, blank=True)
     user_type = models.CharField(max_length=7, choices=USER_TYPE_CHOICES, default=NORMAL_USER)
     
     # Normal user specific fields
-    first_name = models.CharField(max_length=30, null=True, blank=True)
-    last_name = models.CharField(max_length=30, null=True, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     preferred_job_category = models.CharField(max_length=255, null=True, blank=True)
     preferred_job_type = models.CharField(max_length=10, choices=JOB_TYPE_CHOICES, default=ONSITE)
@@ -97,6 +97,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     recent_work = models.TextField(null=True, blank=True)
     current_work = models.TextField(null=True, blank=True)
     contact_details = models.TextField(null=True, blank=True)
+
+    # CV file and upload date
+    cv_file = models.FileField(upload_to='cvs/', null=True, blank=True)
+    cv_upload_date = models.DateTimeField(null=True, blank=True)
 
     # Privacy settings
     is_profile_public = models.BooleanField(default=True)

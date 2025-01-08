@@ -91,3 +91,5 @@ Backend/HireHub/recruitment_platform/media
 
 # Ignore migrations folder
 Backend/HireHub/recruitment_platform/recruitmentAPI/migrations/
+
+.codegpt

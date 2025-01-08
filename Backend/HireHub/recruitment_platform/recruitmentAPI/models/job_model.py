@@ -11,8 +11,6 @@ from ..constants import (
 
 User = get_user_model()
 
-
-
 class JobPost(models.Model):
     # Basic Information
     title = models.CharField(max_length=200)
@@ -20,7 +18,7 @@ class JobPost(models.Model):
     
     # Skills and Requirements
     required_skills = models.CharField(
-        max_length=500,  # Reasonable length for storing multiple skills
+        max_length=500,
         null=True, 
         blank=True,
         help_text="Comma-separated list of required skills"
@@ -55,61 +53,61 @@ class JobPost(models.Model):
         default='active'
     )
     is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    filled_at = models.DateTimeField(null=True, blank=True)
+    
+    # Relations
     posted_by = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='job_posts'
+        related_name='posted_jobs'
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    expires_at = models.DateTimeField()
-    filled_at = models.DateTimeField(null=True, blank=True)
+    quiz = models.OneToOneField(
+        'recruitmentAPI.Quiz',  
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='quiz_job'
+    )
     
-    # AI/ML Related
-    ai_matching_score = models.FloatField(default=0.0)
-    recommendation_count = models.IntegerField(default=0)
+    # Engagement Metrics
     positive_feedback_count = models.IntegerField(default=0)
     negative_feedback_count = models.IntegerField(default=0)
+    recommendation_count = models.IntegerField(default=0)
+    ai_matching_score = models.FloatField(null=True, blank=True)
 
     class Meta:
-        db_table = 'job_posts'
+        ordering = ['-created_at']
         indexes = [
             models.Index(fields=['status', 'is_active']),
-            models.Index(fields=['location_type']),
-            models.Index(fields=['employment_type']),
-            models.Index(fields=['experience_level']),
             models.Index(fields=['created_at']),
             models.Index(fields=['expires_at']),
         ]
 
     def __str__(self):
-        return f"{self.title} - {self.posted_by.company_name}"
+        return f"{self.title} - {self.posted_by.company_name if self.posted_by.company_name else self.posted_by.email}"
 
-    def save(self, *args, **kwargs):
-        # Ensure expires_at is set if not provided
-        if not self.expires_at:
-            self.expires_at = timezone.now() + timezone.timedelta(days=30)
-        super().save(*args, **kwargs)
-
-    def set_required_skills(self, skills):
-        """Store skills as a comma-separated string without spaces"""
-        if isinstance(skills, list):
-            cleaned_skills = [skill.strip().lower() for skill in skills if skill.strip()]
-            self.required_skills = ','.join(cleaned_skills)  # No spaces between commas
-        else:
-            self.required_skills = skills.lower() if skills else ''
-
-    def get_required_skills(self):
-        """Get skills as a list"""
-        if not self.required_skills:
+    def get_applicants(self):
+        """Get all users who have attempted the quiz for this job"""
+        if not self.quiz:
             return []
-        return [skill.strip() for skill in self.required_skills.split(',')]
+        return User.objects.filter(quiz_attempts__quiz=self.quiz).distinct()
 
-    def clean(self):
-        """Validate and clean the skills data"""
-        if self.required_skills:
-            # Clean and validate skills
-            skills = [skill.strip() for skill in self.required_skills.split(',') if skill.strip()]
-            # Ensure proper format
-            self.required_skills = ','.join(skills)
-        super().clean()
+    def get_applicant_count(self):
+        """Get the number of applicants for this job"""
+        if not self.quiz:
+            return 0
+        return self.quiz.attempts.count()
+
+    def is_expired(self):
+        """Check if the job posting has expired"""
+        return self.expires_at and self.expires_at < timezone.now()
+
+    def days_until_expiry(self):
+        """Get the number of days until the job posting expires"""
+        if not self.expires_at:
+            return None
+        delta = self.expires_at - timezone.now()
+        return max(0, delta.days)

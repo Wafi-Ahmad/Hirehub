@@ -17,20 +17,15 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
   useEffect(() => {
     if (questions.length > 0) {
       const newAnswerOrder = {};
-      questions.forEach(question => {
+      questions.forEach((question, index) => {
         // Create array [0,1,2,3] and shuffle it
         const order = Array.from({ length: 4 }, (_, i) => i);
         for (let i = order.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [order[i], order[j]] = [order[j], order[i]];
         }
-        newAnswerOrder[question.id] = order;
-        
-        // Debug logs
-        console.log('Question:', question.id);
-        console.log('Original answers:', question.answers);
-        console.log('Shuffled order:', order);
-        console.log('Will display in this order:', order.map(i => question.answers[i]));
+        const questionId = question.id ?? index;
+        newAnswerOrder[questionId] = order;
       });
       setAnswerOrder(newAnswerOrder);
     }
@@ -92,12 +87,13 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
     if (disabled) return;
     
     const currentQuestion = questions[currentQuestionIndex];
-    const order = answerOrder[currentQuestion.id];
+    const questionId = currentQuestion.id ?? currentQuestionIndex;
+    const order = answerOrder[questionId];
     const originalIndex = order[shuffledIndex];
     
     const newAnswers = {
       ...answers,
-      [currentQuestion.id]: originalIndex
+      [questionId]: originalIndex
     };
     setAnswers(newAnswers);
     setSelectedAnswer(shuffledIndex);
@@ -116,9 +112,9 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
       <div className="quiz-container">
         <h2 className="quiz-title">Previous Attempt Result</h2>
         <div className="quiz-result">
-          <p><strong>Score:</strong> {previousAttempt.result.score}%</p>
-          <p><strong>Status:</strong> {previousAttempt.result.passed ? 'Passed' : 'Failed'}</p>
-          <p><strong>Completed:</strong> {new Date(previousAttempt.result.completed_at).toLocaleString()}</p>
+          <p><strong>Score:</strong> {previousAttempt.score}%</p>
+          <p><strong>Status:</strong> {previousAttempt.passed ? 'Passed' : 'Failed'}</p>
+          <p><strong>Completed:</strong> {new Date(previousAttempt.completed_at).toLocaleString()}</p>
         </div>
       </div>
     );
@@ -129,11 +125,10 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-  const currentOrder = answerOrder[currentQuestion.id];
+  const currentOrder = answerOrder[currentQuestion.id ?? currentQuestionIndex] || [];
 
   return (
     <div className="quiz-container">
-      {/*<h2 className="quiz-title">Technical Assessment</h2>*/}
       <div className="progress-bar">
         <span
           style={{

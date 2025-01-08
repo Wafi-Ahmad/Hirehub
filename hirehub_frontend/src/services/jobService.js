@@ -82,6 +82,11 @@ class JobService {
   async provideFeedback(id, feedback) {
     return axios.post(`${JOB_API}/${id}/feedback/`, feedback);
   }
+
+  // Get job applicants
+  async getJobApplicants(jobId) {
+    return axios.get(`${JOB_API}/${jobId}/applicants/`);
+  }
 }
 
 export const jobService = new JobService(); 

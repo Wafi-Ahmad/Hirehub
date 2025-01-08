@@ -1,5 +1,5 @@
 from django.urls import path
-from recruitmentAPI.views.post_views import PostListView, PostDetailView, PostLikeView, UserPostsView
+from ..views.post_views import PostListView, PostDetailView, PostLikeView, UserPostsView
 
 urlpatterns = [
     path('', PostListView.as_view(), name='post-list'),
