@@ -153,6 +153,7 @@ const Post = ({ post, onDelete }) => {
       setComments(prevComments => {
         const filteredComments = prevComments.filter(c => c.id !== commentId);
         const updatedComments = filteredComments.map(comment => ({
+
           ...comment,
           replies: comment.replies?.filter(reply => reply.id !== commentId) || []
         }));
@@ -314,7 +315,7 @@ const Post = ({ post, onDelete }) => {
         avatar={
           <Avatar 
             src={post.user?.profile_picture} 
-            alt={`${post.user?.first_name} ${post.user?.last_name}`}
+            alt={post.user?.user_type === 'Company' ? post.user?.company_name : `${post.user?.first_name} ${post.user?.last_name}`}
             sx={{ cursor: 'pointer' }}
             onClick={() => handleProfileClick(post.user?.id)}
           />
@@ -329,7 +330,7 @@ const Post = ({ post, onDelete }) => {
               }}
               onClick={() => handleProfileClick(post.user?.id)}
             >
-              {`${post.user?.first_name} ${post.user?.last_name}`}
+              {post.user?.user_type === 'Company' ? post.user?.company_name : `${post.user?.first_name} ${post.user?.last_name}`}
             </Typography>
             {currentUser?.id !== post.user?.id && (
               <Tooltip title={post.user?.is_following ? "Unfollow" : "Follow"}>
@@ -412,6 +413,7 @@ const Post = ({ post, onDelete }) => {
             </Box>
           ) : (
             <>
+
               {comments.map((comment) => (
                 <Comment
                   key={comment.id}
@@ -433,6 +435,7 @@ const Post = ({ post, onDelete }) => {
                 </Button>
               )}
             </>
+
           )}
         </Box>
       )}

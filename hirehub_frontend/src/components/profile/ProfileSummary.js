@@ -43,6 +43,14 @@ const ProfileSummary = ({ allowEdit = false }) => {
     );
   }
 
+  const isCompanyProfile = currentUserProfile?.user_type === 'Company';
+  const displayName = isCompanyProfile 
+    ? currentUserProfile?.company_name
+    : `${currentUserProfile?.first_name || ''} ${currentUserProfile?.last_name || ''}`;
+  const displaySubtitle = isCompanyProfile
+    ? currentUserProfile?.industry || 'No industry information'
+    : currentUserProfile?.current_work || 'No current work information';
+
   return (
     <Card 
       sx={{ 
@@ -87,10 +95,10 @@ const ProfileSummary = ({ allowEdit = false }) => {
             }}
           />
           <Typography variant="h5" gutterBottom>
-            {currentUserProfile?.first_name} {currentUserProfile?.last_name}
+            {displayName}
           </Typography>
           <Typography variant="body1" color="textSecondary" gutterBottom>
-            {currentUserProfile?.current_work || 'No current work information'}
+            {displaySubtitle}
           </Typography>
 
           {Array.isArray(currentUserProfile?.skills) && (

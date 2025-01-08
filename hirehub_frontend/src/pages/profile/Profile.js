@@ -75,32 +75,52 @@ const Profile = () => {
   useEffect(() => {
     const loadProfile = async () => {
       try {
-        // Clear posts first to avoid showing stale data
-        clearPosts();
-        
-        // If no ID in URL or ID matches current user, load own profile
-        if (!id) {
-          await fetchProfileData();
-          // Update URL to reflect user's own profile ID if not already there
-          navigate(`/profile/me`, { replace: true });
-        } else {
+        if (id) {
           await fetchProfileData(id);
+        } else if (currentUser) {
+          await fetchProfileData();
         }
       } catch (error) {
         console.error('Error loading profile:', error);
       }
     };
+    loadProfile();
+  }, [id, currentUser, fetchProfileData]);
 
-    if (currentUser?.id) {
-      // Force a complete reload of profile data when component mounts or ID changes
-      loadProfile();
-    }
+  // Early loading state
+  if (loading) {
+    return (
+      <Container maxWidth="lg">
+        <Skeleton variant="rectangular" height={250} />
+        <Box sx={{ mt: -5, display: 'flex', justifyContent: 'center' }}>
+          <Skeleton variant="circular" width={120} height={120} />
+        </Box>
+        <Box sx={{ mt: 2, textAlign: 'center' }}>
+          <Skeleton variant="text" width={200} sx={{ mx: 'auto' }} />
+          <Skeleton variant="text" width={150} sx={{ mx: 'auto' }} />
+        </Box>
+      </Container>
+    );
+  }
 
-    // Cleanup function to clear data when unmounting
-    return () => {
-      clearPosts();
-    };
-  }, [id, currentUser?.id, fetchProfileData, navigate, clearPosts]);
+  // Handle error state
+  if (error) {
+    return (
+      <Container maxWidth="lg">
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      </Container>
+    );
+  }
+
+  const isCompanyProfile = profileData?.user_type === 'Company';
+  const displayName = isCompanyProfile 
+    ? profileData?.company_name
+    : `${profileData?.first_name || ''} ${profileData?.last_name || ''}`;
+  const displaySubtitle = isCompanyProfile
+    ? profileData?.industry || 'No industry information'
+    : profileData?.current_work || 'No current work information';
 
   const handleFollow = async () => {
     try {
@@ -349,24 +369,6 @@ const Profile = () => {
     );
   };
 
-  if (error) {
-    return (
-      <Container maxWidth="lg">
-        <Alert severity="error" sx={{ mt: 2 }}>
-          {error}
-        </Alert>
-      </Container>
-    );
-  }
-
-  if (loading || !profileData) {
-    return (
-      <Container maxWidth="lg">
-        {renderSkeletons()}
-      </Container>
-    );
-  }
-
   return (
     <Container maxWidth="lg">
       {/* Cover Photo */}
@@ -377,26 +379,26 @@ const Profile = () => {
           backgroundImage: profileData?.cover_picture ? `url(${profileData.cover_picture})` : 'none',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          position: 'relative',
           borderRadius: 1,
-          overflow: 'hidden',
+          position: 'relative',
+          mb: 8
         }}
       >
-        {isOwnProfile ? (
-          <IconButton
-            onClick={handleEditClick}
-            sx={{ position: 'absolute', right: 16, top: 16 }}
-          >
-            <EditIcon />
-          </IconButton>
-        ) : (
-          <Tooltip title={profileData?.is_following ? "Unfollow" : "Follow"}>
+        {isOwnProfile && (
+          <Tooltip title="Edit Profile">
             <IconButton
-              onClick={profileData?.is_following ? handleUnfollow : handleFollow}
-              color={profileData?.is_following ? "primary" : "default"}
-              sx={{ position: 'absolute', right: 16, top: 16 }}
+              onClick={handleEditClick}
+              sx={{
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                bgcolor: 'background.paper',
+                '&:hover': {
+                  bgcolor: 'background.paper',
+                }
+              }}
             >
-              {profileData?.is_following ? <PersonRemoveIcon /> : <PersonAddIcon />}
+              <EditIcon />
             </IconButton>
           </Tooltip>
         )}
@@ -421,9 +423,7 @@ const Profile = () => {
           {/* Basic Info */}
           <Box sx={{ textAlign: 'center', mt: 2 }}>
             <Typography variant="h5" gutterBottom>
-              {profileData?.user_type === 'Company' 
-                ? profileData.company_name
-                : `${profileData?.first_name} ${profileData?.last_name}`}
+              {displayName}
             </Typography>
             
             {profileData?.headline && (
@@ -440,7 +440,11 @@ const Profile = () => {
                 </Typography>
               </Box>
             )}
-
+            {displaySubtitle && (
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                {displaySubtitle}
+              </Typography>
+            )}
             {/* Bio */}
             {profileData?.bio && (
               <Typography 

@@ -29,9 +29,12 @@ export const AuthProvider = ({ children }) => {
         userData.profile_picture = `http://localhost:8000${userData.profile_picture}`;
       }
 
-      // Ensure userType is normalized
+      // Ensure userType and company_name are normalized
       if (userData.user_type && !userData.userType) {
         userData.userType = userData.user_type;
+      }
+      if (userData.company_name) {
+        userData.companyName = userData.company_name;
       }
 
       console.log('Successfully loaded user data:', userData);
@@ -171,7 +174,8 @@ export const AuthProvider = ({ children }) => {
         profile_picture: loginResponse.user.profile_picture 
           ? `http://localhost:8000${loginResponse.user.profile_picture}`
           : null,
-        userType: loginResponse.user.user_type
+        userType: loginResponse.user.user_type,
+        companyName: loginResponse.user.company_name
       };
       
       console.log('Processed user data:', userData);

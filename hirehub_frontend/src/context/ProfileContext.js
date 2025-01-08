@@ -27,14 +27,22 @@ export const ProfileProvider = ({ children }) => {
     setError(null);
     try {
       const profileResponse = await profileService.getProfile(userId);
+      
+      // Normalize the profile data
+      const normalizedData = {
+        ...profileResponse,
+        user_type: profileResponse.user_type || profileResponse.userType,
+        company_name: profileResponse.company_name || profileResponse.companyName
+      };
+      
       await fetchFollowData(userId);
       
       if (userId) {
-        setProfileData(profileResponse);
+        setProfileData(normalizedData);
         setLastFetchedId(userId);
       } else {
-        setProfileData(profileResponse);
-        setCurrentUserProfile(profileResponse);
+        setProfileData(normalizedData);
+        setCurrentUserProfile(normalizedData);
         setLastFetchedId(null);
       }
     } catch (err) {

@@ -146,6 +146,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             fields_to_remove = ['first_name', 'last_name', 'date_of_birth']
             for field in fields_to_remove:
                 data.pop(field, None)
+            # Ensure company_name is included
+            data['company_name'] = instance.company_name
         else:
             # Remove company fields for individual users
             fields_to_remove = ['company_name', 'industry', 'company_size', 'about_company', 'specializations']
@@ -214,8 +216,19 @@ class FollowUserSerializer(serializers.Serializer):
 class UserMinimalSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'profile_picture']
-    
+        fields = ['id', 'email', 'first_name', 'last_name', 'profile_picture', 'user_type', 'company_name']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.user_type == 'Company':
+            # Remove individual user fields for company
+            data.pop('first_name', None)
+            data.pop('last_name', None)
+        else:
+            # Remove company fields for individual users
+            data.pop('company_name', None)
+        return data
+
 class ConnectionRecommendationSerializer(serializers.ModelSerializer):
     mutual_connections_count = serializers.IntegerField(read_only=True)
     profile_picture = serializers.SerializerMethodField()
@@ -232,4 +245,3 @@ class ConnectionRecommendationSerializer(serializers.ModelSerializer):
         if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
             return self.context['request'].build_absolute_uri(obj.profile_picture.url)
         return None
-    
