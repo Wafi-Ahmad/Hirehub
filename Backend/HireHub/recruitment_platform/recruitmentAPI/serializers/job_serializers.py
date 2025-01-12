@@ -74,6 +74,8 @@ class JobResponseSerializer(serializers.ModelSerializer):
     required_skills = serializers.SerializerMethodField()
     posted_by_name = serializers.SerializerMethodField()
     days_until_expiry = serializers.SerializerMethodField()
+    company_name = serializers.CharField(source='posted_by.company_name', read_only=True)
+    company_id = serializers.IntegerField(source='posted_by.id', read_only=True)
     
     class Meta:
         model = JobPost
@@ -91,10 +93,12 @@ class JobResponseSerializer(serializers.ModelSerializer):
             'status',
             'posted_by_name',
             'days_until_expiry',
+            'company_name',
+            'company_id',
             'created_at',
             'updated_at'
         ]
-        read_only_fields = ['id', 'posted_by_name', 'days_until_expiry', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'posted_by_name', 'days_until_expiry', 'created_at', 'updated_at', 'company_name', 'company_id']
 
     def get_posted_by_name(self, obj):
         if obj.posted_by:

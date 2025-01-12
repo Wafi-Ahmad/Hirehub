@@ -28,6 +28,7 @@ const Home = () => {
             console.log("Fetching profile data");
             await fetchProfileData();
           }
+
           console.log("Fetching Posts");
           await fetchPosts();
           // Fetch recent jobs

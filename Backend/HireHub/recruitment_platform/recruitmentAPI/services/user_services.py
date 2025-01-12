@@ -356,22 +356,40 @@ class UserService:
                 "following_count": user_to_follow.following.count()
             }
         else:
-            # Follow
-            current_user.following.add(user_to_follow)
-            
-            # Create notification
-            Notification.objects.create(
-                recipient=user_to_follow,
-                sender=current_user,
-                notification_type='NEW_FOLLOWER',
-                content='started following you',
-                related_object_id=current_user.id,
-                related_object_type='User'
-            )
-            
-            return {
-                "message": "Successfully followed user",
-                "is_following": True,
-                "followers_count": user_to_follow.followers.count(),
-                "following_count": user_to_follow.following.count()
-            }
+            # Check if profile is private
+            if not user_to_follow.is_profile_public:
+                # Create follow request notification
+                Notification.objects.create(
+                    recipient=user_to_follow,
+                    sender=current_user,
+                    notification_type='FOLLOW_REQUEST',
+                    content=f'wants to follow you',
+                    related_object_id=current_user.id,
+                    related_object_type='User'
+                )
+                return {
+                    "message": "Follow request sent",
+                    "is_following": False,
+                    "followers_count": user_to_follow.followers.count(),
+                    "following_count": user_to_follow.following.count()
+                }
+            else:
+                # Follow public profile
+                current_user.following.add(user_to_follow)
+                
+                # Create notification
+                Notification.objects.create(
+                    recipient=user_to_follow,
+                    sender=current_user,
+                    notification_type='NEW_FOLLOWER',
+                    content='started following you',
+                    related_object_id=current_user.id,
+                    related_object_type='User'
+                )
+                
+                return {
+                    "message": "Successfully followed user",
+                    "is_following": True,
+                    "followers_count": user_to_follow.followers.count(),
+                    "following_count": user_to_follow.following.count()
+                }

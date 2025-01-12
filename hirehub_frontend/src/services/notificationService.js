@@ -15,6 +15,10 @@ export const notificationService = {
         });
     },
 
+    markAllAsRead: async () => {
+        return api.post('/notifications/mark-all-read/');
+    },
+
     getUnreadCount: async () => {
         return api.get('/notifications/unread-count/');
     }

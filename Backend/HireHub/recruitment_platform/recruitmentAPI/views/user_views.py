@@ -210,15 +210,41 @@ class ViewUserProfileView(APIView):
         try:
             user = User.objects.get(id=user_id)
             
-            # Check if the profile is public or if the viewer is the profile owner
-            if not user.is_profile_public and request.user.id != user_id:
-                return Response(
-                    {"detail": "This profile is private"},
-                    status=status.HTTP_403_FORBIDDEN
-                )
+            # Check if the viewer is following the user
+            is_following = request.user.following.filter(id=user_id).exists()
+            
+            # Get follow request status if exists
+            follow_status = None
+            if not is_following and not user.is_profile_public:
+                try:
+                    notification = Notification.objects.filter(
+                        sender=request.user,
+                        recipient=user,
+                        notification_type='NEW_FOLLOWER'
+                    ).latest('created_at')
+                    follow_status = notification.status if hasattr(notification, 'status') else None
+                except Notification.DoesNotExist:
+                    follow_status = None
+            
+            # Check if the profile is public or if the viewer is the profile owner or a follower
+            if not user.is_profile_public and request.user.id != user_id and not is_following:
+                # Return limited data for private profiles
+                data = {
+                    "id": user.id,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "profile_picture": request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else None,
+                    "cover_picture": request.build_absolute_uri(user.cover_picture.url) if user.cover_picture else None,
+                    "is_profile_public": False,
+                    "is_following": is_following,
+                    "follow_status": follow_status
+                }
+                return Response(data)
             
             serializer = UserProfileSerializer(user, context={'request': request})
             data = serializer.data
+            data['is_following'] = is_following
+            data['follow_status'] = follow_status
             
             # Filter out private information based on privacy settings
             if not user.show_email:
@@ -283,37 +309,42 @@ class SearchProfilesView(APIView):
         if not query:
             return Response({"error": "Search query not provided."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Filter profiles by name, skills, or other fields
+        # Search all users except the current user
         users = User.objects.filter(
             Q(first_name__icontains=query) |
             Q(last_name__icontains=query) |
             Q(skills__icontains=query)
         ).exclude(id=request.user.id)
 
-        # Check privacy settings for each user
         result = []
         for user in users:
+            # Basic info for all users
+            user_data = {
+                "id": user.id,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "profile_picture": request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else None,
+                "user_type": user.user_type,
+                "is_profile_public": user.is_profile_public,
+                "current_work": user.current_work if user.is_profile_public and user.show_current_work else None
+            }
+
+            # For company users, always include company name
+            if user.user_type == 'Company':
+                user_data["company_name"] = user.company_name
+
+            # Add additional info only for public profiles
             if user.is_profile_public:
-                # Respect privacy settings for individual fields
-                user_data = {
-                    "id": user.id,  # Add user ID
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "profile_picture": request.build_absolute_uri(user.profile_picture.url) if user.profile_picture else None,
-                }
-                
                 if user.show_skills:
                     user_data["skills"] = user.skills
                 if user.show_experience:
                     user_data["experience"] = user.experience
-                if user.show_current_work:
-                    user_data["current_work"] = user.current_work
                 if user.show_recent_work:
                     user_data["recent_work"] = user.recent_work
                 if user.show_email:
                     user_data["email"] = user.email
 
-                result.append(user_data)
+            result.append(user_data)
 
         # Check if result is empty
         if not result:
@@ -355,6 +386,13 @@ class FollowUserView(APIView):
             if is_following:
                 # Unfollow
                 current_user.following.remove(user_to_follow)
+                # Delete any existing follow notifications
+                Notification.objects.filter(
+                    sender=current_user,
+                    recipient=user_to_follow,
+                    notification_type='NEW_FOLLOWER'
+                ).delete()
+                
                 return Response({
                     "message": "Successfully unfollowed user",
                     "is_following": False,
@@ -362,25 +400,56 @@ class FollowUserView(APIView):
                     "following_count": user_to_follow.following.count()
                 })
             else:
-                # Follow
-                current_user.following.add(user_to_follow)
-                
-                # Create notification for the user being followed
-                Notification.objects.create(
-                    recipient=user_to_follow,
-                    sender=current_user,
-                    notification_type='NEW_FOLLOWER',
-                    content='started following you',
-                    related_object_id=current_user.id,
-                    related_object_type='User'
-                )
-                
-                return Response({
-                    "message": "Successfully followed user",
-                    "is_following": True,
-                    "followers_count": user_to_follow.followers.count(),
-                    "following_count": user_to_follow.following.count()
-                })
+                # Check if user has a private profile
+                if not user_to_follow.is_profile_public:
+                    # Check for existing pending request
+                    existing_request = Notification.objects.filter(
+                        sender=current_user,
+                        recipient=user_to_follow,
+                        notification_type='NEW_FOLLOWER',
+                        status='PENDING'
+                    ).exists()
+                    
+                    if existing_request:
+                        return Response({
+                            "message": "Follow request already sent",
+                            "follow_status": "PENDING"
+                        })
+                    
+                    # Create a new follow request notification
+                    Notification.objects.create(
+                        recipient=user_to_follow,
+                        sender=current_user,
+                        notification_type='NEW_FOLLOWER',
+                        content='wants to follow you',
+                        status='PENDING',
+                        related_object_type='User',
+                        related_object_id=current_user.id
+                    )
+                    
+                    return Response({
+                        "message": "Follow request sent",
+                        "follow_status": "PENDING"
+                    })
+                else:
+                    # For public profiles, follow directly
+                    current_user.following.add(user_to_follow)
+                    
+                    # Create notification for the user being followed
+                    Notification.objects.create(
+                        recipient=user_to_follow,
+                        sender=current_user,
+                        notification_type='NEW_FOLLOWER',
+                        content='started following you',
+                        status='ACCEPTED'
+                    )
+                    
+                    return Response({
+                        "message": "Successfully followed user",
+                        "is_following": True,
+                        "followers_count": user_to_follow.followers.count(),
+                        "following_count": user_to_follow.following.count()
+                    })
 
         except User.DoesNotExist:
             return Response(
@@ -485,3 +554,159 @@ class ConnectionRecommendationsView(APIView):
                 {"error": "Failed to get recommendations"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class HandleFollowRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, notification_id):
+        try:
+            action = request.data.get('action')
+            if action not in ['ACCEPT', 'REJECT', 'IGNORE']:
+                return Response(
+                    {"error": "Invalid action"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            notification = Notification.objects.get(
+                id=notification_id,
+                recipient=request.user,
+                notification_type='NEW_FOLLOWER'
+            )
+
+            if notification.status != 'PENDING':
+                return Response(
+                    {"error": "This request has already been handled"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if action == 'ACCEPT':
+                # Add follower
+                request.user.followers.add(notification.sender)
+                notification.status = 'ACCEPTED'
+                notification.content = 'started following you'
+                notification.save()
+
+                # Create notification for the sender
+                Notification.objects.create(
+                    recipient=notification.sender,
+                    sender=request.user,
+                    notification_type='CONNECTION_ACCEPTED',
+                    content='accepted your follow request',
+                    status='ACCEPTED'
+                )
+
+            elif action == 'REJECT':
+                notification.status = 'REJECTED'
+                notification.save()
+
+            else:  # IGNORE
+                notification.status = 'IGNORED'
+                notification.save()
+
+            return Response({
+                "message": f"Follow request {action.lower()}ed successfully",
+                "status": notification.status
+            })
+
+        except Notification.DoesNotExist:
+            return Response(
+                {"error": "Notification not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class CancelFollowRequestView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        try:
+            # Get the target user
+            target_user = User.objects.get(id=user_id)
+            
+            # Find and delete the pending follow request notification
+            notification = Notification.objects.filter(
+                sender=request.user,
+                recipient=target_user,
+                notification_type='NEW_FOLLOWER',
+                status='PENDING'
+            ).first()
+
+            if notification:
+                notification.delete()
+                
+                return Response({
+                    'message': 'Follow request cancelled successfully',
+                    'is_following': False,
+                    'follow_status': None
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    'error': 'No pending follow request found'
+                }, status=status.HTTP_404_NOT_FOUND)
+
+        except User.DoesNotExist:
+            return Response({
+                'error': 'User not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+class GetNotificationsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            notifications = Notification.objects.filter(
+                recipient=request.user
+            ).order_by('-created_at')
+
+            # Convert notifications to list of dictionaries
+            notifications_data = []
+            for notification in notifications:
+                data = {
+                    'id': notification.id,
+                    'notification_type': notification.notification_type,
+                    'content': notification.content,
+                    'created_at': notification.created_at,
+                    'is_read': notification.is_read,
+                    'related_object_id': notification.related_object_id,
+                    'related_object_type': notification.related_object_type,
+                    'status': notification.status,  # Always include status field
+                    'sender': None
+                }
+                
+                if notification.sender:
+                    sender_data = {
+                        'id': notification.sender.id,
+                        'email': notification.sender.email,
+                        'first_name': notification.sender.first_name if hasattr(notification.sender, 'first_name') else None,
+                        'last_name': notification.sender.last_name if hasattr(notification.sender, 'last_name') else None,
+                        'profile_picture': request.build_absolute_uri(notification.sender.profile_picture.url) if notification.sender.profile_picture else None,
+                        'user_type': notification.sender.user_type
+                    }
+                    
+                    # Add company name for company users
+                    if notification.sender.user_type == 'Company':
+                        sender_data['company_name'] = notification.sender.company_name
+                        
+                    data['sender'] = sender_data
+
+                notifications_data.append(data)
+
+            return Response({
+                'notifications': notifications_data,
+                'has_next': False,  # Implement pagination if needed
+                'total_pages': 1,
+                'unread_count': sum(1 for n in notifications if not n.is_read)
+            })
+        except Exception as e:
+            print(f"Error in GetNotificationsView: {str(e)}")  # Debug log
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

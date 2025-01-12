@@ -24,7 +24,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import WorkIcon from '@mui/icons-material/Work';
 import { EMPLOYMENT_TYPES, LOCATION_TYPES, EXPERIENCE_LEVELS } from '../../constants/jobConstants';
 
-const JobList = ({ filters }) => {
+const JobList = ({ filters, showRecommended = false }) => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -64,9 +64,10 @@ const JobList = ({ filters }) => {
         return acc;
       }, {});
 
-      console.log('Clean filters:', cleanFilters);  // Debug log
+      const response = showRecommended 
+        ? await jobService.getRecommendedJobs(cursor)
+        : await jobService.getJobs(cleanFilters, cursor);
 
-      const response = await jobService.getJobs(cleanFilters);
       setJobs(prev => cursor ? [...prev, ...response.data.jobs] : response.data.jobs);
       setNextCursor(response.data.next_cursor);
     } catch (error) {
@@ -76,7 +77,7 @@ const JobList = ({ filters }) => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [filters]);
+  }, [filters, showRecommended]);
 
   useEffect(() => {
     loadJobs();
@@ -102,6 +103,105 @@ const JobList = ({ filters }) => {
     return type ? type.label : value;
   };
 
+  const renderJobCard = (job) => (
+    <Grid item xs={12} md={6} lg={4} key={job.id}>
+      <Card 
+        sx={{ 
+          height: '100%', 
+          display: 'flex', 
+          flexDirection: 'column',
+          cursor: 'pointer',
+          '&:hover': {
+            boxShadow: 6
+          }
+        }}
+        onClick={() => handleJobClick(job.id)}
+      >
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Typography variant="h6" gutterBottom>
+              {job.title}
+            </Typography>
+            {user && user.userType !== USER_TYPES.COMPANY && (
+              <Tooltip title={job.is_saved ? "Remove from saved" : "Save job"}>
+                <IconButton 
+                  onClick={(e) => handleSaveJob(job.id, e)}
+                  size="small"
+                >
+                  {job.is_saved ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+
+          <Typography 
+            color="primary" 
+            sx={{ 
+              cursor: 'pointer', 
+              '&:hover': { textDecoration: 'underline' },
+              mb: 1
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/profile/${job.company_id}`);
+            }}
+          >
+            {job.company_name}
+          </Typography>
+
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+            <LocationOnIcon fontSize="small" color="action" />
+            <Typography variant="body2">
+              {job.location} ({getTypeLabel(job.location_type, LOCATION_TYPES)})
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+            <WorkIcon fontSize="small" color="action" />
+            <Typography variant="body2">
+              {getTypeLabel(job.employment_type, EMPLOYMENT_TYPES)}
+            </Typography>
+          </Stack>
+          <Box sx={{ mb: 2 }}>
+            <Chip
+              label={getTypeLabel(job.experience_level, EXPERIENCE_LEVELS)}
+              size="small"
+              sx={{ mr: 1, mb: 1 }}
+            />
+            {job.required_skills.slice(0, 3).map((skill, index) => (
+              <Chip
+                key={index}
+                label={skill}
+                size="small"
+                variant="outlined"
+                sx={{ mr: 1, mb: 1 }}
+              />
+            ))}
+            {job.required_skills.length > 3 && (
+              <Chip
+                label={`+${job.required_skills.length - 3} more`}
+                size="small"
+                variant="outlined"
+                sx={{ mb: 1 }}
+              />
+            )}
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {job.description.substring(0, 150)}...
+          </Typography>
+          {job.salary_min && job.salary_max && (
+            <Typography variant="body2" color="primary" sx={{ mb: 1 }}>
+              Salary: ${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}
+            </Typography>
+          )}
+          <Typography variant="caption" color="text.secondary">
+            Posted {new Date(job.created_at).toLocaleDateString()}
+            {job.days_until_expiry > 0 && ` • ${job.days_until_expiry} days left`}
+          </Typography>
+        </CardContent>
+      </Card>
+    </Grid>
+  );
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
@@ -122,96 +222,7 @@ const JobList = ({ filters }) => {
     <Box sx={{ mt: 3 }}>
       <Grid container spacing={3}>
         {jobs.map((job) => (
-          <Grid item xs={12} md={6} lg={4} key={job.id}>
-            <Card 
-              sx={{ 
-                height: '100%', 
-                display: 'flex', 
-                flexDirection: 'column',
-                cursor: 'pointer',
-                '&:hover': {
-                  boxShadow: 6
-                }
-              }}
-              onClick={() => handleJobClick(job.id)}
-            >
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Typography variant="h6" gutterBottom>
-                    {job.title}
-                  </Typography>
-                  {user && user.userType !== USER_TYPES.COMPANY && (
-                    <Tooltip title={job.is_saved ? "Remove from saved" : "Save job"}>
-                      <IconButton 
-                        onClick={(e) => handleSaveJob(job.id, e)}
-                        size="small"
-                      >
-                        {job.is_saved ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                </Box>
-
-                <Typography color="textSecondary" gutterBottom>
-                  {job.company_name}
-                </Typography>
-
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                  <LocationOnIcon fontSize="small" color="action" />
-                  <Typography variant="body2">
-                    {job.location} ({getTypeLabel(job.location_type, LOCATION_TYPES)})
-                  </Typography>
-                </Stack>
-
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-                  <WorkIcon fontSize="small" color="action" />
-                  <Typography variant="body2">
-                    {getTypeLabel(job.employment_type, EMPLOYMENT_TYPES)}
-                  </Typography>
-                </Stack>
-
-                <Box sx={{ mb: 2 }}>
-                  <Chip
-                    label={getTypeLabel(job.experience_level, EXPERIENCE_LEVELS)}
-                    size="small"
-                    sx={{ mr: 1, mb: 1 }}
-                  />
-                  {job.required_skills.slice(0, 3).map((skill, index) => (
-                    <Chip
-                      key={index}
-                      label={skill}
-                      size="small"
-                      variant="outlined"
-                      sx={{ mr: 1, mb: 1 }}
-                    />
-                  ))}
-                  {job.required_skills.length > 3 && (
-                    <Chip
-                      label={`+${job.required_skills.length - 3} more`}
-                      size="small"
-                      variant="outlined"
-                      sx={{ mb: 1 }}
-                    />
-                  )}
-                </Box>
-
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                  {job.description.substring(0, 150)}...
-                </Typography>
-
-                {job.salary_min && job.salary_max && (
-                  <Typography variant="body2" color="primary" sx={{ mb: 1 }}>
-                    Salary: ${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}
-                  </Typography>
-                )}
-
-                <Typography variant="caption" color="text.secondary">
-                  Posted {new Date(job.created_at).toLocaleDateString()}
-                  {job.days_until_expiry > 0 && ` • ${job.days_until_expiry} days left`}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+          renderJobCard(job)
         ))}
       </Grid>
 

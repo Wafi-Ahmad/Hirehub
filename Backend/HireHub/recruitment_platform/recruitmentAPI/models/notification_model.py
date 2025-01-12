@@ -3,15 +3,21 @@ from django.conf import settings
 
 class Notification(models.Model):
     NOTIFICATION_TYPES = [
-        ('CONNECTION_REQUEST', 'Connection Request'),
+        ('NEW_FOLLOWER', 'New Follower'),
         ('CONNECTION_ACCEPTED', 'Connection Accepted'),
-        ('NEW_JOB_POST', 'New Job Post'),
-        ('NEW_POST', 'New Post'),
         ('POST_LIKE', 'Post Like'),
         ('POST_COMMENT', 'Post Comment'),
-        ('COMMENT_REPLY', 'Comment Reply'),
-        ('COMMENT_LIKE', 'Comment Like'),
-        ('NEW_FOLLOWER', 'New Follower'),
+        ('NEW_JOB_POST', 'New Job Post'),
+        ('JOB_OFFER_INITIAL', 'Job Offer Initial'),
+        ('JOB_OFFER_ACCEPTED', 'Job Offer Accepted'),
+        ('JOB_OFFER_REJECTED', 'Job Offer Rejected'),
+    ]
+
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('ACCEPTED', 'Accepted'),
+        ('REJECTED', 'Rejected'),
+        ('IGNORED', 'Ignored'),
     ]
 
     recipient = models.ForeignKey(
@@ -23,19 +29,21 @@ class Notification(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='notifications_sent',
-        null=True
+        null=True,
+        blank=True
     )
     notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
     content = models.TextField()
-    related_object_id = models.IntegerField(null=True)  # ID of related post/job/connection
-    related_object_type = models.CharField(max_length=50, null=True)  # Type of related object
-    is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+    related_object_type = models.CharField(max_length=50, null=True, blank=True)
+    related_object_id = models.IntegerField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['-created_at']),
             models.Index(fields=['recipient', '-created_at']),
-            models.Index(fields=['is_read']),
+            models.Index(fields=['notification_type']),
+            models.Index(fields=['status']),
         ] 

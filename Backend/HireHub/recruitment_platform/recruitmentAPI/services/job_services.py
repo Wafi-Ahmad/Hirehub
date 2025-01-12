@@ -10,6 +10,7 @@ from ..models import User
 from ..serializers.job_serializers import JobResponseSerializer, CreateJobSerializer
 from .quiz_services import QuizService
 from ..models.notification_model import Notification
+from .job_matching_service import JobMatchingService
 import re
 
 class JobService:
@@ -282,3 +283,26 @@ class JobService:
             
         except JobPost.DoesNotExist:
             raise ValidationError("Job not found")
+
+    @staticmethod
+    def get_recommended_jobs(user, limit=10):
+        """Get recommended jobs for a user based on their profile"""
+        try:
+            # Get all active jobs
+            jobs = JobPost.objects.filter(status='ACTIVE')
+            
+            # Calculate match scores for each job
+            job_scores = []
+            for job in jobs:
+                score = JobMatchingService.calculate_match_score(job, user)
+                if score >= 70:  # Only include jobs with a score of 70 or higher
+                    job_scores.append((job, score))
+            
+            # Sort by score and get top recommendations
+            job_scores.sort(key=lambda x: x[1], reverse=True)
+            recommended_jobs = [job for job, _ in job_scores[:limit]]
+            
+            return recommended_jobs
+        except Exception as e:
+            print(f"Error getting recommended jobs: {str(e)}")
+            return []

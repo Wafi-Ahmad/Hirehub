@@ -34,7 +34,7 @@ import { formatTimeAgo } from '../../utils/dateUtils';
 import { useNavigate } from 'react-router-dom';
 import Comments from '../comments/Comments';
 
-const Post = ({ post, onDelete }) => {
+const Post = ({ post, onDelete, showRecommended = false }) => {
   const { user: currentUser } = useAuth();
   const { updatePost } = usePost();
   const [isCommenting, setIsCommenting] = useState(false);
@@ -47,6 +47,10 @@ const Post = ({ post, onDelete }) => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const isPostOwner = currentUser?.id === post.user.id;
+  const [posts, setPosts] = useState([]);
+  const [recommendedPosts, setRecommendedPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Fetch comments when comments section is opened
   const fetchComments = async (cursor = null) => {
@@ -79,6 +83,49 @@ const Post = ({ post, onDelete }) => {
       fetchComments();
     }
   }, [showComments]);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+        const response = showRecommended
+          ? await postService.getRecommendedPosts()
+          : await postService.getPosts();
+
+        // Ensure that response.data is an array
+        if (Array.isArray(response.data)) {
+          setPosts(response.data);
+        } else {
+          console.error('Expected an array but got:', response.data);
+          setPosts([]); // Set to empty array if not an array
+        }
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, [showRecommended]);
+
+  useEffect(() => {
+    if (showRecommended) {
+      const fetchRecommendedPosts = async () => {
+        try {
+          setLoading(true);
+          const response = await postService.getRecommendedPosts();
+          setRecommendedPosts(response.data);
+        } catch (error) {
+          console.error('Error fetching recommended posts:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchRecommendedPosts();
+    }
+  }, [showRecommended]);
 
   const handleComment = async () => {
     if (!commentContent.trim()) return;
@@ -153,7 +200,6 @@ const Post = ({ post, onDelete }) => {
       setComments(prevComments => {
         const filteredComments = prevComments.filter(c => c.id !== commentId);
         const updatedComments = filteredComments.map(comment => ({
-
           ...comment,
           replies: comment.replies?.filter(reply => reply.id !== commentId) || []
         }));
@@ -310,136 +356,280 @@ const Post = ({ post, onDelete }) => {
   };
 
   return (
-    <Card sx={{ mb: 2 }}>
-      <CardHeader
-        avatar={
-          <Avatar 
-            src={post.user?.profile_picture} 
-            alt={post.user?.user_type === 'Company' ? post.user?.company_name : `${post.user?.first_name} ${post.user?.last_name}`}
-            sx={{ cursor: 'pointer' }}
-            onClick={() => handleProfileClick(post.user?.id)}
-          />
-        }
-        title={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography
-              variant="subtitle1"
-              sx={{ 
-                cursor: 'pointer',
-                '&:hover': { textDecoration: 'underline' }
-              }}
-              onClick={() => handleProfileClick(post.user?.id)}
-            >
-              {post.user?.user_type === 'Company' ? post.user?.company_name : `${post.user?.first_name} ${post.user?.last_name}`}
-            </Typography>
-            {currentUser?.id !== post.user?.id && (
-              <Tooltip title={post.user?.is_following ? "Unfollow" : "Follow"}>
-                <IconButton
-                  size="small"
-                  onClick={post.user?.is_following ? handleUnfollow : handleFollow}
-                  color={post.user?.is_following ? "primary" : "default"}
-                >
-                  {post.user?.is_following ? <PersonRemoveIcon /> : <PersonAddIcon />}
-                </IconButton>
-              </Tooltip>
-            )}
-          </Box>
-        }
-        action={
-          <IconButton>
-            <MoreVertIcon />
-          </IconButton>
-        }
-        subheader={formatTimeAgo(post.created_at)}
-      />
-      
-      <CardContent>
-        <Typography variant="body1" sx={{ mb: 2 }}>
-          {post.content}
-        </Typography>
-        {renderMedia()}
-      </CardContent>
-
-      <Divider />
-      
-      <CardActions disableSpacing>
-        <IconButton 
-          onClick={handleLikePost}
-          color={post.is_liked ? "primary" : "default"}
-        >
-          <ThumbUpIcon />
-        </IconButton>
-        <Typography variant="body2" color="text.secondary">
-          {post.likes_count || 0}
-        </Typography>
-        
-        <IconButton onClick={() => setShowComments(!showComments)}>
-          <CommentIcon />
-        </IconButton>
-        <Typography variant="body2" color="text.secondary">
-          {post.comments_count || 0}
-        </Typography>
-      </CardActions>
-
-      {showComments && (
-        <Box sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', mb: 2 }}>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Write a comment..."
-              value={commentContent}
-              onChange={(e) => setCommentContent(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleComment();
-                }
-              }}
-            />
-            <Button 
-              variant="contained" 
-              sx={{ ml: 1 }}
-              onClick={handleComment}
-              disabled={!commentContent.trim()}
-            >
-              Post
-            </Button>
-          </Box>
-
-          {loadingComments ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : (
-            <>
-
-              {comments.map((comment) => (
-                <Comment
-                  key={comment.id}
-                  comment={comment}
-                  onLike={handleCommentLike}
-                  onDelete={handleDeleteComment}
-                  onReply={handleComment}
-                  currentUser={currentUser}
-                />
-              ))}
-              
-              {hasMoreComments && (
-                <Button
-                  fullWidth
-                  onClick={() => fetchComments(commentCursor)}
-                  disabled={loadingComments}
-                >
-                  Load More Comments
-                </Button>
-              )}
-            </>
-
-          )}
+    <>
+      {showRecommended && recommendedPosts.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Recommended Posts
+          </Typography>
+          {recommendedPosts.map((recPost) => (
+            <Post key={recPost.id} post={recPost} />
+          ))}
         </Box>
       )}
-    </Card>
+      <Card sx={{ mb: 2 }}>
+        <CardHeader
+          avatar={
+            <Avatar 
+              src={post.user?.profile_picture} 
+              alt={post.user?.user_type === 'Company' ? post.user?.company_name : `${post.user?.first_name} ${post.user?.last_name}`}
+              sx={{ cursor: 'pointer' }}
+              onClick={() => handleProfileClick(post.user?.id)}
+            />
+          }
+          title={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{ 
+                  cursor: 'pointer',
+                  '&:hover': { textDecoration: 'underline' }
+                }}
+                onClick={() => handleProfileClick(post.user?.id)}
+              >
+                {post.user?.user_type === 'Company' ? post.user?.company_name : `${post.user?.first_name} ${post.user?.last_name}`}
+              </Typography>
+              {currentUser?.id !== post.user?.id && (
+                <Tooltip title={post.user?.is_following ? "Unfollow" : "Follow"}>
+                  <IconButton
+                    size="small"
+                    onClick={post.user?.is_following ? handleUnfollow : handleFollow}
+                    color={post.user?.is_following ? "primary" : "default"}
+                  >
+                    {post.user?.is_following ? <PersonRemoveIcon /> : <PersonAddIcon />}
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Box>
+          }
+          action={
+            <IconButton>
+              <MoreVertIcon />
+            </IconButton>
+          }
+          subheader={formatTimeAgo(post.created_at)}
+        />
+        
+        <CardContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            {post.content}
+          </Typography>
+          {renderMedia()}
+        </CardContent>
+
+        <Divider />
+        
+        <CardActions disableSpacing>
+          <IconButton 
+            onClick={handleLikePost}
+            color={post.is_liked ? "primary" : "default"}
+          >
+            <ThumbUpIcon />
+          </IconButton>
+          <Typography variant="body2" color="text.secondary">
+            {post.likes_count || 0}
+          </Typography>
+          
+          <IconButton onClick={() => setShowComments(!showComments)}>
+            <CommentIcon />
+          </IconButton>
+          <Typography variant="body2" color="text.secondary">
+            {post.comments_count || 0}
+          </Typography>
+        </CardActions>
+
+        {showComments && (
+          <Box sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', mb: 2 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Write a comment..."
+                value={commentContent}
+                onChange={(e) => setCommentContent(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleComment();
+                  }
+                }}
+              />
+              <Button 
+                variant="contained" 
+                sx={{ ml: 1 }}
+                onClick={handleComment}
+                disabled={!commentContent.trim()}
+              >
+                Post
+              </Button>
+            </Box>
+
+            {loadingComments ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : (
+              <>
+
+                {comments.map((comment) => (
+                  <Comment
+                    key={comment.id}
+                    comment={comment}
+                    onLike={handleCommentLike}
+                    onDelete={handleDeleteComment}
+                    onReply={handleComment}
+                    currentUser={currentUser}
+                  />
+                ))}
+                
+                {hasMoreComments && (
+                  <Button
+                    fullWidth
+                    onClick={() => fetchComments(commentCursor)}
+                    disabled={loadingComments}
+                  >
+                    Load More Comments
+                  </Button>
+                )}
+              </>
+
+            )}
+          </Box>
+        )}
+      </Card>
+      {posts.map((post) => (
+        <Card key={post.id} sx={{ mb: 2 }}>
+          <CardHeader
+            avatar={
+              <Avatar 
+                src={post.user?.profile_picture} 
+                alt={post.user?.user_type === 'Company' ? post.user?.company_name : `${post.user?.first_name} ${post.user?.last_name}`}
+                sx={{ cursor: 'pointer' }}
+                onClick={() => handleProfileClick(post.user?.id)}
+              />
+            }
+            title={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ 
+                    cursor: 'pointer',
+                    '&:hover': { textDecoration: 'underline' }
+                  }}
+                  onClick={() => handleProfileClick(post.user?.id)}
+                >
+                  {post.user?.user_type === 'Company' ? post.user?.company_name : `${post.user?.first_name} ${post.user?.last_name}`}
+                </Typography>
+                {currentUser?.id !== post.user?.id && (
+                  <Tooltip title={post.user?.is_following ? "Unfollow" : "Follow"}>
+                    <IconButton
+                      size="small"
+                      onClick={post.user?.is_following ? handleUnfollow : handleFollow}
+                      color={post.user?.is_following ? "primary" : "default"}
+                    >
+                      {post.user?.is_following ? <PersonRemoveIcon /> : <PersonAddIcon />}
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            }
+            action={
+              <IconButton>
+                <MoreVertIcon />
+              </IconButton>
+            }
+            subheader={formatTimeAgo(post.created_at)}
+          />
+          
+          <CardContent>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              {post.content}
+            </Typography>
+            {renderMedia()}
+          </CardContent>
+
+          <Divider />
+          
+          <CardActions disableSpacing>
+            <IconButton 
+              onClick={handleLikePost}
+              color={post.is_liked ? "primary" : "default"}
+            >
+              <ThumbUpIcon />
+            </IconButton>
+            <Typography variant="body2" color="text.secondary">
+              {post.likes_count || 0}
+            </Typography>
+            
+            <IconButton onClick={() => setShowComments(!showComments)}>
+              <CommentIcon />
+            </IconButton>
+            <Typography variant="body2" color="text.secondary">
+              {post.comments_count || 0}
+            </Typography>
+          </CardActions>
+
+          {showComments && (
+            <Box sx={{ p: 2 }}>
+              <Box sx={{ display: 'flex', mb: 2 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Write a comment..."
+                  value={commentContent}
+                  onChange={(e) => setCommentContent(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleComment();
+                    }
+                  }}
+                />
+                <Button 
+                  variant="contained" 
+                  sx={{ ml: 1 }}
+                  onClick={handleComment}
+                  disabled={!commentContent.trim()}
+                >
+                  Post
+                </Button>
+              </Box>
+
+              {loadingComments ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : (
+                <>
+
+                  {comments.map((comment) => (
+                    <Comment
+                      key={comment.id}
+                      comment={comment}
+                      onLike={handleCommentLike}
+                      onDelete={handleDeleteComment}
+                      onReply={handleComment}
+                      currentUser={currentUser}
+                    />
+                  ))}
+                  
+                  {hasMoreComments && (
+                    <Button
+                      fullWidth
+                      onClick={() => fetchComments(commentCursor)}
+                      disabled={loadingComments}
+                    >
+                      Load More Comments
+                    </Button>
+                  )}
+                </>
+
+              )}
+            </Box>
+          )}
+        </Card>
+      ))}
+    </>
   );
 };
 

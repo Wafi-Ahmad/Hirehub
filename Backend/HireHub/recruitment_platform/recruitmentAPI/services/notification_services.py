@@ -20,6 +20,36 @@ class NotificationService:
         )
 
     @staticmethod
+    def create_job_offer_notification(recipient, sender, job_id, job_title):
+        """
+        Create a job offer notification, handling both initial offers and reminders
+        """
+        # Check if there's an existing job offer notification
+        existing_offer = Notification.objects.filter(
+            recipient=recipient,
+            sender=sender,
+            related_object_id=job_id,
+            related_object_type='job',
+            notification_type__in=['JOB_OFFER_INITIAL', 'JOB_OFFER_REMINDER']
+        ).exists()
+
+        notification_type = 'JOB_OFFER_REMINDER' if existing_offer else 'JOB_OFFER_INITIAL'
+        content = (
+            f"has sent you a reminder about the job offer for {job_title}"
+            if existing_offer
+            else f"has sent you a job offer for the position of {job_title}"
+        )
+
+        return NotificationService.create_notification(
+            recipient=recipient,
+            sender=sender,
+            notification_type=notification_type,
+            content=content,
+            related_object_id=job_id,
+            related_object_type='job'
+        )
+
+    @staticmethod
     def get_user_notifications(user_id, page=1, limit=20, notification_type=None):
         """Get paginated notifications for a user"""
         try:
@@ -53,6 +83,14 @@ class NotificationService:
         return Notification.objects.filter(
             id__in=notification_ids,
             recipient_id=user_id
+        ).update(is_read=True)
+
+    @staticmethod
+    def mark_all_as_read(user_id):
+        """Mark all notifications as read for a user"""
+        return Notification.objects.filter(
+            recipient_id=user_id,
+            is_read=False
         ).update(is_read=True)
 
     @staticmethod

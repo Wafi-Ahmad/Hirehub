@@ -74,7 +74,7 @@ class JobListView(viewsets.ViewSet):
     )
     def create(self, request):
         """Create a new job posting"""
-        if not hasattr(request.user, 'company'):
+        if request.user.user_type != 'Company':
             return Response(
                 {'error': 'Only company users can create jobs'},
                 status=status.HTTP_403_FORBIDDEN

@@ -5,18 +5,21 @@ import {
     Typography,
     Box,
     Avatar,
-    Button,
     IconButton,
-    Badge
+    Badge,
+    Tooltip
 } from '@mui/material';
 import { 
-    Notifications as NotificationsIcon
+    Notifications as NotificationsIcon,
+    CheckCircleOutline as AcceptIcon,
+    CancelOutlined as RejectIcon,
+    MoreHoriz as IgnoreIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import connectionService from '../../services/connectionService';
+import api from '../../services/api';
 import { formatTimeAgo } from '../../utils/dateUtils';
 
 const NotificationMenu = () => {
@@ -29,7 +32,8 @@ const NotificationMenu = () => {
         loading,
         setNotifications,
         setUnreadCount,
-        unreadCount
+        unreadCount,
+        markAllAsRead
     } = useNotification();
 
     // Don't render anything if not authenticated
@@ -37,8 +41,10 @@ const NotificationMenu = () => {
         return null;
     }
 
-    const handleClick = (event) => {
+    const handleClick = async (event) => {
         setAnchorEl(event.currentTarget);
+        // Mark all as read when menu opens
+        await markAllAsRead();
     };
 
     const handleClose = () => {
@@ -51,12 +57,20 @@ const NotificationMenu = () => {
             
             // Handle navigation based on notification type
             switch (notification.notification_type) {
+                case 'NEW_FOLLOWER':
+                    // Only navigate if the notification is not pending
+                    if (notification.status !== 'PENDING') {
+                        navigate(`/profile/${notification.sender.id}`);
+                    }
+                    break;
+                case 'CONNECTION_ACCEPTED':
+                    navigate(`/profile/${notification.sender.id}`);
+                    break;
                 case 'NEW_POST':
                 case 'POST_LIKE':
                 case 'POST_COMMENT':
                 case 'COMMENT_REPLY':
                 case 'COMMENT_LIKE':
-                    // Navigate to home with the specific post ID
                     navigate('/', { 
                         state: { 
                             scrollToPostId: notification.related_object_id,
@@ -64,16 +78,12 @@ const NotificationMenu = () => {
                         }
                     });
                     break;
-                case 'CONNECTION_REQUEST':
-                case 'CONNECTION_ACCEPTED':
-                    navigate('/network');
-                    break;
                 case 'NEW_JOB_POST':
                     navigate('/jobs');
                     break;
-                case 'NEW_FOLLOWER':
-                    // Navigate to the follower's profile
-                    navigate(`/profile/${notification.sender.id}`);
+                case 'JOB_OFFER_INITIAL':
+                case 'JOB_OFFER_REMINDER':
+                    navigate(`/jobs/${notification.related_object_id}`);
                     break;
                 default:
                     navigate('/');
@@ -85,30 +95,75 @@ const NotificationMenu = () => {
         }
     };
 
-    const handleConnectionAction = async (requestId, action) => {
+    const handleFollowAction = async (notificationId, action) => {
         try {
-            await connectionService.handleRequest(requestId, action);
-            // Remove the notification from the list
-            setNotifications(prev =>
-                prev.filter(notif => notif.related_object_id !== requestId)
+            const response = await api.post(`/users/follow-request/${notificationId}/`, {
+                action: action
+            });
+            
+            // Update notification in the list
+            setNotifications(prev => 
+                prev.map(notif => 
+                    notif.id === notificationId
+                        ? { ...notif, status: response.data.status }
+                        : notif
+                )
             );
-            // Update unread count if the notification was unread
-            const wasUnread = notifications.find(
-                notif => notif.related_object_id === requestId && !notif.is_read
-            );
-            if (wasUnread) {
-                setUnreadCount(prev => Math.max(0, prev - 1));
-            }
-            toast.success(`Connection request ${action.toLowerCase()}ed`);
+            
+            toast.success(response.data.message);
         } catch (error) {
-            console.error(`Error ${action.toLowerCase()}ing connection request:`, error);
-            toast.error(`Failed to ${action.toLowerCase()} connection request`);
+            console.error('Error handling follow request:', error);
+            toast.error('Failed to process follow request');
         }
     };
 
+    const renderFollowRequestActions = (notification) => {
+        if (notification.notification_type !== 'NEW_FOLLOWER' || notification.status !== 'PENDING') {
+            return null;
+        }
+
+        return (
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 1 }}>
+                <Tooltip title="Accept">
+                    <IconButton
+                        size="small"
+                        color="success"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleFollowAction(notification.id, 'ACCEPT');
+                        }}
+                    >
+                        <AcceptIcon fontSize="small" />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip title="Reject">
+                    <IconButton
+                        size="small"
+                        color="error"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleFollowAction(notification.id, 'REJECT');
+                        }}
+                    >
+                        <RejectIcon fontSize="small" />
+                    </IconButton>
+                </Tooltip>
+                <Tooltip title="Ignore">
+                    <IconButton
+                        size="small"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleFollowAction(notification.id, 'IGNORE');
+                        }}
+                    >
+                        <IgnoreIcon fontSize="small" />
+                    </IconButton>
+                </Tooltip>
+            </Box>
+        );
+    };
+
     const renderNotificationContent = (notification) => {
-        const isConnectionRequest = notification.notification_type === 'CONNECTION_REQUEST';
-        
         return (
             <MenuItem
                 key={notification.id}
@@ -121,49 +176,30 @@ const NotificationMenu = () => {
                         backgroundColor: notification.is_read ? 'action.hover' : 'action.selected'
                     }
                 }}
-                onClick={isConnectionRequest ? undefined : () => handleNotificationClick(notification)}
+                onClick={() => handleNotificationClick(notification)}
             >
                 <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-                    <Avatar src={notification.sender?.profile_picture} />
+                    <Avatar 
+                        src={notification.sender?.profile_picture} 
+                        alt={notification.sender?.first_name}
+                        sx={{
+                            width: 40,
+                            height: 40
+                        }}
+                    />
                     <Box sx={{ flex: 1 }}>
                         <Typography variant="body2">
-                            <strong>{notification.sender?.first_name} {notification.sender?.last_name}</strong>
+                            <strong>
+                                {notification.sender?.user_type === 'Company' 
+                                    ? notification.sender?.company_name 
+                                    : `${notification.sender?.first_name} ${notification.sender?.last_name}`}
+                            </strong>
                             {' '}{notification.content}
                         </Typography>
-                        <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: isConnectionRequest ? 1 : 0 }}>
+                        <Typography variant="caption" color="textSecondary" display="block">
                             {formatTimeAgo(notification.created_at)}
                         </Typography>
-                        {isConnectionRequest && (
-                            <Box sx={{ 
-                                mt: 1, 
-                                display: 'flex', 
-                                gap: 1,
-                                justifyContent: 'flex-end'
-                            }}>
-                                <Button
-                                    size="small"
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleConnectionAction(notification.related_object_id, 'ACCEPT');
-                                    }}
-                                >
-                                    Accept
-                                </Button>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="error"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleConnectionAction(notification.related_object_id, 'REJECT');
-                                    }}
-                                >
-                                    Reject
-                                </Button>
-                            </Box>
-                        )}
+                        {renderFollowRequestActions(notification)}
                     </Box>
                 </Box>
             </MenuItem>

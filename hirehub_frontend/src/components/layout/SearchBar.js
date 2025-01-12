@@ -22,6 +22,8 @@ import { useNavigate } from 'react-router-dom';
 import { debounce } from 'lodash';
 import api from '../../services/api';
 import {API_BASE_URL} from '../../config';
+import LockIcon from '@mui/icons-material/Lock';
+
 const SearchBar = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -78,6 +80,45 @@ const SearchBar = () => {
 
   const handleClickAway = () => {
     setOpen(false);
+  };
+
+  const renderSearchResult = (result) => {
+    const displayName = result.user_type === 'Company' 
+      ? result.company_name 
+      : `${result.first_name} ${result.last_name}`;
+    
+    const subtitle = result.user_type === 'Company'
+      ? result.industry || 'No industry information'
+      : result.current_work || 'No current position';
+
+    return (
+      <ListItem
+        button
+        onClick={() => handleProfileClick(result.id)}
+        sx={{ '&:hover': { backgroundColor: 'action.hover' } }}
+      >
+        <ListItemAvatar>
+          <Avatar src={result.profile_picture}>
+            {result.first_name?.charAt(0)}{result.last_name?.charAt(0)}
+          </Avatar>
+        </ListItemAvatar>
+        <ListItemText
+          primary={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography>{displayName}</Typography>
+              {!result.is_profile_public && (
+                <LockIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+              )}
+            </Box>
+          }
+          secondary={
+            <Typography variant="body2" color="text.secondary">
+              {result.is_profile_public ? subtitle : 'Private Profile'}
+            </Typography>
+          }
+        />
+      </ListItem>
+    );
   };
 
   return (
@@ -139,19 +180,7 @@ const SearchBar = () => {
               ) : (
                 searchResults.map((result, index) => (
                   <React.Fragment key={result.id || index}>
-                    <ListItem
-                      button
-                      onClick={() => handleProfileClick(result.id)}
-                      sx={{ '&:hover': { backgroundColor: 'action.hover' } }}
-                    >
-                      <ListItemAvatar>
-                        <Avatar src={result.profile_picture} />
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={`${result.first_name} ${result.last_name}`}
-                        secondary={result.current_work || 'No current position'}
-                      />
-                    </ListItem>
+                    {renderSearchResult(result)}
                     {index < searchResults.length - 1 && <Divider />}
                   </React.Fragment>
                 ))

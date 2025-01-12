@@ -60,15 +60,12 @@ class SendJobOfferView(APIView):
             applicant = User.objects.get(pk=applicant_id)
             company = job.posted_by
 
-            # Create notification first
-            notification_message = f"{company.company_name} has sent you a job offer for the position of {job.title}"
-            NotificationService.create_notification(
+            # Create notification using the new service method
+            notification = NotificationService.create_job_offer_notification(
                 recipient=applicant,
-                notification_type='job_offer',
-                content=notification_message,
                 sender=company,
-                related_object_id=job.id,
-                related_object_type='job'
+                job_id=job.id,
+                job_title=job.title
             )
 
             # Prepare email content
@@ -88,12 +85,14 @@ HireHub Team
             
             if success:
                 return Response({
-                    'message': 'Job offer sent successfully with email'
+                    'message': 'Job offer sent successfully with email',
+                    'notification_type': notification.notification_type
                 })
             else:
                 return Response({
                     'message': f'Email sending failed: {error}. Job offer notification created.',
                     'status': 'notification_only',
+                    'notification_type': notification.notification_type,
                     'error_details': error
                 }, status=status.HTTP_502_BAD_GATEWAY)
 

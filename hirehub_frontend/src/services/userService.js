@@ -16,7 +16,16 @@ export const userService = {
 
   // Follow a user
   followUser: async (userId) => {
-    return api.post(`/users/follow/${userId}/`);
+    try {
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+      const response = await api.post(`/users/follow/${userId}/`);
+      return response;
+    } catch (error) {
+      console.error('Follow/unfollow error:', error);
+      throw error;
+    }
   },
 
   // Get user profile stats (followers/following)
@@ -60,5 +69,34 @@ export const userService = {
   logout: async () => {
     const refresh = localStorage.getItem('refresh');
     return api.post('/users/logout/', { refresh_token: refresh });
+  },
+
+  // Cancel a pending follow request (only for private profiles with pending requests)
+  cancelFollowRequest: async (userId) => {
+    try {
+      const response = await api.post(`/users/${userId}/cancel-follow-request/`);
+      return response;
+    } catch (error) {
+      console.error('Cancel follow request error:', error);
+      throw error;
+    }
+  },
+
+  handleFollowRequest: async (notificationId, action) => {
+    try {
+      const response = await api.post(`/users/follow-request/${notificationId}/`, { action });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getNotifications: async () => {
+    try {
+      const response = await api.get('/users/notifications/');
+      return response;
+    } catch (error) {
+      throw error;
+    }
   }
 };

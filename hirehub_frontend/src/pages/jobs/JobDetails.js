@@ -120,9 +120,21 @@ const JobDetails = () => {
           <IconButton onClick={() => navigate('/jobs')} sx={{ mr: 2 }}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h4" component="h1" sx={{ flex: 1 }}>
-            {selectedJob.title}
-          </Typography>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h4" component="h1">
+              {selectedJob.title}
+            </Typography>
+            <Typography 
+              variant="h6" 
+              color="primary" 
+              sx={{ 
+                cursor: 'pointer', 
+                '&:hover': { textDecoration: 'underline' } 
+              }}
+              onClick={() => navigate(`/profile/${selectedJob.company_id}`)}>
+              {selectedJob.company_name}
+            </Typography>
+          </Box>
           {user?.user_type !== "Company" && (
             <Tooltip title={selectedJob.is_saved ? "Remove from saved" : "Save job"}>
               <IconButton onClick={handleSave}>
@@ -134,9 +146,6 @@ const JobDetails = () => {
 
         {/* Company Info */}
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" color="primary" gutterBottom>
-            {selectedJob.company_name}
-          </Typography>
           <Grid container spacing={2} alignItems="center">
             <Grid item>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

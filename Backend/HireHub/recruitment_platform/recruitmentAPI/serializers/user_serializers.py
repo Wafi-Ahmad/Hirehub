@@ -214,9 +214,19 @@ class FollowUserSerializer(serializers.Serializer):
             raise serializers.ValidationError("User not found.")
     
 class UserMinimalSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = ['id', 'email', 'first_name', 'last_name', 'profile_picture', 'user_type', 'company_name']
+
+    def get_profile_picture(self, obj):
+        if obj.profile_picture and hasattr(obj.profile_picture, 'url'):
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile_picture.url)
+            return obj.profile_picture.url
+        return None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

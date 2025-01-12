@@ -52,7 +52,7 @@ class JobService {
         : jobData.required_skills.split(',').map(s => s.trim())
     };
     
-    return axios.post(`${JOB_API}/create/`, formattedData);
+    return axios.post(`${JOB_API}/`, formattedData);
   }
 
   // Update an existing job
@@ -95,6 +95,24 @@ class JobService {
       return response.data;
     } catch (error) {
       throw error.response?.data || error;
+    }
+  }
+
+  async getRecommendedJobs(cursor = null) {
+    try {
+      const response = await axios.get(`${JOB_API}/recommended${cursor ? `?cursor=${cursor}` : ''}`);
+      return response;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  }
+
+  async getRecommendedJobs() {
+    try {
+      const response = await axios.get(`${JOB_API}/recommended`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
     }
   }
 }

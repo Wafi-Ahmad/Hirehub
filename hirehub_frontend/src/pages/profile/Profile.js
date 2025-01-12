@@ -29,6 +29,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import LanguageIcon from '@mui/icons-material/Language';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
+import LockIcon from '@mui/icons-material/Lock';
 import { useProfile } from '../../context/ProfileContext';
 import { useAuth } from '../../context/AuthContext';
 import { usePost } from '../../context/PostContext';
@@ -36,6 +37,8 @@ import { userService } from '../../services/userService';
 import { toast } from 'react-toastify';
 import EditProfileDialog from '../../components/profile/EditProfileDialog';
 import PostList from '../../components/post/PostList';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import { FOLLOW_STATUS_UPDATE_EVENT } from '../../components/layout/NotificationMenu';
 
 const Profile = () => {
   const { id } = useParams();
@@ -52,6 +55,22 @@ const Profile = () => {
   } = useProfile();
   const { clearPosts } = usePost();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  const isOwnProfile = !id || id === currentUser?.id?.toString();
+  const isPrivateProfile = !isOwnProfile && profileData?.is_profile_public === false && !profileData?.is_following;
+
+  const renderSkeletons = () => (
+    <>
+      <Skeleton variant="rectangular" height={250} />
+      <Box sx={{ mt: -5, display: 'flex', justifyContent: 'center' }}>
+        <Skeleton variant="circular" width={120} height={120} />
+      </Box>
+      <Box sx={{ mt: 2, textAlign: 'center' }}>
+        <Skeleton variant="text" width={200} sx={{ mx: 'auto' }} />
+        <Skeleton variant="text" width={150} sx={{ mx: 'auto' }} />
+      </Box>
+    </>
+  );
 
   const handlePrivacyChange = async (setting, value) => {
     try {
@@ -87,18 +106,54 @@ const Profile = () => {
     loadProfile();
   }, [id, currentUser, fetchProfileData]);
 
+  // Add polling for profile updates when viewing a private profile
+  useEffect(() => {
+    let intervalId;
+    
+    const pollProfileStatus = async () => {
+      if (id && !isOwnProfile && !profileData?.is_profile_public) {
+        try {
+          await fetchProfileData(id);
+        } catch (error) {
+          console.error('Error polling profile status:', error);
+        }
+      }
+    };
+
+    // Start polling if viewing someone else's private profile
+    if (id && !isOwnProfile && !profileData?.is_profile_public) {
+      intervalId = setInterval(pollProfileStatus, 5000); // Poll every 5 seconds
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [id, isOwnProfile, profileData?.is_profile_public, fetchProfileData]);
+
+  // Listen for follow status updates
+  useEffect(() => {
+    const handleFollowStatusUpdate = async (event) => {
+      const { userId, action } = event.detail;
+      // If this is the profile being viewed
+      if (userId === parseInt(id)) {
+        await fetchProfileData(id);
+      }
+    };
+
+    window.addEventListener(FOLLOW_STATUS_UPDATE_EVENT, handleFollowStatusUpdate);
+
+    return () => {
+      window.removeEventListener(FOLLOW_STATUS_UPDATE_EVENT, handleFollowStatusUpdate);
+    };
+  }, [id, fetchProfileData]);
+
   // Early loading state
   if (loading) {
     return (
       <Container maxWidth="lg">
-        <Skeleton variant="rectangular" height={250} />
-        <Box sx={{ mt: -5, display: 'flex', justifyContent: 'center' }}>
-          <Skeleton variant="circular" width={120} height={120} />
-        </Box>
-        <Box sx={{ mt: 2, textAlign: 'center' }}>
-          <Skeleton variant="text" width={200} sx={{ mx: 'auto' }} />
-          <Skeleton variant="text" width={150} sx={{ mx: 'auto' }} />
-        </Box>
+        {renderSkeletons()}
       </Container>
     );
   }
@@ -124,43 +179,92 @@ const Profile = () => {
 
   const handleFollow = async () => {
     try {
-      const response = await userService.followUser(profileData.id);
-      const { is_following, followers_count, following_count } = response.data;
+      // Use the id from URL params if profileData.id is not available
+      const userId = id || profileData?.id;
+      if (!userId) {
+        toast.error('User ID not found');
+        return;
+      }
+
+      const response = await userService.followUser(userId);
+      const { is_following, followers_count, following_count, message, follow_status } = response.data;
       
-      // Update follow status in profile data
+      // Update profile data with follow status
       setProfileData(prev => ({
         ...prev,
-        is_following
+        is_following,
+        follow_status
       }));
 
-      // Update follow counts
-      updateFollowData({ followers_count, following_count });
+      // Update follow counts if provided
+      if (followers_count !== undefined && following_count !== undefined) {
+        updateFollowData({ followers_count, following_count });
+      }
       
-      toast.success('Successfully followed user');
+      toast.success(message || 'Successfully followed user');
     } catch (error) {
-      toast.error('Failed to follow user');
+      toast.error(error.response?.data?.error || 'Failed to follow user');
       console.error('Follow error:', error);
     }
   };
 
   const handleUnfollow = async () => {
-    try {
-      const response = await userService.followUser(profileData.id);
-      const { is_following, followers_count, following_count } = response.data;
-      
-      // Update follow status in profile data
-      setProfileData(prev => ({
-        ...prev,
-        is_following
-      }));
+    console.log('handleUnfollow called', { id, profileData });
+    // Move isPendingRequest declaration outside try block
+    const isPendingRequest = 
+        !profileData?.is_profile_public && 
+        profileData?.follow_status === 'PENDING';
 
-      // Update follow counts
-      updateFollowData({ followers_count, following_count });
-      
-      toast.success('Successfully unfollowed user');
+    console.log('Unfollow conditions:', {
+        isPrivateProfile: !profileData?.is_profile_public,
+        followStatus: profileData?.follow_status,
+        isPendingRequest
+    });
+
+    try {
+        const userId = id || profileData?.id;
+        if (!userId) {
+            toast.error('User ID not found');
+            return;
+        }
+
+        let response;
+        if (isPendingRequest) {
+            // Cancel the pending follow request
+            console.log('Canceling pending follow request');
+            response = await userService.cancelFollowRequest(userId);
+        } else {
+            // Regular unfollow for all other cases
+            console.log('Regular unfollow');
+            response = await userService.followUser(userId);
+        }
+        
+        console.log('Unfollow response:', response.data);
+        const { is_following, followers_count, following_count, message } = response.data;
+        
+        // Update profile data
+        setProfileData(prev => ({
+            ...prev,
+            is_following,
+            follow_status: null // Reset follow status
+        }));
+
+        // Update follow counts if they are provided
+        if (followers_count !== undefined && following_count !== undefined) {
+            updateFollowData({ followers_count, following_count });
+        }
+        
+        const successMessage = isPendingRequest 
+            ? 'Follow request cancelled successfully'
+            : 'Successfully unfollowed user';
+        toast.success(message || successMessage);
     } catch (error) {
-      toast.error('Failed to unfollow user');
-      console.error('Unfollow error:', error);
+        console.error('Unfollow error:', error);
+        const errorMessage = error.response?.data?.error || 
+                           (isPendingRequest 
+                               ? 'Failed to cancel follow request'
+                               : 'Failed to unfollow user');
+        toast.error(errorMessage);
     }
   };
 
@@ -171,21 +275,6 @@ const Profile = () => {
   const handleCloseEditDialog = () => {
     setEditDialogOpen(false);
   };
-
-  const isOwnProfile = !id || id === currentUser?.id?.toString();
-
-  const renderSkeletons = () => (
-    <>
-      <Skeleton variant="rectangular" height={250} />
-      <Box sx={{ mt: -5, display: 'flex', justifyContent: 'center' }}>
-        <Skeleton variant="circular" width={120} height={120} />
-      </Box>
-      <Box sx={{ mt: 2, textAlign: 'center' }}>
-        <Skeleton variant="text" width={200} sx={{ mx: 'auto' }} />
-        <Skeleton variant="text" width={150} sx={{ mx: 'auto' }} />
-      </Box>
-    </>
-  );
 
   const renderContactInfo = () => {
     const hasContactInfo = profileData?.phone || profileData?.linkedin_url || profileData?.github_url || profileData?.website;
@@ -369,6 +458,96 @@ const Profile = () => {
     );
   };
 
+  // Show private profile view if profile is private and user is not following
+  if (profileData?.is_profile_public === false && !isOwnProfile && !profileData?.is_following) {
+    return (
+      <Container maxWidth="lg">
+        {/* Cover Photo */}
+        <Box
+          sx={{
+            height: 250,
+            bgcolor: 'grey.200',
+            backgroundImage: profileData?.cover_picture ? `url(${profileData.cover_picture})` : 'none',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            borderRadius: 1,
+            position: 'relative',
+            mb: 8
+          }}
+        />
+
+        {/* Profile Info */}
+        <Paper sx={{ mt: -5, mx: 'auto', maxWidth: 'md', position: 'relative' }}>
+          <Box sx={{ p: 3 }}>
+            {/* Profile Picture */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: -8 }}>
+              <Avatar
+                src={profileData?.profile_picture}
+                sx={{
+                  width: 120,
+                  height: 120,
+                  border: '4px solid white',
+                  boxShadow: 1,
+                }}
+              >
+                {profileData?.first_name?.charAt(0)}{profileData?.last_name?.charAt(0)}
+              </Avatar>
+            </Box>
+
+            {/* Basic Info */}
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Typography variant="h5" gutterBottom>
+                {`${profileData?.first_name} ${profileData?.last_name}`}
+              </Typography>
+
+              {/* Lock Icon */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: 2 }}>
+                <LockIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                <Typography variant="body1" color="text.secondary">
+                  This account is private
+                </Typography>
+              </Box>
+
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+                Follow this account to see their profile and posts
+              </Typography>
+
+              {/* Follow Button with States */}
+              {profileData?.follow_status === 'PENDING' ? (
+                <Button
+                  variant="outlined"
+                  startIcon={<HourglassEmptyIcon />}
+                  sx={{ mt: 3 }}
+                  onClick={handleUnfollow}
+                >
+                  Requested
+                </Button>
+              ) : profileData?.follow_status === 'REJECTED' ? (
+                <Button
+                  variant="contained"
+                  startIcon={<PersonAddIcon />}
+                  onClick={handleFollow}
+                  sx={{ mt: 3 }}
+                >
+                  Follow
+                </Button>
+              ) : (
+                <Button
+                  variant="contained"
+                  startIcon={<PersonAddIcon />}
+                  onClick={handleFollow}
+                  sx={{ mt: 3 }}
+                >
+                  Follow
+                </Button>
+              )}
+            </Box>
+          </Box>
+        </Paper>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="lg">
       {/* Cover Photo */}
@@ -430,6 +609,31 @@ const Profile = () => {
               <Typography variant="subtitle1" color="text.secondary" gutterBottom>
                 {profileData.headline}
               </Typography>
+            )}
+
+            {/* Follow/Unfollow Button */}
+            {!isOwnProfile && (
+              <Box sx={{ mt: 2 }}>
+                {profileData?.is_following ? (
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<PersonRemoveIcon />}
+                    onClick={handleUnfollow}
+                  >
+                    Unfollow
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<PersonAddIcon />}
+                    onClick={handleFollow}
+                  >
+                    Follow
+                  </Button>
+                )}
+              </Box>
             )}
 
             {profileData?.location && (

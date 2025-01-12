@@ -27,7 +27,7 @@ class NotificationListView(APIView):
             )
             
             logger.debug(f"Found {len(notifications)} notifications")
-            serializer = NotificationSerializer(notifications, many=True)
+            serializer = NotificationSerializer(notifications, many=True, context={'request': request})
             
             # Get unread count
             unread_count = NotificationService.get_unread_count(request.user.id)
@@ -62,3 +62,11 @@ class UnreadCountView(APIView):
         """Get unread count"""
         unread_count = NotificationService.get_unread_count(request.user.id)
         return Response({'unread_count': unread_count}) 
+
+class MarkAllNotificationsReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Mark all notifications as read"""
+        NotificationService.mark_all_as_read(request.user.id)
+        return Response({'message': 'All notifications marked as read'})

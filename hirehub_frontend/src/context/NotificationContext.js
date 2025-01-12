@@ -38,7 +38,7 @@ export const NotificationProvider = ({ children }) => {
         if (isAuthenticated) {
             fetchNotifications();
             // Set up polling for new notifications only when authenticated
-            const interval = setInterval(fetchNotifications, 30000); // Poll every 30 seconds
+            const interval = setInterval(fetchNotifications, 120000); // Poll every 120 seconds
             return () => clearInterval(interval);
         } else {
             // Clear notifications when not authenticated
@@ -66,11 +66,27 @@ export const NotificationProvider = ({ children }) => {
         }
     };
 
+    const markAllAsRead = async () => {
+        if (!isAuthenticated) return;
+        
+        try {
+            await notificationService.markAllAsRead();
+            setNotifications(prev => 
+                prev.map(notif => ({ ...notif, is_read: true }))
+            );
+            setUnreadCount(0);
+        } catch (error) {
+            console.error('Error marking all notifications as read:', error);
+            throw error;
+        }
+    };
+
     const value = {
         notifications,
         unreadCount,
         loading,
         markAsRead,
+        markAllAsRead,
         setNotifications,
         setUnreadCount,
         fetchNotifications
