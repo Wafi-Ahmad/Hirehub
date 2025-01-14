@@ -124,19 +124,25 @@ export const PostProvider = ({ children }) => {
     }
   };
 
+  const removePost = (postId) => {
+    setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+  };
+
   return (
-    <PostContext.Provider value={{
-      posts,
-      loading,
-      error,
-      hasMore,
-      cursor,
-      fetchPosts,
-      createPost,
-      updatePost,
-      deletePost,
-      clearPosts,
-    }}>
+    <PostContext.Provider
+      value={{
+        posts,
+        loading,
+        error,
+        hasMore,
+        cursor,
+        fetchPosts,
+        clearPosts,
+        updatePost,
+        removePost,
+        createPost
+      }}
+    >
       {children}
     </PostContext.Provider>
   );

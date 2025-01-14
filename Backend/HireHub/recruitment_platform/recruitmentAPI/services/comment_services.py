@@ -1,6 +1,5 @@
 from django.core.exceptions import ObjectDoesNotExist, PermissionDenied
-
-from django.db.models import Prefetch
+from django.db.models import Prefetch, F
 
 from recruitmentAPI.models.comment_model import Comment
 
@@ -105,80 +104,44 @@ class CommentService:
 
 
     @staticmethod
-
     def create_reply(user, comment_id, content):
-
         """Create a reply to a comment"""
-
         try:
-
             # Validate content
-
             content = CommentService.validate_content(content)
 
-            
-
             # Get parent comment
-
             parent_comment = Comment.objects.select_related('post').get(id=comment_id)
 
-            
-
             # Check reply depth
-
             if parent_comment.parent_comment:
-
                 raise ValueError("Cannot reply to a reply")
 
-            
-
-            # Create reply
-
+            # Create reply, ensuring the user is set correctly
             reply = Comment.objects.create(
-
-                user=user,
-
+                user=user,  # Set the user to the logged-in user, not the parent comment user
                 post=parent_comment.post,
-
                 content=content,
-
                 parent_comment=parent_comment
-
             )
 
-            
-
             # Create notification for comment owner
-
             if parent_comment.user_id != user.id:  # Don't notify if user replies to their own comment
-
                 Notification.objects.create(
-
                     recipient_id=parent_comment.user_id,
-
                     sender_id=user.id,
-
                     notification_type='COMMENT_REPLY',
-
                     content='replied to your comment',
-
                     related_object_id=parent_comment.post.id,
-
                     related_object_type='Post'
-
                 )
 
-            
-
             return reply
-
         except Comment.DoesNotExist:
-
             raise ValueError("Parent comment not found")
-
         except Exception as e:
-
             raise ValueError(str(e))
+
 
 
 
@@ -345,5 +308,94 @@ class CommentService:
         except Comment.DoesNotExist:
 
             raise ValueError("Comment not found")
+
+
+
+    @staticmethod
+    def update_comment(comment_id, user, content):
+        """Update a comment or reply"""
+        try:
+            # Validate content
+            content = CommentService.validate_content(content)
+            
+            # Get comment
+            comment = Comment.objects.get(id=comment_id)
+            
+            # Check ownership
+            if comment.user_id != user.id:
+                raise PermissionError("You can only edit your own comments")
+            
+            # Update comment
+            comment.content = content
+            comment.save()
+            
+            return comment
+        except Comment.DoesNotExist:
+            raise ValueError("Comment not found")
+        except Exception as e:
+            raise ValueError(str(e))
+
+    @staticmethod
+    def delete_comment(comment_id, user_id):
+        """Delete a comment or reply"""
+        try:
+            # Get the comment with related fields to optimize queries
+            comment = Comment.objects.select_related(
+                'user', 
+                'post', 
+                'parent_comment'
+            ).get(id=comment_id)
+            
+            # Add detailed debug logging
+            print("=== Detailed Debug Information ===")
+            print(f"Comment ID to delete: {comment_id}")
+            print(f"Is Reply: {bool(comment.parent_comment_id)}")
+            print(f"Parent Comment ID: {comment.parent_comment_id}")
+            print(f"Content: {comment.content}")
+            print(f"Comment Owner ID: {comment.user.id}")
+            print(f"Comment Owner Email: {comment.user.email}")
+            print(f"Request User ID: {user_id}")
+            print(f"Request User Type: {type(user_id)}")
+            print(f"Owner ID Type: {type(comment.user.id)}")
+            print("=================================")
+
+            # Convert both IDs to integers for comparison
+            comment_user_id = int(comment.user.id)
+            request_user_id = int(user_id) if isinstance(user_id, str) else user_id
+            
+            # Check ownership
+            if comment_user_id != request_user_id:
+                raise PermissionError(
+                    f"You can only delete your own comments. "
+                    f"Comment owner: {comment.user.email} (ID: {comment_user_id}), "
+                    f"Your ID: {request_user_id}"
+                )
+            
+            # Get the post and parent comment before deleting
+            post = comment.post
+            parent = comment.parent_comment
+            
+            # Delete the comment
+            comment.delete()
+            
+            # Update counts
+            if parent:
+                # Update parent's reply count
+                parent.reply_count = Comment.objects.filter(parent_comment=parent).count()
+                parent.save()
+            
+            # Update post's comment count
+            post.comments_count = F('comments_count') - 1
+            post.save()
+            
+            return True
+            
+        except Comment.DoesNotExist:
+            raise ValueError(f"Comment with ID {comment_id} not found")
+        except PermissionError as e:
+            raise PermissionError(str(e))
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            raise ValueError(f"Error deleting comment: {str(e)}")
 
 

@@ -23,6 +23,20 @@ export const postService = {
     });
   },
 
+  // Edit an existing post
+  editPost: async (postId, content, image = null, video = null) => {
+    const formData = new FormData();
+    formData.append('content', content);
+    if (image) formData.append('image', image);
+    if (video) formData.append('video', video);
+    
+    return api.put(`/posts/${postId}/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
   // Get a single post with full details
   getPost: async (postId) => {
     return api.get(`/posts/${postId}/`);

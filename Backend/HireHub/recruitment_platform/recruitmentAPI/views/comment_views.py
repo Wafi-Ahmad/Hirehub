@@ -274,6 +274,93 @@ class CommentLikeView(APIView):
 
 
 
+class CommentDetailView(APIView):
+
+    permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
+
+
+
+    def put(self, request, comment_id):
+
+        """Update a comment or reply"""
+
+        try:
+
+            comment = CommentService.update_comment(
+
+                comment_id=comment_id,
+
+                user=request.user,
+
+                content=request.data.get('content')
+
+            )
+
+            
+
+            serializer = CommentSerializer(comment, context={'request': request})
+
+            return Response(serializer.data)
+
+        except ValueError as e:
+
+            return Response(
+
+                {'error': str(e)}, 
+
+                status=status.HTTP_400_BAD_REQUEST
+
+            )
+
+        except PermissionError as e:
+
+            return Response(
+
+                {'error': str(e)}, 
+
+                status=status.HTTP_403_FORBIDDEN
+
+            )
+
+
+
+    def delete(self, request, comment_id):
+
+        """Delete a comment or reply"""
+
+        try:
+
+            print("=== View Debug Information ===")
+            print(f"Request user ID: {request.user.id}")
+            print(f"Request user email: {request.user.email}")
+            print(f"Comment ID to delete: {comment_id}")
+            print(f"User is authenticated: {request.user.is_authenticated}")
+            print("============================")
+            
+            CommentService.delete_comment(
+                comment_id=comment_id,
+                user_id=request.user.id
+            )
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        except PermissionError as e:
+
+            print(f"Permission Error: {str(e)}")
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        except ValueError as e:
+
+            print(f"Value Error: {str(e)}")
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+
 
 
 

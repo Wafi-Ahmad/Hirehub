@@ -1,7 +1,6 @@
 from django.db import models
-
+from django.db.models import F
 from django.conf import settings
-
 from recruitmentAPI.models.post_model import Post  # Import the Post model
 
 
@@ -74,17 +73,53 @@ class Comment(models.Model):
 
         
 
-        if is_new and not self.parent_comment:
+        if is_new:
 
-            # Update post's comment count when a new top-level comment is created
+            # Update post's comment count when a new comment is created (both top-level and replies)
 
-            self.post.update_counts()
+            self.post.comments_count = F('comments_count') + 1
 
-        elif is_new and self.parent_comment:
+            self.post.save(update_fields=['comments_count'])
 
-            # Update parent comment's reply count when a new reply is created
+            
 
-            self.parent_comment.update_counts()
+            if self.parent_comment:
+
+                # Update parent comment's reply count when a new reply is created
+
+                self.parent_comment.update_counts()
+
+
+
+    def delete(self, *args, **kwargs):
+
+        # Get post reference before deletion
+
+        post = self.post
+
+        parent = self.parent_comment
+
+        
+
+        # Delete the comment
+
+        super().delete(*args, **kwargs)
+
+        
+
+        # Update post's comment count
+
+        post.comments_count = F('comments_count') - 1
+
+        post.save(update_fields=['comments_count'])
+
+        
+
+        # Update parent comment's reply count if this was a reply
+
+        if parent:
+
+            parent.update_counts()
 
 
 

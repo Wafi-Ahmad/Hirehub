@@ -149,6 +149,92 @@ class PostDetailView(APIView):
 
         return Response(serializer.data)
 
+    def put(self, request, post_id):
+        """Update a post (full update)"""
+        try:
+            post = PostService.get_post_detail(post_id)
+            if not post:
+                return Response(
+                    {"error": "Post not found"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Check if user is the post owner
+            if post.user != request.user:
+                return Response(
+                    {"error": "You don't have permission to edit this post"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            serializer = PostDetailSerializer(
+                post, 
+                data=request.data,
+                context={'request': request},
+                partial=False
+            )
+            
+            if serializer.is_valid():
+                updated_post = PostService.update_post(
+                    post_id=post_id,
+                    content=serializer.validated_data.get('content'),
+                    image=request.FILES.get('image'),
+                    video=request.FILES.get('video'),
+                    user=request.user
+                )
+                return_serializer = PostDetailSerializer(updated_post, context={'request': request})
+                return Response(return_serializer.data)
+            
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def patch(self, request, post_id):
+        """Update a post (partial update)"""
+        try:
+            post = PostService.get_post_detail(post_id)
+            if not post:
+                return Response(
+                    {"error": "Post not found"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Check if user is the post owner
+            if post.user != request.user:
+                return Response(
+                    {"error": "You don't have permission to edit this post"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
+            serializer = PostDetailSerializer(
+                post, 
+                data=request.data,
+                context={'request': request},
+                partial=True
+            )
+            
+            if serializer.is_valid():
+                updated_post = PostService.update_post(
+                    post_id=post_id,
+                    content=serializer.validated_data.get('content'),
+                    image=request.FILES.get('image'),
+                    video=request.FILES.get('video'),
+                    user=request.user
+                )
+                return_serializer = PostDetailSerializer(updated_post, context={'request': request})
+                return Response(return_serializer.data)
+            
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
     def delete(self, request, post_id):
         """Delete a post"""
         try:
@@ -168,7 +254,7 @@ class PostDetailView(APIView):
                 )
             
             # Delete the post
-            post.delete()
+            PostService.delete_post(post_id, request.user.id)
             return Response(status=status.HTTP_204_NO_CONTENT)
             
         except Exception as e:

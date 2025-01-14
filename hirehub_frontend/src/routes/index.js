@@ -14,7 +14,7 @@ const ResetPassword = React.lazy(() => import('../pages/auth/ResetPassword'));
 const Home = React.lazy(() => import('../pages/Home'));
 const Profile = React.lazy(() => import('../pages/profile/Profile'));
 const Jobs = React.lazy(() => import('../pages/jobs/Jobs'));
-const CreateJobForm = React.lazy(() => import('../components/jobs/CreateJobForm'));
+const PostJob = React.lazy(() => import('../pages/post-job/PostJob'));
 const JobDetails = React.lazy(() => import('../pages/jobs/JobDetails'));
 const Network = React.lazy(() => import('../pages/network/Network'));
 const NotFound = React.lazy(() => import('../pages/NotFound'));
@@ -77,7 +77,17 @@ function AppRoutes() {
           element={
             <ProtectedRoute allowedUserTypes={['Company']}>
               <Layout>
-                <CreateJobForm />
+                <PostJob />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/jobs/edit/:id"
+          element={
+            <ProtectedRoute allowedUserTypes={['Company']}>
+              <Layout>
+                <PostJob />
               </Layout>
             </ProtectedRoute>
           }

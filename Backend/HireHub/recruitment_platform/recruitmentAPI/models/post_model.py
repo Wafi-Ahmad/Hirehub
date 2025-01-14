@@ -43,9 +43,17 @@ class Post(models.Model):
 
     def update_counts(self):
         """Update the cached counts"""
-        self.comments_count = self.comments.filter(parent_comment=None).count()
+        # Count all comments (both top-level and replies) for this post
+        self.comments_count = self.comments.count()
         self.likes_count = self.likes.count()
         self.save(update_fields=['comments_count', 'likes_count'])
+
+    def recalculate_comment_count(self):
+        """Manually recalculate and update the comment count"""
+        total_comments = self.comments.count()
+        self.comments_count = total_comments
+        self.save(update_fields=['comments_count'])
+        return total_comments
 
     def add_like(self, user):
         """Method to add a like from a user."""

@@ -5,7 +5,16 @@ import { usePost } from '../../context/PostContext';
 import Post from './Post';
 
 const PostList = ({ userId = null }) => {
-  const { posts, loading, error, hasMore, cursor, fetchPosts, clearPosts } = usePost();
+  const { 
+    posts, 
+    loading, 
+    error, 
+    hasMore, 
+    cursor, 
+    fetchPosts, 
+    clearPosts,
+    removePost 
+  } = usePost();
   const navigate = useNavigate();
   const location = useLocation();
   const prevUserIdRef = useRef(userId);
@@ -54,6 +63,11 @@ const PostList = ({ userId = null }) => {
 
   const handleProfileClick = (userId) => {
     navigate(`/profile/${userId}`);
+  };
+
+  const handlePostDelete = (postId) => {
+    // Use removePost from context instead of local state
+    removePost(postId);
   };
 
   // Show loading state only when initially loading with no posts
@@ -105,7 +119,10 @@ const PostList = ({ userId = null }) => {
           sx={{ mb: 2 }}
           ref={el => postRefs.current[post.id] = el}
         >
-          <Post post={post} />
+          <Post 
+            post={post} 
+            onDelete={handlePostDelete}
+          />
         </Box>
       ))}
       

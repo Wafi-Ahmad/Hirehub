@@ -105,21 +105,78 @@ const Comments = ({ postId, onCommentAdded }) => {
             toast.error('Failed to update like');
         }
     };
+    /**
+     * Delete a comment or reply
+     * @param {number} commentId   - the ID of the comment or reply you want to delete
+     * @param {boolean} isReply    - whether this is a reply
+     */
 
-    const handleDeleteComment = async (commentId) => {
+    const handleDeleteComment = async (commentId, isReply = false) => {
         try {
-            await commentService.deleteComment(commentId);
-            setComments(prev => prev.filter(comment => comment.id !== commentId));
-            if (onCommentAdded) {
-                onCommentAdded(-1); // Decrease comment count
+            // Enhanced debug logging
+            console.log('Comments.js - Attempting to delete:', {
+                commentId,
+                isReply,
+                currentUserId: user?.id,
+                timestamp: new Date().toISOString()
+            });
+
+            // Find the comment/reply to verify ownership
+            const findComment = (id) => {
+                for (const comment of comments) {
+                    if (comment.id === id) return comment;
+                    if (comment.replies) {
+                        const reply = comment.replies.find(r => r.id === id);
+                        if (reply) return reply;
+                    }
+                }
+                return null;
+            };
+
+            const targetComment = findComment(commentId);
+            if (!targetComment) {
+                toast.error('Comment not found');
+                return;
             }
-            toast.success('Comment deleted successfully');
+
+            // Verify ownership
+            if (targetComment.user.id !== user?.id) {
+                toast.error('You can only delete your own comments');
+                return;
+            }
+
+            // Delete the comment/reply
+            await commentService.deleteComment(commentId);
+
+            // Update state based on whether it's a reply or main comment
+            setComments(prevComments => {
+                if (!isReply) {
+                    return prevComments.filter(c => c.id !== commentId);
+                }
+                
+                // For replies, find the parent comment and remove the specific reply
+                return prevComments.map(comment => {
+                    // Check if this comment has replies
+                    if (!comment.replies) return comment;
+                    
+                    // Find and remove the specific reply
+                    const replyExists = comment.replies.some(reply => reply.id === commentId);
+                    if (!replyExists) return comment;
+
+                    return {
+                        ...comment,
+                        replies: comment.replies.filter(reply => reply.id !== commentId),
+                        reply_count: Math.max(0, comment.reply_count - 1)
+                    };
+                });
+            });
+
+            toast.success('Successfully deleted');
         } catch (error) {
-            console.error('Failed to delete comment:', error);
-            toast.error('Failed to delete comment');
+            console.error('Delete error:', error.response?.data);
+            toast.error(error.response?.data?.error || 'Failed to delete');
         }
     };
-
     return (
         <Box sx={{ p: 2 }}>
             {/* Comment Input */}
@@ -200,13 +257,15 @@ const Comments = ({ postId, onCommentAdded }) => {
                             {comment.replies?.map(reply => (
                                 <Box key={reply.id} sx={{ ml: 4, mt: 1 }}>
                                     <Comment
-                                        comment={reply}
-                                        onLike={handleLikeComment} // Ensure correct handler is passed
-                                        onDelete={handleDeleteComment}
-                                        currentUser={user}
+                                    comment={reply}
+                                    onLike={handleLikeComment}
+                                    onDelete={(replyId) => handleDeleteComment(replyId, true)}
+                                    currentUser={user}
+                                    isReply={true}
                                     />
-                                </Box>
+                             </Box>
                             ))}
+
                         </Box>
                     </Box>
                 </Box>

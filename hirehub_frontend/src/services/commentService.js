@@ -14,8 +14,16 @@ export const commentService = {
     });
   },
 
-  // Delete a comment
+  // Update a comment or reply
+  updateComment: async (commentId, content) => {
+    return api.put(`/comments/${commentId}/`, {
+      content: content.trim()
+    });
+  },
+
+  // Delete a comment or reply
   deleteComment: async (commentId) => {
+    console.log('Sending delete request for comment/reply:', commentId);
     return api.delete(`/comments/${commentId}/`);
   },
 

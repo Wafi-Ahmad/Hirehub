@@ -30,6 +30,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import { quizService } from '../../services/quizService';
 import { jobService } from '../../services/jobService';
 import moment from 'moment';
+
 import { toast } from 'react-toastify';
 
 const ApplicantTable = ({ jobId }) => {

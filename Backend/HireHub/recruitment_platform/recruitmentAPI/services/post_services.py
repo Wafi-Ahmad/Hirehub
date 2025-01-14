@@ -303,16 +303,77 @@ class PostService:
         cache.set('post_feed_version', int(time.time()))
 
     @staticmethod
-    def delete_post(post_id: int, user_id: int) -> bool:
-        """Delete a post"""
+    def delete_post(post_id, user_id):
+        """
+        Delete a post and clear related caches
+        """
         try:
             post = Post.objects.get(id=post_id, user_id=user_id)
-            post.delete()
             
-            # Clear post caches
-            cache.delete(f"post:detail:{post_id}")
-            cache.delete('post_feed_version')
+            # Delete all related caches
+            keys_to_delete = [
+                f"post:detail:{post_id}",
+                f"post:detail:{post_id}:{user_id}",
+                f"posts:list:None:{PostService.POSTS_PER_PAGE}",
+                f"posts:list:None:{PostService.POSTS_PER_PAGE}:{user_id}"
+            ]
+            
+            # Also delete any cursor-based caches
+            for i in range(5):  # Clear first 5 pages to be safe
+                cursor_key = f"posts:list:page_{i}:{PostService.POSTS_PER_PAGE}"
+                keys_to_delete.append(cursor_key)
+                if user_id:
+                    keys_to_delete.append(f"{cursor_key}:{user_id}")
+            
+            cache.delete_many(keys_to_delete)
+            
+            # Delete the post
+            post.delete()
             
             return True
         except Post.DoesNotExist:
-            return False
+            raise ValueError("Post not found or you don't have permission to delete it")
+
+    @staticmethod
+    def update_post(post_id: int, content: str, image=None, video=None, user=None) -> Post:
+        """Update a post with new content and/or media"""
+        try:
+            post = Post.objects.get(id=post_id, user=user)
+            
+            # Update content if provided
+            if content is not None:
+                post.content = content
+            
+            # Handle media updates
+            if image:
+                PostService._validate_image(image)
+                # Delete old image if exists
+                if post.image:
+                    post.image.delete(save=False)
+                post.image = image
+                post.media_type = 'image'
+            
+            if video:
+                PostService._validate_video(video)
+                # Delete old video if exists
+                if post.video:
+                    post.video.delete(save=False)
+                post.video = video
+                post.media_type = 'video'
+            
+            if image and video:
+                post.media_type = 'both'
+            elif not image and not video and not post.image and not post.video:
+                post.media_type = 'none'
+            
+            post.save()
+            
+            # Clear post caches
+            PostService.invalidate_post_caches(post_id)
+            
+            return post
+            
+        except Post.DoesNotExist:
+            raise ValueError("Post not found or you don't have permission to edit it")
+        except Exception as e:
+            raise ValueError(str(e))

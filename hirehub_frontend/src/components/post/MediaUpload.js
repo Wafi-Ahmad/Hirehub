@@ -6,22 +6,26 @@ import {
   Close as CloseIcon,
 } from '@mui/icons-material';
 
-const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile }) => {
+const MediaUpload = ({ onImageSelect, onVideoSelect, currentImage, currentVideo }) => {
   const handleFileSelect = (event, type) => {
     const file = event.target.files[0];
     if (file) {
-      onFileSelect(file, type);
+      if (type === 'image') {
+        onImageSelect(file);
+      } else if (type === 'video') {
+        onVideoSelect(file);
+      }
     }
   };
 
-  const renderPreview = (file, type) => {
-    if (!file) return null;
+  const renderPreview = (type, url) => {
+    if (!url) return null;
 
     if (type === 'image') {
       return (
         <Box sx={{ position: 'relative', mt: 2 }}>
           <img
-            src={URL.createObjectURL(file)}
+            src={url}
             alt="Preview"
             style={{
               maxWidth: '100%',
@@ -38,7 +42,7 @@ const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile }) => {
               bgcolor: 'rgba(0, 0, 0, 0.5)',
               '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.7)' },
             }}
-            onClick={() => onRemoveFile(type)}
+            onClick={() => type === 'image' ? onImageSelect(null) : onVideoSelect(null)}
           >
             <CloseIcon sx={{ color: 'white' }} />
           </IconButton>
@@ -57,7 +61,7 @@ const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile }) => {
               borderRadius: '8px',
             }}
           >
-            <source src={URL.createObjectURL(file)} />
+            <source src={url} />
             Your browser does not support the video tag.
           </video>
           <IconButton
@@ -69,7 +73,7 @@ const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile }) => {
               bgcolor: 'rgba(0, 0, 0, 0.5)',
               '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.7)' },
             }}
-            onClick={() => onRemoveFile(type)}
+            onClick={() => type === 'image' ? onImageSelect(null) : onVideoSelect(null)}
           >
             <CloseIcon sx={{ color: 'white' }} />
           </IconButton>
@@ -89,7 +93,7 @@ const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile }) => {
           onChange={(e) => handleFileSelect(e, 'image')}
         />
         <label htmlFor="image-upload">
-          <IconButton component="span" color={selectedFiles.image ? 'primary' : 'default'}>
+          <IconButton component="span" color={currentImage ? 'primary' : 'default'}>
             <ImageIcon />
           </IconButton>
         </label>
@@ -102,7 +106,7 @@ const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile }) => {
           onChange={(e) => handleFileSelect(e, 'video')}
         />
         <label htmlFor="video-upload">
-          <IconButton component="span" color={selectedFiles.video ? 'primary' : 'default'}>
+          <IconButton component="span" color={currentVideo ? 'primary' : 'default'}>
             <VideoIcon />
           </IconButton>
         </label>
@@ -112,8 +116,8 @@ const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile }) => {
         </Typography>
       </Box>
 
-      {renderPreview(selectedFiles.image, 'image')}
-      {renderPreview(selectedFiles.video, 'video')}
+      {renderPreview('image', currentImage)}
+      {renderPreview('video', currentVideo)}
     </Box>
   );
 };
