@@ -75,7 +75,12 @@ class JobService {
 
   // Save a job for later
   async saveJob(id) {
-    return axios.post(`${JOB_API}/${id}/save/`);
+    try {
+      const response = await axios.post(`${JOB_API}/${id}/save/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to save job' };
+    }
   }
 
   // Provide feedback on job recommendation
@@ -118,3 +123,21 @@ class JobService {
 }
 
 export const jobService = new JobService(); 
+
+export const saveJob = async (jobId) => {
+  try {
+    const response = await axios.post(`${JOB_API}/${jobId}/save/`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: 'Failed to save job' };
+  }
+};
+
+export const getSavedJobs = async () => {
+  try {
+    const response = await axios.get(`${JOB_API}/saved/`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+}; 

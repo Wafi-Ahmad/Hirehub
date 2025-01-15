@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Box, CircularProgress, Typography, Button, Grid } from '@mui/material';
 import { useJob } from '../../context/JobContext';
 import JobCard from './JobCard';
@@ -7,11 +7,7 @@ const JobList = ({ filters }) => {
   const { jobs, loading, error, getJobs, nextCursor } = useJob();
   const [loadingMore, setLoadingMore] = useState(false);
 
-  useEffect(() => {
-    loadJobs();
-  }, [filters]);
-
-  const loadJobs = async (cursor = null) => {
+  const loadJobs = useCallback(async (cursor = null) => {
     try {
       if (!cursor) {
         await getJobs({ ...filters });
@@ -24,7 +20,11 @@ const JobList = ({ filters }) => {
     } finally {
       setLoadingMore(false);
     }
-  };
+  }, [getJobs, filters]);
+
+  useEffect(() => {
+    loadJobs();
+  }, [loadJobs]);
 
   if (loading && !loadingMore) {
     return (
@@ -42,7 +42,7 @@ const JobList = ({ filters }) => {
     );
   }
 
-  if (!jobs.length) {
+  if (!jobs?.length) {
     return (
       <Box sx={{ py: 4 }}>
         <Typography>No jobs found matching your criteria.</Typography>

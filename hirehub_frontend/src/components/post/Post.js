@@ -26,6 +26,7 @@ import {
   ChatBubbleOutline as CommentIcon,
   PersonAdd as PersonAddIcon,
   PersonRemove as PersonRemoveIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import { commentService } from '../../services/commentService';
 import { postService } from '../../services/postService';
@@ -37,6 +38,7 @@ import { usePost } from '../../context/PostContext';
 import { formatTimeAgo } from '../../utils/dateUtils';
 import { useNavigate } from 'react-router-dom';
 import MediaUpload from './MediaUpload';
+import { MEDIA_BASE_URL } from '../../config';
 
 const Post = ({ post, onDelete, showRecommended = false }) => {
   const { user: currentUser } = useAuth();
@@ -57,13 +59,23 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
   const [editedVideo, setEditedVideo] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isMediaDeleted, setIsMediaDeleted] = useState(false);
+  const [tempMediaUrls, setTempMediaUrls] = useState(post.media_urls || {});
+  const [tempMediaType, setTempMediaType] = useState(post.media_type);
+  const [editSelectedFiles, setEditSelectedFiles] = useState({
+    image: null,
+    video: null
+  });
 
-  // Reset edited state when post changes
+  // Reset states when post changes
   useEffect(() => {
     if (post) {
       setEditedContent(post.content);
       setEditedImage(null);
       setEditedVideo(null);
+      setIsMediaDeleted(false);
+      setTempMediaUrls(post.media_urls || {});
+      setTempMediaType(post.media_type);
     }
   }, [post]);
 
@@ -231,24 +243,63 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
     setEditedContent(post.content);
     setEditedImage(null);
     setEditedVideo(null);
+    setIsMediaDeleted(false);
+    setTempMediaUrls(post.media_urls || {});
+    setTempMediaType(post.media_type);
   };
 
   const handleSaveEdit = async () => {
     try {
       setIsSubmitting(true);
+      console.log('Saving edit with state:', {
+        content: editedContent,
+        isMediaDeleted,
+        hasEditedImage: !!editedImage,
+        hasEditedVideo: !!editedVideo
+      });
+
       const response = await postService.editPost(
         post.id,
-        editedContent,
-        editedImage,
-        editedVideo
+        {
+          content: editedContent,
+          image: editedImage,
+          video: editedVideo,
+          isMediaDeleted: isMediaDeleted
+        }
       );
       
       if (response?.data) {
-        updatePost(post.id, response.data);
+        // Force media to be cleared if it was deleted
+        const updatedPost = {
+          ...post,
+          ...response.data,
+          content: editedContent,
+          // Always ensure media is cleared if it was deleted
+          media_type: isMediaDeleted ? 'none' : response.data.media_type,
+          media_urls: isMediaDeleted ? {} : response.data.media_urls || {}
+        };
+
+        // Update post in context
+        updatePost(post.id, updatedPost);
+        
+        // Force update the original post object to ensure future edits start clean
+        post.media_type = updatedPost.media_type;
+        post.media_urls = updatedPost.media_urls;
+        
+        // Reset all media-related states
+        setIsEditing(false);
+        setEditedImage(null);
+        setEditedVideo(null);
+        setTempMediaUrls(isMediaDeleted ? {} : updatedPost.media_urls);
+        setTempMediaType(isMediaDeleted ? 'none' : updatedPost.media_type);
+        
+        // Keep isMediaDeleted state if media was deleted
+        if (!isMediaDeleted) {
+          setIsMediaDeleted(false);
+        }
+        
+        toast.success('Post updated successfully');
       }
-      
-      setIsEditing(false);
-      toast.success('Post updated successfully');
     } catch (error) {
       console.error('Error updating post:', error);
       toast.error(error.response?.data?.message || 'Failed to update post');
@@ -274,7 +325,7 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
     }
   };
 
-  const handleMediaChange = (type, file) => {
+  const handleMediaChange = (file, type) => {
     if (type === 'image') {
       setEditedImage(file);
       if (file) setEditedVideo(null); // Remove video if image is selected
@@ -284,27 +335,77 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
     }
   };
 
-  const renderMedia = () => {
-    if (!post.media_urls) return null;
+  const handleRemoveMedia = (type) => {
+    // Clear the edited media state
+    if (type === 'image') {
+      setEditedImage(null);
+    } else if (type === 'video') {
+      setEditedVideo(null);
+    }
+    
+    // Mark media as deleted and update temporary states
+    setIsMediaDeleted(true);
+    setTempMediaUrls(prev => ({
+      ...prev,
+      [type]: null
+    }));
+    setTempMediaType('none');
+    
+    console.log('Media removed:', type); // Debug log
+  };
 
-    if (post.media_type === 'image' && post.media_urls.image) {
+  const getMediaUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http') || url.startsWith('blob:')) {
+      return url;
+    }
+    // Handle both full and partial media paths
+    if (url.startsWith('/media/')) {
+      return `${MEDIA_BASE_URL}${url}`;
+    }
+    return `${MEDIA_BASE_URL}/media/${url}`;
+  };
+
+  const renderMedia = () => {
+    if (isEditing) {
+      // When editing, use temporary media state
+      if (!tempMediaUrls?.image && !tempMediaUrls?.video && !editedImage && !editedVideo) return null;
+    } else {
+      // When not editing, use post's media state
+      if (!post.media_urls && !post.image && !post.video) return null;
+    }
+
+    // Handle image display
+    if ((tempMediaType === 'image' && tempMediaUrls?.image) || editedImage) {
+      const imageUrl = editedImage 
+        ? URL.createObjectURL(editedImage)
+        : getMediaUrl(tempMediaUrls?.image);
       return (
         <Box
           component="img"
-          src={post.media_urls.image}
+          src={imageUrl}
           alt="Post image"
           sx={{
             width: '100%',
             maxHeight: 500,
-            objectFit: 'contain',
+            objectFit: 'cover',
             borderRadius: 1,
             mb: 2
+          }}
+          onError={(e) => {
+            console.error('Image load error:', e);
+            console.error('Failed URL:', imageUrl);
+            e.target.style.display = 'none';
           }}
         />
       );
     }
 
-    if (post.media_type === 'video' && post.media_urls.video) {
+    // Handle video display
+    if ((tempMediaType === 'video' && tempMediaUrls?.video) || editedVideo) {
+      const videoUrl = editedVideo
+        ? URL.createObjectURL(editedVideo)
+        : getMediaUrl(tempMediaUrls?.video);
       return (
         <Box
           component="video"
@@ -316,13 +417,29 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
             mb: 2
           }}
         >
-          <source src={post.media_urls.video} type="video/mp4" />
+          <source src={videoUrl} type="video/mp4" />
           Your browser does not support the video tag.
         </Box>
       );
     }
 
     return null;
+  };
+
+  const handleEditFileSelect = (file, type) => {
+    setEditSelectedFiles(prev => ({
+      ...prev,
+      [type]: file,
+      // Remove the other type of media when one is selected
+      [type === 'image' ? 'video' : 'image']: null
+    }));
+  };
+
+  const handleEditRemoveFile = (type) => {
+    setEditSelectedFiles(prev => ({
+      ...prev,
+      [type]: null
+    }));
   };
 
   return (
@@ -367,12 +484,47 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
             variant="outlined"
             sx={{ mb: 2 }}
           />
-          <MediaUpload
-            onImageSelect={(file) => handleMediaChange('image', file)}
-            onVideoSelect={(file) => handleMediaChange('video', file)}
-            currentImage={editedImage ? URL.createObjectURL(editedImage) : post.media_urls?.image}
-            currentVideo={editedVideo ? URL.createObjectURL(editedVideo) : post.media_urls?.video}
-          />
+          
+          {/* Show current media with delete option */}
+          {!isMediaDeleted && tempMediaUrls?.image && (
+            <Box sx={{ position: 'relative', mb: 2 }}>
+              <img
+                src={getMediaUrl(tempMediaUrls.image)}
+                alt="Current post image"
+                style={{
+                  width: '100%',
+                  maxHeight: 300,
+                  objectFit: 'contain',
+                  borderRadius: 8
+                }}
+              />
+              <IconButton
+                onClick={() => handleRemoveMedia('image')}
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  bgcolor: 'rgba(0, 0, 0, 0.6)',
+                  '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.8)' },
+                }}
+              >
+                <CloseIcon sx={{ color: 'white' }} />
+              </IconButton>
+            </Box>
+          )}
+
+          {/* Show media upload only if no current media or media was deleted */}
+          {(isMediaDeleted || !tempMediaUrls?.image) && (
+            <MediaUpload
+              onFileSelect={handleMediaChange}
+              selectedFiles={{
+                image: editedImage,
+                video: editedVideo
+              }}
+              onRemoveFile={handleRemoveMedia}
+            />
+          )}
+
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
             <Button
               onClick={handleCancelEdit}

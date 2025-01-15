@@ -20,27 +20,23 @@ const Home = () => {
 
   useEffect(() => {
     const loadHomeData = async () => {
-      console.log("Loading Home Data");
-      if (user?.id) {
-        try {
-          // Ensure profile data is loaded
-          if (!profileData) {
-            console.log("Fetching profile data");
-            await fetchProfileData();
-          }
+      if (!user?.id) return;
 
-          console.log("Fetching Posts");
-          await fetchPosts();
-          // Fetch recent jobs
-          await getJobs({ limit: 3 });
-        } catch (error) {
-          console.error('Error loading home data:', error);
+      try {
+        if (!profileData) {
+          await fetchProfileData();
         }
+        await fetchPosts();
+        await getJobs({ limit: 3 });
+      } catch (error) {
+        console.error('Error loading home data:', error);
       }
     };
 
     loadHomeData();
-  }, [user?.id, fetchProfileData, fetchPosts, getJobs, profileData]);
+  }, []); // Empty dependency array - run only once on mount
+
+  if (!user) return null;
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -74,7 +70,7 @@ const Home = () => {
           <ConnectionSuggestions />
           
           {/* Recent Jobs Section */}
-          {jobs.length > 0 && (
+          {jobs?.length > 0 && (
             <Box sx={{ mt: 3 }}>
               <Typography variant="h6" gutterBottom>
                 Recent Job Postings

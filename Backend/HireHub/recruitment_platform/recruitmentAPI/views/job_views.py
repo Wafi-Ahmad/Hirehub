@@ -190,17 +190,27 @@ class JobView(viewsets.ViewSet):
         """Save a job for later reference"""
         try:
             job = JobPost.objects.get(pk=pk)
-            if request.user in job.saved_by.all():
-                job.saved_by.remove(request.user)
+            user = request.user
+            
+            # Check if job is already saved
+            if job in user.saved_jobs.all():
+                user.saved_jobs.remove(job)
                 message = "Job removed from saved jobs"
             else:
-                job.saved_by.add(request.user)
+                user.saved_jobs.add(job)
                 message = "Job saved successfully"
-            return Response({'message': message})
+            
+            return Response({'message': message}, status=status.HTTP_200_OK)
+            
         except JobPost.DoesNotExist:
             return Response(
                 {'error': 'Job not found'},
                 status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
     @extend_schema(
@@ -221,4 +231,20 @@ class JobView(viewsets.ViewSet):
             return Response(
                 {'error': 'Job not found'},
                 status=status.HTTP_404_NOT_FOUND
+            )
+
+    @extend_schema(
+        responses=JobResponseSerializer(many=True)
+    )
+    @action(detail=False, methods=['get'])
+    def saved_jobs(self, request):
+        """Get all jobs saved by the current user"""
+        try:
+            saved_jobs = request.user.saved_jobs.filter(is_active=True).order_by('-created_at')
+            serializer = JobResponseSerializer(saved_jobs, many=True, context={'request': request})
+            return Response({'jobs': serializer.data})
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
             )

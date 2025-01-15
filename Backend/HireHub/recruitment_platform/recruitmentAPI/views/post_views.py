@@ -217,12 +217,16 @@ class PostDetailView(APIView):
             )
             
             if serializer.is_valid():
+                # Check if media should be removed
+                remove_media = request.data.get('remove_media') == 'true'
+                
                 updated_post = PostService.update_post(
                     post_id=post_id,
                     content=serializer.validated_data.get('content'),
                     image=request.FILES.get('image'),
                     video=request.FILES.get('video'),
-                    user=request.user
+                    user=request.user,
+                    remove_media=remove_media
                 )
                 return_serializer = PostDetailSerializer(updated_post, context={'request': request})
                 return Response(return_serializer.data)
@@ -291,3 +295,19 @@ class PostLikeView(APIView):
             "message": f"Post {action} successfully",
             "likes_count": post.likes_count
         })
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        # Handle media removal
+        if request.data.get('remove_image') == 'true':
+            if instance.image:
+                instance.image.delete()
+            instance.image = None
+        
+        if request.data.get('remove_video') == 'true':
+            if instance.video:
+                instance.video.delete()
+            instance.video = None
+        
+        return super().update(request, *args, **kwargs)

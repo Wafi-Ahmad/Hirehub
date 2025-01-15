@@ -17,6 +17,7 @@ const Jobs = React.lazy(() => import('../pages/jobs/Jobs'));
 const PostJob = React.lazy(() => import('../pages/post-job/PostJob'));
 const JobDetails = React.lazy(() => import('../pages/jobs/JobDetails'));
 const Network = React.lazy(() => import('../pages/network/Network'));
+const SavedJobs = React.lazy(() => import('../pages/SavedJobs'));
 const NotFound = React.lazy(() => import('../pages/NotFound'));
 const Unauthorized = React.lazy(() => import('../pages/Unauthorized'));
 
@@ -108,6 +109,16 @@ function AppRoutes() {
             <ProtectedRoute>
               <Layout>
                 <Network />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/saved-jobs"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <SavedJobs />
               </Layout>
             </ProtectedRoute>
           }

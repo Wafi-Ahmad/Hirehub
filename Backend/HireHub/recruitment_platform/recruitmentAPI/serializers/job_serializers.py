@@ -76,6 +76,7 @@ class JobResponseSerializer(serializers.ModelSerializer):
     days_until_expiry = serializers.SerializerMethodField()
     company_name = serializers.CharField(source='posted_by.company_name', read_only=True)
     company_id = serializers.IntegerField(source='posted_by.id', read_only=True)
+    is_saved = serializers.SerializerMethodField()
     
     class Meta:
         model = JobPost
@@ -95,10 +96,11 @@ class JobResponseSerializer(serializers.ModelSerializer):
             'days_until_expiry',
             'company_name',
             'company_id',
+            'is_saved',
             'created_at',
             'updated_at'
         ]
-        read_only_fields = ['id', 'posted_by_name', 'days_until_expiry', 'created_at', 'updated_at', 'company_name', 'company_id']
+        read_only_fields = ['id', 'posted_by_name', 'days_until_expiry', 'created_at', 'updated_at', 'company_name', 'company_id', 'is_saved']
 
     def get_posted_by_name(self, obj):
         if obj.posted_by:
@@ -117,6 +119,12 @@ class JobResponseSerializer(serializers.ModelSerializer):
         if not obj.required_skills:
             return []
         return [skill.strip() for skill in obj.required_skills.split(',') if skill.strip()]
+
+    def get_is_saved(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return request.user in obj.saved_by.all()
+        return False
 
 class JobSearchSerializer(serializers.Serializer):
     title = serializers.CharField(required=False, allow_blank=True, allow_null=True)

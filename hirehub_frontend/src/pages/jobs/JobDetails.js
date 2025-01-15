@@ -1,6 +1,7 @@
 // React and Router imports
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 // Material-UI Components
 import {
@@ -40,18 +41,28 @@ const JobDetails = () => {
   const { selectedJob, getJobById, saveJob, loading, error } = useJob();
   const { user } = useAuth();
   const [showApplicants, setShowApplicants] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
     if (id) {
       getJobById(id);
     }
-  }, [id, getJobById]);
+  }, [id]);
+
+  useEffect(() => {
+    if (selectedJob) {
+      setIsSaved(selectedJob.is_saved);
+    }
+  }, [selectedJob]);
 
   const handleSave = async () => {
     try {
-      await saveJob(id);
+      const response = await saveJob(id);
+      setIsSaved(!isSaved);
+      toast.success(response.message || 'Job saved successfully');
     } catch (error) {
       console.error('Error saving job:', error);
+      toast.error(error.message || 'Failed to save job');
     }
   };
 
@@ -136,9 +147,9 @@ const JobDetails = () => {
             </Typography>
           </Box>
           {user?.user_type !== "Company" && (
-            <Tooltip title={selectedJob.is_saved ? "Remove from saved" : "Save job"}>
+            <Tooltip title={isSaved ? "Remove from saved" : "Save job"}>
               <IconButton onClick={handleSave}>
-                {selectedJob.is_saved ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
+                {isSaved ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
               </IconButton>
             </Tooltip>
           )}

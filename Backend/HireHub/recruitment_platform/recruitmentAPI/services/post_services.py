@@ -335,7 +335,7 @@ class PostService:
             raise ValueError("Post not found or you don't have permission to delete it")
 
     @staticmethod
-    def update_post(post_id: int, content: str, image=None, video=None, user=None) -> Post:
+    def update_post(post_id: int, content: str, image=None, video=None, user=None, remove_media=False) -> Post:
         """Update a post with new content and/or media"""
         try:
             post = Post.objects.get(id=post_id, user=user)
@@ -344,27 +344,37 @@ class PostService:
             if content is not None:
                 post.content = content
             
-            # Handle media updates
-            if image:
-                PostService._validate_image(image)
-                # Delete old image if exists
+            # Handle media deletion first
+            if remove_media:
                 if post.image:
                     post.image.delete(save=False)
-                post.image = image
-                post.media_type = 'image'
-            
-            if video:
-                PostService._validate_video(video)
-                # Delete old video if exists
                 if post.video:
                     post.video.delete(save=False)
-                post.video = video
-                post.media_type = 'video'
-            
-            if image and video:
-                post.media_type = 'both'
-            elif not image and not video and not post.image and not post.video:
+                post.image = None
+                post.video = None
                 post.media_type = 'none'
+            else:
+                # Handle media updates only if not deleting
+                if image:
+                    PostService._validate_image(image)
+                    # Delete old image if exists
+                    if post.image:
+                        post.image.delete(save=False)
+                    post.image = image
+                    post.media_type = 'image'
+                
+                if video:
+                    PostService._validate_video(video)
+                    # Delete old video if exists
+                    if post.video:
+                        post.video.delete(save=False)
+                    post.video = video
+                    post.media_type = 'video'
+                
+                if image and video:
+                    post.media_type = 'both'
+                elif not image and not video and not post.image and not post.video:
+                    post.media_type = 'none'
             
             post.save()
             

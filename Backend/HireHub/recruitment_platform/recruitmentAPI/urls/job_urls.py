@@ -7,6 +7,8 @@ urlpatterns = [
     # Job URLs
     path('', JobListView.as_view({'get': 'list', 'post': 'create'}), name='job-list'),
     path('<int:pk>/', JobView.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='job-detail'),
+    path('<int:pk>/save/', JobView.as_view({'post': 'save'}), name='job-save'),
+    path('saved/', JobView.as_view({'get': 'saved_jobs'}), name='saved-jobs'),
     
     # Quiz URLs
     path('<int:job_id>/quiz/', QuizView.as_view(), name='quiz-detail'),

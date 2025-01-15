@@ -12,7 +12,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Button
+  Button,
+  Tooltip
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -21,14 +22,17 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import WorkIcon from '@mui/icons-material/Work';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import { formatDistance } from 'date-fns';
 
 const JobCard = ({ job }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { deleteJob } = useJob();
+  const { deleteJob, saveJob } = useJob();
   const [anchorEl, setAnchorEl] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isSaved, setIsSaved] = useState(job.is_saved);
 
   const handleMenuClick = (event) => {
     event.stopPropagation();
@@ -55,6 +59,16 @@ const JobCard = ({ job }) => {
     }
   };
 
+  const handleSave = async (event) => {
+    event.stopPropagation();
+    try {
+      await saveJob(job.id);
+      setIsSaved(!isSaved);
+    } catch (error) {
+      console.error('Error saving job:', error);
+    }
+  };
+
   const handleCardClick = () => {
     navigate(`/jobs/${job.id}`);
   };
@@ -69,7 +83,6 @@ const JobCard = ({ job }) => {
         bgcolor: 'white',
         color: 'black',
         borderRadius: 1,
-        //maxWidth: '100%',
         height: '200px',
         width: '500px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
@@ -93,8 +106,28 @@ const JobCard = ({ job }) => {
           >
             {job.title}
           </Typography>
-          {isOwner && (
-            <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {!isOwner && user && (
+              <Tooltip title={isSaved ? "Remove from saved" : "Save job"}>
+                <IconButton 
+                  onClick={handleSave}
+                  size="small"
+                  sx={{ 
+                    p: 0.5,
+                    '&:hover': {
+                      bgcolor: 'rgba(0, 0, 0, 0.04)'
+                    }
+                  }}
+                >
+                  {isSaved ? (
+                    <BookmarkIcon sx={{ color: 'primary.main' }} />
+                  ) : (
+                    <BookmarkBorderIcon />
+                  )}
+                </IconButton>
+              </Tooltip>
+            )}
+            {isOwner && (
               <IconButton 
                 size="small" 
                 onClick={handleMenuClick}
@@ -107,22 +140,8 @@ const JobCard = ({ job }) => {
               >
                 <MoreVertIcon fontSize="small" />
               </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleMenuClose}
-                onClick={(e) => e.stopPropagation()}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-              >
-                <MenuItem onClick={handleEdit}>Edit</MenuItem>
-                <MenuItem onClick={() => {
-                  handleMenuClose();
-                  setDeleteDialogOpen(true);
-                }}>Delete</MenuItem>
-              </Menu>
-            </Box>
-          )}
+            )}
+          </Box>
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>

@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import api from '../services/api';
-import { profileService } from '../services/profileService';
+import { postService } from '../services/postService';
 
 const PostContext = createContext();
 
@@ -24,28 +23,9 @@ export const PostProvider = ({ children }) => {
   const fetchPosts = useCallback(async (nextCursor = null, userId = null) => {
     try {
       setLoading(true);
-      let responseData;
+      const response = await postService.getPosts(nextCursor);
+      const { posts: newPosts, next_cursor } = response.data;
       
-      if (userId) {
-        // Fetch user-specific posts
-        const response = await profileService.getUserPosts(userId, nextCursor);
-        responseData = response;
-      } else {
-        // Fetch posts from followed users and own posts
-        console.log('Fetching posts with params:', { cursor: nextCursor, followed_only: true });
-        const response = await api.get('/posts/', {
-          params: { 
-            cursor: nextCursor,
-            followed_only: true  // New parameter to indicate we want only followed users' posts
-          }
-        });
-        console.log('API Response:', response.data);
-        responseData = response.data;
-      }
-      
-      const { posts: newPosts, next_cursor } = responseData;
-      
-      // Always set posts directly, don't append if it's the initial fetch
       if (!nextCursor) {
         setPosts(newPosts);
       } else {
@@ -67,38 +47,20 @@ export const PostProvider = ({ children }) => {
   const createPost = async (postData) => {
     try {
       setLoading(true);
-      const formData = new FormData();
-      
-      // Append text content
-      formData.append('content', postData.content);
-      
-      // Append media files if they exist
-      if (postData.image) {
-        formData.append('image', postData.image);
-      }
-      if (postData.video) {
-        formData.append('video', postData.video);
-      }
-
-      const response = await api.post('/posts/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
+      const response = await postService.createPost(postData);
       setPosts(prevPosts => [response.data, ...prevPosts]);
       toast.success('Post created successfully!');
       return response.data;
     } catch (err) {
       console.error('Error creating post:', err);
-      toast.error('Failed to create post');
+      toast.error(err.response?.data?.message || 'Failed to create post');
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  const updatePost = async (postId, updates) => {
+  const updatePost = useCallback(async (postId, updates) => {
     try {
       setPosts(prevPosts =>
         prevPosts.map(post =>
@@ -110,11 +72,11 @@ export const PostProvider = ({ children }) => {
       toast.error('Failed to update post');
       throw err;
     }
-  };
+  }, []);
 
   const deletePost = async (postId) => {
     try {
-      await api.delete(`/posts/${postId}/`);
+      await postService.deletePost(postId);
       setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
       toast.success('Post deleted successfully');
     } catch (err) {
@@ -138,9 +100,10 @@ export const PostProvider = ({ children }) => {
         cursor,
         fetchPosts,
         clearPosts,
+        createPost,
         updatePost,
         removePost,
-        createPost
+        deletePost
       }}
     >
       {children}

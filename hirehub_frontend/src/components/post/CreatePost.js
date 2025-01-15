@@ -8,7 +8,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
-import { toast } from 'react-toastify';
+import { toast } from 'react-hot-toast';
 import MediaUpload from './MediaUpload';
 import { usePost } from '../../context/PostContext';
 
@@ -36,17 +36,19 @@ const CreatePost = ({ onPostCreated }) => {
 
       await createPost(postData);
       
-      // Clear form first
+      // Clear form
       setContent('');
       setSelectedFiles({ image: null, video: null });
       
-      // Notify parent component to refresh posts
+      // Notify parent component
       if (onPostCreated) {
         onPostCreated();
       }
+
+      toast.success('Post created successfully!');
     } catch (error) {
       console.error('Error creating post:', error);
-      toast.error(error.response?.data?.error || 'Failed to create post');
+      toast.error(error.response?.data?.message || 'Failed to create post');
     } finally {
       setLoading(false);
     }
@@ -55,7 +57,9 @@ const CreatePost = ({ onPostCreated }) => {
   const handleFileSelect = (file, type) => {
     setSelectedFiles(prev => ({
       ...prev,
-      [type]: file
+      [type]: file,
+      // Remove the other type of media when one is selected
+      [type === 'image' ? 'video' : 'image']: null
     }));
   };
 

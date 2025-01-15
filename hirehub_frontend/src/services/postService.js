@@ -10,31 +10,70 @@ export const postService = {
   },
 
   // Create a new post
-  createPost: async (content, image = null, video = null) => {
+  createPost: async (postData) => {
     const formData = new FormData();
-    formData.append('content', content);
-    if (image) formData.append('image', image);
-    if (video) formData.append('video', video);
+    formData.append('content', postData.content);
     
-    return api.post('/posts/', formData, {
+    if (postData.image) {
+      formData.append('image', postData.image);
+      console.log('Appending image to form data:', postData.image); // Debug log
+    }
+    if (postData.video) {
+      formData.append('video', postData.video);
+      console.log('Appending video to form data:', postData.video); // Debug log
+    }
+    
+    const response = await api.post('/posts/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
+
+    console.log('Create post response:', response.data); // Debug log
+    return response;
   },
 
   // Edit an existing post
-  editPost: async (postId, content, image = null, video = null) => {
+  editPost: async (postId, postData) => {
     const formData = new FormData();
-    formData.append('content', content);
-    if (image) formData.append('image', image);
-    if (video) formData.append('video', video);
+    formData.append('content', postData.content);
     
-    return api.put(`/posts/${postId}/`, formData, {
+    // Always send the media deletion state
+    formData.append('remove_media', postData.isMediaDeleted ? 'true' : 'false');
+    
+    // Only append new media if we're not deleting and have new files
+    if (!postData.isMediaDeleted) {
+      if (postData.image) {
+        formData.append('image', postData.image);
+      }
+      if (postData.video) {
+        formData.append('video', postData.video);
+      }
+    }
+
+    console.log('Editing post with data:', {
+      content: postData.content,
+      isMediaDeleted: postData.isMediaDeleted,
+      hasImage: !!postData.image,
+      hasVideo: !!postData.video
+    });
+
+    const response = await api.patch(`/posts/${postId}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
+
+    // If media was deleted, ensure the response reflects this
+    if (postData.isMediaDeleted && response.data) {
+      response.data = {
+        ...response.data,
+        media_type: 'none',
+        media_urls: {}
+      };
+    }
+
+    return response;
   },
 
   // Get a single post with full details

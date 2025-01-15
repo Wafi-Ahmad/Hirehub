@@ -64,6 +64,11 @@ class JobPost(models.Model):
         on_delete=models.CASCADE,
         related_name='posted_jobs'
     )
+    saved_by = models.ManyToManyField(
+        User,
+        related_name='saved_jobs',
+        blank=True
+    )
     quiz = models.OneToOneField(
         'recruitmentAPI.Quiz',  
         on_delete=models.SET_NULL,
