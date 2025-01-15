@@ -11,7 +11,12 @@ import {
   Button,
   Tabs,
   Tab,
-  useTheme
+  useTheme,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText
 } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -20,6 +25,8 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import WorkIcon from '@mui/icons-material/Work';
 import { USER_TYPES } from '../../utils/permissions';
 import NotificationMenu from '../notifications/NotificationMenu';
+import { userService } from '../../services/userService';
+import toast from 'react-hot-toast';
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -27,6 +34,7 @@ const Navbar = () => {
   const location = useLocation();
   const theme = useTheme();
   const [anchorEl, setAnchorEl] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
@@ -53,6 +61,18 @@ const Navbar = () => {
     if (path.startsWith('/jobs')) return 1;
     if (path.startsWith('/network')) return 2;
     return 0;
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await userService.deleteAccount();
+      handleClose();
+      await logout();
+      toast.success('Your account has been deleted successfully');
+      navigate('/login');
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to delete account');
+    }
   };
 
   return (
@@ -142,7 +162,35 @@ const Navbar = () => {
               <MenuItem onClick={handleProfile}>Profile</MenuItem>
               <MenuItem onClick={() => { handleClose(); navigate('/saved-jobs'); }}>Saved Jobs</MenuItem>
               <MenuItem onClick={handleLogout}>Logout</MenuItem>
+              <MenuItem onClick={() => { handleClose(); setDeleteDialogOpen(true); }} sx={{ color: 'error.main' }}>
+                Delete Account
+              </MenuItem>
             </Menu>
+
+            {/* Delete Account Confirmation Dialog */}
+            <Dialog
+              open={deleteDialogOpen}
+              onClose={() => setDeleteDialogOpen(false)}
+              aria-labelledby="delete-dialog-title"
+              aria-describedby="delete-dialog-description"
+            >
+              <DialogTitle id="delete-dialog-title">
+                Delete Account
+              </DialogTitle>
+              <DialogContent>
+                <DialogContentText id="delete-dialog-description">
+                  Are you sure you want to delete your account? This action cannot be undone.
+                </DialogContentText>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
+                  Cancel
+                </Button>
+                <Button onClick={handleDeleteAccount} color="error" variant="contained">
+                  Yes, Delete
+                </Button>
+              </DialogActions>
+            </Dialog>
           </Box>
         ) : (
           <Box sx={{ display: 'flex', gap: 1 }}>

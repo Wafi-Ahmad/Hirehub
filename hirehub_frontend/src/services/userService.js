@@ -98,5 +98,14 @@ export const userService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  deleteAccount: async () => {
+    try {
+      const response = await api.delete('/users/delete-account/');
+      return response;
+    } catch (error) {
+      throw error;
+    }
   }
 };
