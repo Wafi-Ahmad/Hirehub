@@ -20,7 +20,7 @@ const JobList = ({ filters }) => {
     } finally {
       setLoadingMore(false);
     }
-  }, [getJobs, filters]);
+  }, [filters, getJobs]);
 
   useEffect(() => {
     loadJobs();

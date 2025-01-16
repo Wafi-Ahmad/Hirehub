@@ -7,11 +7,13 @@ import {
   Box,
   Chip,
   IconButton,
-  Tooltip
+  Tooltip,
+  Badge
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
+import RecommendIcon from '@mui/icons-material/Recommend';
 import { formatDistanceToNow } from 'date-fns';
 import { saveJob } from '../../services/jobService';
 import toast from 'react-hot-toast';
@@ -50,25 +52,35 @@ const JobCard = ({ job }) => {
       onClick={() => navigate(`/jobs/${job.id}`)}
     >
       <CardContent>
-        <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
-          <Tooltip title={isSaved ? "Remove from saved" : "Save job"}>
-            <IconButton 
-              onClick={handleSave} 
-              size="small"
-              disabled={isLoading}
-            >
-              {isSaved ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
-            </IconButton>
-          </Tooltip>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h6" component="div" gutterBottom noWrap>
+              {job.title}
+              {job.is_recommended && (
+                <Tooltip title="Recommended for you">
+                  <RecommendIcon 
+                    color="primary" 
+                    sx={{ ml: 1, verticalAlign: 'middle' }} 
+                  />
+                </Tooltip>
+              )}
+            </Typography>
+            <Typography color="text.secondary" gutterBottom>
+              {job.company_name}
+            </Typography>
+          </Box>
+          <Box>
+            <Tooltip title={isSaved ? "Remove from saved" : "Save job"}>
+              <IconButton 
+                onClick={handleSave} 
+                size="small"
+                disabled={isLoading}
+              >
+                {isSaved ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
-
-        <Typography variant="h6" component="div" gutterBottom noWrap>
-          {job.title}
-        </Typography>
-        
-        <Typography color="text.secondary" gutterBottom>
-          {job.company_name}
-        </Typography>
 
         <Box sx={{ mb: 2 }}>
           <Chip 
@@ -86,6 +98,16 @@ const JobCard = ({ job }) => {
             size="small" 
             sx={{ mb: 1 }} 
           />
+          {job.is_recommended && (
+            <Chip
+              icon={<RecommendIcon />}
+              label="Recommended"
+              color="primary"
+              variant="outlined"
+              size="small"
+              sx={{ ml: 1, mb: 1 }}
+            />
+          )}
         </Box>
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }} noWrap>

@@ -24,4 +24,12 @@ export const JOB_STATUS = {
   FILLED: 'FILLED',
   DRAFT: 'DRAFT',
   CLOSED: 'CLOSED'
-}; 
+};
+
+export const JOB_STATUS_CHOICES = [
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'EXPIRED', label: 'Expired' },
+  { value: 'FILLED', label: 'Filled' },
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'CLOSED', label: 'Closed' }
+]; 

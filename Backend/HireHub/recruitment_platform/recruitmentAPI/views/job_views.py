@@ -36,6 +36,7 @@ class JobListView(viewsets.ViewSet):
             OpenApiParameter(name='skills', description='Required skills (comma-separated)', required=False, type=str),
             OpenApiParameter(name='cursor', description='Pagination cursor (ISO8601 datetime)', required=False, type=str),
             OpenApiParameter(name='limit', description='Number of results per page', required=False, type=int),
+            OpenApiParameter(name='followed_only', description='Show only jobs from followed companies', required=False, type=bool),
         ],
         responses=JobResponseSerializer(many=True)
     )
@@ -49,6 +50,10 @@ class JobListView(viewsets.ViewSet):
                 if skills.strip():
                     filters['skills'] = skills.strip()
 
+            # Handle followed_only parameter
+            if followed_only := request.query_params.get('followed_only'):
+                filters['followed_only'] = followed_only.lower() == 'true'
+
             # Handle other filters
             for key in ['title', 'location', 'employment_type', 'location_type', 'experience_level']:
                 if value := request.query_params.get(key):
@@ -58,7 +63,7 @@ class JobListView(viewsets.ViewSet):
             cursor = request.query_params.get('cursor')
             limit = int(request.query_params.get('limit', 10))
 
-            result = JobService.search_jobs(filters, cursor=cursor, limit=limit)
+            result = JobService.search_jobs(filters, cursor=cursor, limit=limit, user=request.user)
             return Response(result, status=status.HTTP_200_OK)
 
         except Exception as e:

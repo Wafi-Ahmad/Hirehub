@@ -92,12 +92,16 @@ class JobService:
             raise ValidationError("Invalid user")
 
     @staticmethod
-    def search_jobs(filters: Dict, cursor=None, limit=JOBS_PER_PAGE) -> Dict:
+    def search_jobs(filters: Dict, cursor=None, limit=JOBS_PER_PAGE, user=None) -> Dict:
         """
         Search for jobs with filters and cursor-based pagination.
         """
         try:
             query = Q(status='ACTIVE', is_active=True, expires_at__gt=timezone.now())
+
+            # Filter by followed companies if specified
+            if user and filters.get('followed_only'):
+                query &= Q(posted_by__in=user.following.all())
 
             # Skills filter
             if skills := filters.get('skills'):
@@ -107,7 +111,6 @@ class JobService:
                     if skill:
                         # Simple contains match for now
                         query &= Q(required_skills__icontains=skill)
-                        print(f"Skills filter applied: {skill}")  # Debug log
                 elif isinstance(skills, list):
                     # If multiple skills are passed
                     skills_query = Q()
@@ -116,7 +119,6 @@ class JobService:
                             skills_query &= Q(required_skills__icontains=skill)
                     if skills_query:
                         query &= skills_query
-                        print(f"Skills filter applied: {skills}")  # Debug log
 
             # Title filter
             if title := filters.get('title'):
@@ -146,6 +148,11 @@ class JobService:
             # Get jobs with pagination
             jobs = JobPost.objects.filter(query).select_related('posted_by').order_by('-created_at')
 
+            # Calculate recommendations if user is provided
+            recommendations = {}
+            if user:
+                recommendations = JobService.calculate_job_recommendations(jobs, user)
+
             # Apply cursor pagination
             if cursor:
                 jobs = jobs.filter(created_at__lt=cursor)
@@ -160,8 +167,13 @@ class JobService:
             if has_next and result_jobs:
                 next_cursor = result_jobs[-1].created_at.isoformat()
 
+            # Add recommendation scores to job data
+            serialized_jobs = JobResponseSerializer(result_jobs, many=True).data
+            for job_data in serialized_jobs:
+                job_data['is_recommended'] = recommendations.get(job_data['id'], 0) >= 0.7
+
             return {
-                'jobs': JobResponseSerializer(result_jobs, many=True).data,
+                'jobs': serialized_jobs,
                 'next_cursor': next_cursor
             }
 
@@ -171,6 +183,23 @@ class JobService:
                 'jobs': [],
                 'next_cursor': None
             }
+
+    @staticmethod
+    def calculate_job_recommendations(jobs, user) -> Dict[int, float]:
+        """Calculate recommendation scores for jobs based on user profile using embeddings."""
+        try:
+            recommendations = {}
+            
+            # Use JobMatchingService for embedding-based matching
+            for job in jobs:
+                score = JobMatchingService.calculate_match_score(job, user)
+                recommendations[job.id] = score / 100.0  # Convert to 0-1 scale
+            
+            return recommendations
+
+        except Exception as e:
+            print(f"Error calculating recommendations: {str(e)}")
+            return {}
 
     @staticmethod
     def get_job_by_id(job_id: int) -> dict:

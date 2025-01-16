@@ -17,6 +17,7 @@ import JobList from '../../components/jobs/JobList';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { USER_TYPES } from '../../utils/permissions';
+import PeopleIcon from '@mui/icons-material/People';
 
 const Jobs = () => {
   const [filters, setFilters] = useState({
@@ -25,7 +26,8 @@ const Jobs = () => {
     employment_type: '',
     location_type: '',
     experience_level: '',
-    skills: ''
+    skills: '',
+    followed_only: false
   });
 
   const navigate = useNavigate();
@@ -39,6 +41,13 @@ const Jobs = () => {
     }));
   };
 
+  const handleFollowedToggle = () => {
+    setFilters(prev => ({
+      ...prev,
+      followed_only: !prev.followed_only
+    }));
+  };
+
   return (
     <Container maxWidth="xl">
       <Box sx={{ py: 4 }}>
@@ -46,15 +55,26 @@ const Jobs = () => {
           <Typography variant="h4" gutterBottom>
             Find Your Next Opportunity
           </Typography>
-          {user?.userType === USER_TYPES.COMPANY && (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => navigate('/jobs/create')}
-            >
-              Post a Job
-            </Button>
-          )}
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            {user?.userType === USER_TYPES.NORMAL && (
+              <Button
+                variant={filters.followed_only ? "contained" : "outlined"}
+                onClick={handleFollowedToggle}
+                startIcon={<PeopleIcon />}
+              >
+                {filters.followed_only ? "Following" : "All Companies"}
+              </Button>
+            )}
+            {user?.userType === USER_TYPES.COMPANY && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => navigate('/jobs/create')}
+              >
+                Post a Job
+              </Button>
+            )}
+          </Box>
         </Box>
         
         {/* Filters Section */}

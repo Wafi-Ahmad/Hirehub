@@ -13,7 +13,9 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Tooltip
+  Tooltip,
+  ListItemIcon,
+  ListItemText
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -24,7 +26,10 @@ import WorkIcon from '@mui/icons-material/Work';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { formatDistance } from 'date-fns';
+import RecommendIcon from '@mui/icons-material/Recommend';
 
 const JobCard = ({ job }) => {
   const navigate = useNavigate();
@@ -74,6 +79,13 @@ const JobCard = ({ job }) => {
   };
 
   const isOwner = user?.id === job.company_id;
+
+  const formatEmploymentType = (type) => {
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
 
   return (
     <Card 
@@ -152,49 +164,48 @@ const JobCard = ({ job }) => {
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <BusinessCenterIcon sx={{ color: 'text.secondary', fontSize: '1rem' }} />
+            <Typography variant="body2" color="text.secondary">
+              {formatEmploymentType(job.employment_type)}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <WorkIcon sx={{ color: 'text.secondary', fontSize: '1rem' }} />
             <Typography variant="body2" color="text.secondary">
-              {job.employment_type}
+              {job.experience_level === 'SENIOR' ? 'Senior Level' :
+               job.experience_level === 'MID' ? 'Mid Level' :
+               job.experience_level === 'ENTRY' ? 'Entry Level' :
+               job.experience_level === 'LEAD' ? 'Lead Level' : ''}
             </Typography>
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-          <Chip 
-            label={job.experience_level}
-            size="small"
-            sx={{ 
-              bgcolor: 'grey.100',
-              color: 'text.primary',
-              borderRadius: '16px',
-              height: '24px',
-              '& .MuiChip-label': { px: 1 }
-            }}
-          />
-          {job.required_skills.slice(0, 3).map((skill, index) => (
-            <Chip 
-              key={index} 
-              label={skill} 
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8, mb: 2 }}>
+          {job.required_skills?.map((skill, index) => (
+            <Chip
+              key={index}
+              label={skill}
               size="small"
-              sx={{ 
-                bgcolor: 'grey.100',
-                color: 'text.primary',
-                borderRadius: '16px',
+              sx={{
+                bgcolor: 'transparent',
+                border: '1px solid #1976d2',
+                color: '#1976d2',
                 height: '24px',
-                '& .MuiChip-label': { px: 1 }
+                '& .MuiChip-label': { px: 1, py: 0.5 }
               }}
             />
           ))}
-          {job.required_skills.length > 3 && (
-            <Chip 
-              label={`+${job.required_skills.length - 3} more`}
+          {job.is_recommended && (
+            <Chip
+              icon={<RecommendIcon sx={{ color: 'white', '& path': { fill: 'white' } }} />}
+              label="Recommended For You"
               size="small"
-              sx={{ 
-                bgcolor: 'grey.100',
-                color: 'text.primary',
-                borderRadius: '16px',
+              sx={{
+                bgcolor: '#1976d2',
+                color: 'white',
                 height: '24px',
-                '& .MuiChip-label': { px: 1 }
+                '& .MuiChip-label': { px: 1, py: 0.5 },
+                '& .MuiChip-icon': { ml: 0.5, color: 'white' }
               }}
             />
           )}
@@ -231,6 +242,27 @@ const JobCard = ({ job }) => {
           )}
         </Box>
       </CardContent>
+
+      {/* Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <MenuItem onClick={handleEdit}>
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText primary="Edit" />
+        </MenuItem>
+        <MenuItem onClick={() => setDeleteDialogOpen(true)}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText primary="Delete" />
+        </MenuItem>
+      </Menu>
 
       {/* Delete Confirmation Dialog */}
       <Dialog

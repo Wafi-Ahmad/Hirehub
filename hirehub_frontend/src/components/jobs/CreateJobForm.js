@@ -23,6 +23,7 @@ const CreateJobForm = () => {
   const navigate = useNavigate();
   const { createJob } = useJob();
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -35,6 +36,13 @@ const CreateJobForm = () => {
     experience_level: ''
   });
 
+  const experienceLevels = [
+    { value: 'ENTRY', label: 'Entry Level' },
+    { value: 'MID', label: 'Mid Level' },
+    { value: 'SENIOR', label: 'Senior Level' },
+    { value: 'LEAD', label: 'Lead Level' }
+  ];
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -45,6 +53,13 @@ const CreateJobForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
     setLoading(true);
 
     try {
@@ -68,6 +83,7 @@ const CreateJobForm = () => {
       console.error('Error creating job:', error);
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -189,15 +205,15 @@ const CreateJobForm = () => {
             </Grid>
 
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth required>
+              <FormControl fullWidth>
                 <InputLabel>Experience Level</InputLabel>
                 <Select
-                  name="experience_level"
                   value={formData.experience_level}
                   onChange={handleChange}
+                  name="experience_level"
                   label="Experience Level"
                 >
-                  {EXPERIENCE_LEVELS.map(level => (
+                  {experienceLevels.map((level) => (
                     <MenuItem key={level.value} value={level.value}>
                       {level.label}
                     </MenuItem>
@@ -230,7 +246,7 @@ const CreateJobForm = () => {
                 <Button
                   type="submit"
                   variant="contained"
-                  disabled={loading}
+                  disabled={loading || isSubmitting}
                 >
                   {loading ? 'Posting...' : 'Post Job'}
                 </Button>

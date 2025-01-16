@@ -2,6 +2,7 @@ from rest_framework import serializers
 from ..models.job_model import JobPost
 from ..constants import EMPLOYMENT_TYPES, LOCATION_TYPES, EXPERIENCE_LEVELS, JOB_STATUS_CHOICES
 from django.utils import timezone
+from datetime import datetime
 
 class CreateJobSerializer(serializers.ModelSerializer):
     required_skills = serializers.ListField(
@@ -77,6 +78,7 @@ class JobResponseSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='posted_by.company_name', read_only=True)
     company_id = serializers.IntegerField(source='posted_by.id', read_only=True)
     is_saved = serializers.SerializerMethodField()
+    is_recommended = serializers.BooleanField(default=False)
     
     class Meta:
         model = JobPost
@@ -97,12 +99,23 @@ class JobResponseSerializer(serializers.ModelSerializer):
             'company_name',
             'company_id',
             'is_saved',
+            'is_recommended',
             'created_at',
             'updated_at'
         ]
-        read_only_fields = ['id', 'posted_by_name', 'days_until_expiry', 'created_at', 'updated_at', 'company_name', 'company_id', 'is_saved']
+        read_only_fields = ['id', 'posted_by_name', 'days_until_expiry', 'created_at', 'updated_at', 'company_name', 'company_id', 'is_saved', 'is_recommended']
 
     def get_posted_by_name(self, obj):
+        # Handle both model instances and dictionaries
+        if isinstance(obj, dict):
+            posted_by = obj.get('posted_by', None)
+            if not posted_by:
+                return ''
+            if isinstance(posted_by, dict):
+                return posted_by.get('company_name') or f"{posted_by.get('first_name', '')} {posted_by.get('last_name', '')}".strip() or posted_by.get('email', '')
+            return ''
+        
+        # Handle model instance
         if obj.posted_by:
             if hasattr(obj.posted_by, 'company_name') and obj.posted_by.company_name:
                 return obj.posted_by.company_name
@@ -110,21 +123,44 @@ class JobResponseSerializer(serializers.ModelSerializer):
         return ''
 
     def get_days_until_expiry(self, obj):
-        if obj.expires_at:
-            delta = obj.expires_at - timezone.now()
+        # Handle both model instances and dictionaries
+        if isinstance(obj, dict):
+            expires_at = obj.get('expires_at')
+        else:
+            expires_at = getattr(obj, 'expires_at', None)
+            
+        if expires_at:
+            if isinstance(expires_at, str):
+                expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+            delta = expires_at - timezone.now()
             return max(0, delta.days)
         return None
 
     def get_required_skills(self, obj):
-        if not obj.required_skills:
+        # Handle both model instances and dictionaries
+        if isinstance(obj, dict):
+            skills = obj.get('required_skills', '')
+        else:
+            skills = getattr(obj, 'required_skills', '')
+            
+        if not skills:
             return []
-        return [skill.strip() for skill in obj.required_skills.split(',') if skill.strip()]
+            
+        if isinstance(skills, list):
+            return skills
+            
+        return [skill.strip() for skill in skills.split(',') if skill.strip()]
 
     def get_is_saved(self, obj):
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return request.user in obj.saved_by.all()
-        return False
+        if not request or not request.user.is_authenticated:
+            return False
+            
+        if isinstance(obj, dict):
+            saved_by = obj.get('saved_by', [])
+            return request.user.id in saved_by
+            
+        return request.user in obj.saved_by.all()
 
 class JobSearchSerializer(serializers.Serializer):
     title = serializers.CharField(required=False, allow_blank=True, allow_null=True)

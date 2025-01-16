@@ -38,7 +38,8 @@ const PostJob = () => {
     location: '',
     experience_level: '',
     salary_min: '',
-    salary_max: ''
+    salary_max: '',
+    status: 'ACTIVE'
   });
 
   useEffect(() => {
@@ -77,7 +78,8 @@ const PostJob = () => {
         ...formData,
         required_skills: formData.required_skills.split(',').map(skill => skill.trim()),
         salary_min: parseFloat(formData.salary_min) || null,
-        salary_max: parseFloat(formData.salary_max) || null
+        salary_max: parseFloat(formData.salary_max) || null,
+        status: 'ACTIVE'
       };
 
       if (id) {

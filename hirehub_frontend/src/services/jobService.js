@@ -29,6 +29,9 @@ class JobService {
         value.forEach(skill => {
           queryParams.append('skills', skill);
         });
+      } else if (key === 'followed_only') {
+        // Convert boolean to string
+        queryParams.append(key, value ? 'true' : 'false');
       } else if (value) {
         queryParams.append(key, value);
       }
