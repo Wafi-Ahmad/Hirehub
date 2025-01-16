@@ -2,11 +2,15 @@ import api from './api';
 
 export const postService = {
   // Get paginated posts
-  getPosts: async (cursor = null, limit = 10) => {
+  getPosts: async (cursor = null, limit = 10, userId = null, followed_only = false) => {
     const params = new URLSearchParams();
     if (cursor) params.append('cursor', cursor);
-    params.append('limit', limit);
-    return api.get(`/posts/?${params.toString()}`);
+    if (limit && limit !== 'null') params.append('limit', limit);
+    params.append('followed_only', followed_only.toString());
+
+    // If userId is provided, use the user-specific endpoint
+    const endpoint = userId ? `/posts/user/${userId}/` : '/posts/';
+    return api.get(`${endpoint}?${params.toString()}`);
   },
 
   // Create a new post

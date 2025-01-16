@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Container, Grid, Box, Typography, Button } from '@mui/material';
+import { Container, Grid, Box, Typography, Button, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import CreatePost from '../components/post/CreatePost';
 import PostList from '../components/post/PostList';
 import ProfileSummary from '../components/profile/ProfileSummary';
@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { USER_TYPES } from '../utils/permissions';
 
 const Home = () => {
-  const { fetchPosts } = usePost();
+  const { fetchPosts, followedOnly, toggleFollowedOnly } = usePost();
   const { fetchProfileData, profileData } = useProfile();
   const { jobs, getJobs } = useJob();
   const { user } = useAuth();
@@ -61,6 +61,22 @@ const Home = () => {
 
         {/* Middle Column - Posts */}
         <Grid item xs={12} md={6}>
+          <Box sx={{ mb: 2 }}>
+            <ToggleButtonGroup
+              value={followedOnly}
+              exclusive
+              onChange={toggleFollowedOnly}
+              aria-label="post filter"
+              fullWidth
+            >
+              <ToggleButton value={true} aria-label="followed posts">
+                Following
+              </ToggleButton>
+              <ToggleButton value={false} aria-label="all posts">
+                All Posts
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
           <CreatePost />
           <PostList />
         </Grid>

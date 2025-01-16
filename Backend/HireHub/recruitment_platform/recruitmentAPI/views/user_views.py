@@ -305,7 +305,7 @@ class SearchProfilesView(APIView):
     permission_classes = [IsAuthenticated, IsNormalOrCompanyUser]
 
     def get(self, request):
-        query = request.GET.get('query', '')
+        query = request.GET.get('query', '').strip()
         if not query:
             return Response({"error": "Search query not provided."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -313,8 +313,9 @@ class SearchProfilesView(APIView):
         users = User.objects.filter(
             Q(first_name__icontains=query) |
             Q(last_name__icontains=query) |
-            Q(skills__icontains=query)
-        ).exclude(id=request.user.id)
+            Q(skills__icontains=query) |
+            Q(company_name__icontains=query)  # Add company name to search
+        ).exclude(id=request.user.id)[:10]  # Limit to 10 results
 
         result = []
         for user in users:
@@ -331,7 +332,10 @@ class SearchProfilesView(APIView):
 
             # For company users, always include company name
             if user.user_type == 'Company':
-                user_data["company_name"] = user.company_name
+                user_data.update({
+                    "company_name": user.company_name,
+                    "industry": user.industry if hasattr(user, 'industry') else None
+                })
 
             # Add additional info only for public profiles
             if user.is_profile_public:
@@ -346,7 +350,6 @@ class SearchProfilesView(APIView):
 
             result.append(user_data)
 
-        # Check if result is empty
         if not result:
             return Response({"message": "No results found."}, status=status.HTTP_200_OK)
 

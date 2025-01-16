@@ -17,6 +17,7 @@ import {
   Alert,
   Tooltip,
   Switch,
+  FormControlLabel,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -39,6 +40,7 @@ import EditProfileDialog from '../../components/profile/EditProfileDialog';
 import PostList from '../../components/post/PostList';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import { FOLLOW_STATUS_UPDATE_EVENT } from '../../components/layout/NotificationMenu';
+import FollowersFollowingDialog from '../../components/profile/FollowersFollowingDialog';
 
 const Profile = () => {
   const { id } = useParams();
@@ -55,6 +57,8 @@ const Profile = () => {
   } = useProfile();
   const { clearPosts } = usePost();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [followDialogOpen, setFollowDialogOpen] = useState(false);
+  const [followDialogTab, setFollowDialogTab] = useState('followers');
 
   const isOwnProfile = !id || id === currentUser?.id?.toString();
   const isPrivateProfile = !isOwnProfile && profileData?.is_profile_public === false && !profileData?.is_following;
@@ -274,6 +278,16 @@ const Profile = () => {
 
   const handleCloseEditDialog = () => {
     setEditDialogOpen(false);
+  };
+
+  const handleFollowersClick = () => {
+    setFollowDialogTab('followers');
+    setFollowDialogOpen(true);
+  };
+
+  const handleFollowingClick = () => {
+    setFollowDialogTab('following');
+    setFollowDialogOpen(true);
   };
 
   const renderContactInfo = () => {
@@ -689,12 +703,28 @@ const Profile = () => {
             {/* Follow Stats */}
             <Grid container spacing={4} sx={{ mt: 3, justifyContent: 'center' }}>
               <Grid item>
-                <Typography variant="h6">{followData?.followers_count || 0}</Typography>
-                <Typography variant="body2" color="text.secondary">Followers</Typography>
+                <Box 
+                  sx={{ 
+                    cursor: 'pointer',
+                    '&:hover': { opacity: 0.8 }
+                  }}
+                  onClick={handleFollowersClick}
+                >
+                  <Typography variant="h6">{followData?.followers_count || 0}</Typography>
+                  <Typography variant="body2" color="text.secondary">Followers</Typography>
+                </Box>
               </Grid>
               <Grid item>
-                <Typography variant="h6">{followData?.following_count || 0}</Typography>
-                <Typography variant="body2" color="text.secondary">Following</Typography>
+                <Box 
+                  sx={{ 
+                    cursor: 'pointer',
+                    '&:hover': { opacity: 0.8 }
+                  }}
+                  onClick={handleFollowingClick}
+                >
+                  <Typography variant="h6">{followData?.following_count || 0}</Typography>
+                  <Typography variant="body2" color="text.secondary">Following</Typography>
+                </Box>
               </Grid>
             </Grid>
           </Box>
@@ -728,6 +758,14 @@ const Profile = () => {
       <EditProfileDialog
         open={editDialogOpen}
         onClose={handleCloseEditDialog}
+      />
+
+      {/* Add the FollowersFollowingDialog */}
+      <FollowersFollowingDialog
+        open={followDialogOpen}
+        onClose={() => setFollowDialogOpen(false)}
+        userId={id || currentUser?.id}
+        initialTab={followDialogTab}
       />
     </Container>
   );

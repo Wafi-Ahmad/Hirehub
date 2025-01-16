@@ -107,5 +107,15 @@ export const userService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  getFollowersFollowing: async (userId) => {
+    try {
+      const response = await api.get(`/users/${userId}/followers-following/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching followers/following:', error);
+      throw error;
+    }
   }
 };

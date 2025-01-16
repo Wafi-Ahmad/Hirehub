@@ -88,7 +88,7 @@ const SearchBar = () => {
       : `${result.first_name} ${result.last_name}`;
     
     const subtitle = result.user_type === 'Company'
-      ? result.industry || 'No industry information'
+      ? result.industry || 'Company'
       : result.current_work || 'No current position';
 
     return (
@@ -98,8 +98,13 @@ const SearchBar = () => {
         sx={{ '&:hover': { backgroundColor: 'action.hover' } }}
       >
         <ListItemAvatar>
-          <Avatar src={result.profile_picture}>
-            {result.first_name?.charAt(0)}{result.last_name?.charAt(0)}
+          <Avatar 
+            src={result.profile_picture}
+            sx={result.user_type === 'Company' ? { bgcolor: 'primary.main' } : {}}
+          >
+            {result.user_type === 'Company' 
+              ? result.company_name?.charAt(0)
+              : `${result.first_name?.charAt(0)}${result.last_name?.charAt(0)}`}
           </Avatar>
         </ListItemAvatar>
         <ListItemText

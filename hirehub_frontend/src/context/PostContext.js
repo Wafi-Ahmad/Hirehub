@@ -11,6 +11,7 @@ export const PostProvider = ({ children }) => {
   const [hasMore, setHasMore] = useState(true);
   const [cursor, setCursor] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [followedOnly, setFollowedOnly] = useState(true);
 
   const clearPosts = useCallback(() => {
     setPosts([]);
@@ -23,7 +24,7 @@ export const PostProvider = ({ children }) => {
   const fetchPosts = useCallback(async (nextCursor = null, userId = null) => {
     try {
       setLoading(true);
-      const response = await postService.getPosts(nextCursor);
+      const response = await postService.getPosts(nextCursor, 10, userId, followedOnly);
       const { posts: newPosts, next_cursor } = response.data;
       
       if (!nextCursor) {
@@ -42,7 +43,12 @@ export const PostProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [followedOnly]);
+
+  const toggleFollowedOnly = useCallback(() => {
+    setFollowedOnly(prev => !prev);
+    clearPosts();
+  }, [clearPosts]);
 
   const createPost = async (postData) => {
     try {
@@ -98,12 +104,14 @@ export const PostProvider = ({ children }) => {
         error,
         hasMore,
         cursor,
+        followedOnly,
         fetchPosts,
         clearPosts,
         createPost,
         updatePost,
         removePost,
-        deletePost
+        deletePost,
+        toggleFollowedOnly
       }}
     >
       {children}
