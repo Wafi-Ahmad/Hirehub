@@ -114,9 +114,10 @@ const Comment = ({ comment: initialComment, onLike, onDelete, onReply, currentUs
         id: commentState.id,
         content: commentState.content,
         isReply,
+        parentId,
         userId: currentUser?.id,
         commentOwnerId: commentState.user?.id,
-        parent_comment_id: commentState.parent_comment_id
+        replyCount: replies?.length || 0
       });
 
       if (currentUser?.id !== commentState.user?.id) {
@@ -124,9 +125,7 @@ const Comment = ({ comment: initialComment, onLike, onDelete, onReply, currentUs
         return;
       }
 
-      await commentService.deleteComment(commentState.id);
-      
-      await onDelete(commentState.id, isReply);
+      await onDelete(commentState.id, isReply, parentId);
       handleMenuClose();
       
     } catch (error) {
@@ -279,6 +278,7 @@ const Comment = ({ comment: initialComment, onLike, onDelete, onReply, currentUs
                       onReply={onReply}
                       currentUser={currentUser}
                       isReply={true}
+                      parentId={commentState.id}
                     />
                   ))}
                 </Box>

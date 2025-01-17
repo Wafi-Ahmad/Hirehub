@@ -111,33 +111,37 @@ const Comments = ({ postId, onCommentAdded }) => {
      * @param {boolean} isReply    - whether this is a reply
      */
 
-    const handleDeleteComment = async (commentId, isReply = false) => {
+    const handleDeleteComment = async (commentId, isReply = false, parentCommentId = null) => {
         try {
             // Enhanced debug logging
             console.log('Comments.js - Attempting to delete:', {
                 commentId,
                 isReply,
+                parentCommentId,
                 currentUserId: user?.id,
                 timestamp: new Date().toISOString()
             });
 
             // Find the comment/reply to verify ownership
-            const findComment = (id) => {
+            const findComment = (id, isReply) => {
                 for (const comment of comments) {
-                    if (comment.id === id) return comment;
+                    if (!isReply && comment.id === id) return comment;
                     if (comment.replies) {
                         const reply = comment.replies.find(r => r.id === id);
-                        if (reply) return reply;
+                        if (reply) return { reply, parentId: comment.id };
                     }
                 }
                 return null;
             };
 
-            const targetComment = findComment(commentId);
-            if (!targetComment) {
+            const target = findComment(commentId, isReply);
+            if (!target) {
                 toast.error('Comment not found');
                 return;
             }
+
+            const targetComment = isReply ? target.reply : target;
+            const effectiveParentId = isReply ? target.parentId : null;
 
             // Verify ownership
             if (targetComment.user.id !== user?.id) {
@@ -145,27 +149,28 @@ const Comments = ({ postId, onCommentAdded }) => {
                 return;
             }
 
-            // Delete the comment/reply
-            await commentService.deleteComment(commentId);
+            // Delete the comment/reply using appropriate method
+            if (isReply) {
+                await commentService.deleteReply(effectiveParentId, commentId);
+            } else {
+                await commentService.deleteComment(commentId);
+            }
 
             // Update state based on whether it's a reply or main comment
             setComments(prevComments => {
                 if (!isReply) {
+                    // If it's a parent comment, remove it completely
                     return prevComments.filter(c => c.id !== commentId);
                 }
                 
-                // For replies, find the parent comment and remove the specific reply
+                // For replies, find the parent comment and remove only the specific reply
                 return prevComments.map(comment => {
-                    // Check if this comment has replies
-                    if (!comment.replies) return comment;
+                    if (comment.id !== effectiveParentId) return comment;
                     
-                    // Find and remove the specific reply
-                    const replyExists = comment.replies.some(reply => reply.id === commentId);
-                    if (!replyExists) return comment;
-
+                    const updatedReplies = comment.replies.filter(reply => reply.id !== commentId);
                     return {
                         ...comment,
-                        replies: comment.replies.filter(reply => reply.id !== commentId),
+                        replies: updatedReplies,
                         reply_count: Math.max(0, comment.reply_count - 1)
                     };
                 });
