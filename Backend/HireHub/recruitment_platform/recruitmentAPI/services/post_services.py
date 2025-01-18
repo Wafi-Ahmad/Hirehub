@@ -7,6 +7,9 @@ from django.conf import settings
 import time
 from django.db.models import Q
 from ..models.notification_model import Notification
+from sentence_transformers import SentenceTransformer, util
+import numpy as np
+from django.db.models import Case, When, FloatField
 
 class PostService:
     MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -15,6 +18,14 @@ class PostService:
     ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime']
     CACHE_TTL = getattr(settings, 'POST_CACHE_TTL', 300)  # 5 minutes default
     POSTS_PER_PAGE = 10
+    _model = None
+
+    @classmethod
+    def get_model(cls):
+        if cls._model is None:
+            # Use same model as job matching for consistency
+            cls._model = SentenceTransformer('all-MiniLM-L6-v2')
+        return cls._model
 
     @staticmethod
     def create_post(user, content, image=None, video=None):
@@ -90,43 +101,80 @@ class PostService:
             raise ValueError("Invalid video format. Supported formats: MP4, MOV")
 
     @staticmethod
+    def calculate_post_recommendations(posts, user):
+        """Calculate recommendation scores for posts based on user profile using embeddings"""
+        recommendations = {}
+        
+        try:
+            # Get user profile text based on user type
+            if user.user_type == 'Normal':
+                user_profile = f"{user.skills or ''} {user.experience or ''} {user.current_work or ''} "
+                user_profile += f"{user.recent_work or ''} {user.certifications or ''} "
+                user_profile += f"{user.preferred_job_type or ''} {user.preferred_job_category or ''}"
+            else:  # Company user
+                user_profile = f"{user.industry or ''} {user.about_company or ''} {user.specializations or ''}"
+
+            # If no profile data, return empty recommendations
+            if not user_profile.strip():
+                return recommendations
+
+            # Get embeddings using the model
+            model = PostService.get_model()
+            user_embedding = model.encode(user_profile, convert_to_tensor=True)
+
+            # Calculate similarity scores for all posts
+            for post in posts:
+                post_content = post.content
+                post_embedding = model.encode(post_content, convert_to_tensor=True)
+                
+                # Calculate cosine similarity using PyTorch
+                similarity = float(util.pytorch_cos_sim(user_embedding, post_embedding)[0][0])
+                
+                # Only include posts with similarity above threshold
+                if similarity > 0.35:
+                    recommendations[post.id] = similarity
+
+        except Exception as e:
+            print(f"Error calculating post recommendations: {str(e)}")
+
+        return recommendations
+
+    @staticmethod
     def get_posts_paginated(cursor=None, limit=POSTS_PER_PAGE, user=None, followed_only=False):
         """
-        Get paginated posts with caching
+        Get paginated posts with recommendations when followed_only is False
         """
         print(f"Debug - followed_only: {followed_only}")  # Debug log
         
-        # Generate cache key - simpler version for better reliability
+        # Generate cache key
         cache_key = f"posts:list:{cursor}:{limit}:{followed_only}"
         if user:
             cache_key += f":{user.id}"
             
-        # Try to get from cache
-        # cached_result = cache.get(cache_key)
-        # if cached_result:
-        #     return cached_result
-
         # Build base query
         posts = Post.objects.filter(
             is_active=True,
             is_hidden=False
         )
 
-        # Filter posts by followed users if user is provided and followed_only is True
-        if user and followed_only:
-            following_ids = list(user.following.values_list('id', flat=True))
-            print(f"Debug - User {user.id} following IDs: {following_ids}")  # Debug log
-            
-            if not following_ids:
-                print(f"Debug - User is not following anyone, showing only their posts")  # Debug log
-                # If user is not following anyone, only show their own posts
-                posts = posts.filter(user=user)
-            else:
-                print(f"Debug - Showing posts from followed users and own posts")  # Debug log
-                # Show posts from followed users and own posts
+        if user:
+            if followed_only:
+                # Show only posts from followed users and own posts
+                following_ids = list(user.following.values_list('id', flat=True))
                 posts = posts.filter(
                     Q(user=user) |  # Include user's own posts
                     Q(user__in=following_ids)  # Include posts from followed users
+                )
+            else:
+                # Show all posts with recommendations
+                all_posts = list(posts)
+                recommendations = PostService.calculate_post_recommendations(all_posts, user)
+                posts = posts.annotate(
+                    recommendation_score=Case(
+                        *[When(id=post_id, then=score) for post_id, score in recommendations.items()],
+                        default=0,
+                        output_field=FloatField(),
+                    )
                 )
 
         posts = posts.select_related(
@@ -149,7 +197,7 @@ class PostService:
         if has_next and result_posts:
             next_cursor = result_posts[-1].created_at.isoformat()
 
-        # Add user-specific data if user is authenticated
+        # Add user-specific data
         if user:
             for post in result_posts:
                 post.user_has_liked = user in post.likes.all()

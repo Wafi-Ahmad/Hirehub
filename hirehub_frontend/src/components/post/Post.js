@@ -19,6 +19,7 @@ import {
   CircularProgress,
   Divider,
   Tooltip,
+  Chip,
 } from '@mui/material';
 import {
   MoreVert as MoreVertIcon,
@@ -27,6 +28,7 @@ import {
   PersonAdd as PersonAddIcon,
   PersonRemove as PersonRemoveIcon,
   Close as CloseIcon,
+  Recommend as RecommendIcon,
 } from '@mui/icons-material';
 import { commentService } from '../../services/commentService';
 import { postService } from '../../services/postService';
@@ -39,6 +41,8 @@ import { formatTimeAgo } from '../../utils/dateUtils';
 import { useNavigate } from 'react-router-dom';
 import MediaUpload from './MediaUpload';
 import { MEDIA_BASE_URL } from '../../config';
+import { useProfile } from '../../context/ProfileContext';
+import { Link } from 'react-router-dom';
 
 const Post = ({ post, onDelete, showRecommended = false }) => {
   const { user: currentUser } = useAuth();
@@ -66,6 +70,8 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
     image: null,
     video: null
   });
+  const { followData, updateFollowData } = useProfile();
+  const [isFollowing, setIsFollowing] = useState(post?.is_following || false);
 
   // Reset states when post changes
   useEffect(() => {
@@ -78,6 +84,11 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
       setTempMediaType(post.media_type);
     }
   }, [post]);
+
+  // Update isFollowing when followData changes
+  useEffect(() => {
+    setIsFollowing(followData?.following?.includes(post.user.id) || false);
+  }, [followData, post.user.id]);
 
   // Fetch comments when comments section is opened
   const fetchComments = async (cursor = null) => {
@@ -490,33 +501,83 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
     }));
   };
 
+  const handleFollow = async () => {
+    try {
+      const response = await userService.followUser(post.user.id);
+      const { followers_count, following_count, is_following, message } = response.data;
+
+      // Update follow data
+      updateFollowData(prev => ({
+        ...prev,
+        followers_count,
+        following_count,
+        following: [...(prev?.following || []), post.user.id]
+      }));
+
+      // Update local state
+      setIsFollowing(true);
+      toast.success(message || 'Successfully followed user');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to follow user');
+    }
+  };
+
+  const handleUnfollow = async () => {
+    try {
+      const response = await userService.unfollowUser(post.user.id);
+      const { followers_count, following_count, is_following, message } = response.data;
+
+      // Update follow data
+      updateFollowData(prev => ({
+        ...prev,
+        followers_count,
+        following_count,
+        following: (prev?.following || []).filter(id => id !== post.user.id)
+      }));
+
+      // Update local state
+      setIsFollowing(false);
+      toast.success(message || 'Successfully unfollowed user');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to unfollow user');
+    }
+  };
+
   return (
     <Card sx={{ mb: 2 }}>
       <CardHeader
         avatar={
           <Avatar
             src={post.user.profile_picture}
-            alt={`${post.user.first_name} ${post.user.last_name}`}
-            onClick={() => navigate(`/profile/${post.user.id}`)}
-            sx={{ cursor: 'pointer' }}
+            alt={post.user.company_name || `${post.user.first_name} ${post.user.last_name}`}
           />
         }
         action={
-          isPostOwner && (
-            <IconButton onClick={handleMenuClick}>
-              <MoreVertIcon />
-            </IconButton>
-          )
+          <>
+            {post.is_recommended && (
+              <Chip
+                icon={<RecommendIcon />}
+                label="Recommended"
+                color="primary"
+                variant="outlined"
+                size="small"
+                sx={{ mr: 1 }}
+              />
+            )}
+            {post.user.id === currentUser?.id && (
+              <IconButton onClick={handleMenuClick}>
+                <MoreVertIcon />
+              </IconButton>
+            )}
+          </>
         }
         title={
-          <Typography
-            variant="h6"
-            component="span"
-            onClick={() => navigate(`/profile/${post.user.id}`)}
-            sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+          <Link
+            to={`/profile/${post.user.id}`}
+            style={{ textDecoration: 'none', color: 'inherit' }}
           >
-            {post.user.first_name} {post.user.last_name}
-          </Typography>
+            {post.user.company_name || `${post.user.first_name} ${post.user.last_name}`}
+          </Link>
         }
         subheader={formatTimeAgo(post.created_at)}
       />

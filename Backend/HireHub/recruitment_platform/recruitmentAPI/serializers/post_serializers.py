@@ -7,13 +7,15 @@ class PostListSerializer(serializers.ModelSerializer):
     user = UserMinimalSerializer(read_only=True)
     is_liked = serializers.SerializerMethodField()
     media_urls = serializers.SerializerMethodField()
+    is_recommended = serializers.SerializerMethodField()
+    recommendation_score = serializers.FloatField(read_only=True, default=0)
     
     class Meta:
         model = Post
         fields = [
             'id', 'user', 'content', 'media_type', 'media_urls',
             'created_at', 'comments_count', 'likes_count',
-            'is_liked'
+            'is_liked', 'is_recommended', 'recommendation_score'
         ]
         read_only_fields = ['id', 'created_at', 'comments_count', 'likes_count']
 
@@ -28,6 +30,9 @@ class PostListSerializer(serializers.ModelSerializer):
         if obj.video:
             urls['video'] = obj.video.url
         return urls
+
+    def get_is_recommended(self, obj):
+        return getattr(obj, 'recommendation_score', 0) > 0.35
 
     def validate(self, data):
         image = self.context['request'].FILES.get('image')
