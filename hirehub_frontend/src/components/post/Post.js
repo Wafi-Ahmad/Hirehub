@@ -19,6 +19,7 @@ import {
   CircularProgress,
   Divider,
   Tooltip,
+  Chip,
 } from '@mui/material';
 import {
   MoreVert as MoreVertIcon,
@@ -27,6 +28,7 @@ import {
   PersonAdd as PersonAddIcon,
   PersonRemove as PersonRemoveIcon,
   Close as CloseIcon,
+  Recommend as RecommendIcon,
 } from '@mui/icons-material';
 import { commentService } from '../../services/commentService';
 import { postService } from '../../services/postService';
@@ -39,6 +41,8 @@ import { formatTimeAgo } from '../../utils/dateUtils';
 import { useNavigate } from 'react-router-dom';
 import MediaUpload from './MediaUpload';
 import { MEDIA_BASE_URL } from '../../config';
+import { useProfile } from '../../context/ProfileContext';
+import { Link } from 'react-router-dom';
 
 const Post = ({ post, onDelete, showRecommended = false }) => {
   const { user: currentUser } = useAuth();
@@ -66,6 +70,8 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
     image: null,
     video: null
   });
+  const { followData, updateFollowData } = useProfile();
+  const [isFollowing, setIsFollowing] = useState(post?.is_following || false);
 
   // Reset states when post changes
   useEffect(() => {
@@ -79,6 +85,11 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
     }
   }, [post]);
 
+  // Update isFollowing when followData changes
+  useEffect(() => {
+    setIsFollowing(followData?.following?.includes(post.user.id) || false);
+  }, [followData, post.user.id]);
+
   // Fetch comments when comments section is opened
   const fetchComments = async (cursor = null) => {
     try {
@@ -87,7 +98,14 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
       
       if (response?.data?.comments) {
         const newComments = response.data.comments;
-        setComments(prev => cursor ? [...prev, ...newComments] : newComments);
+        
+        // Update comments with proper reply counts
+        const commentsWithCounts = newComments.map(comment => ({
+          ...comment,
+          reply_count: comment.replies?.length || 0
+        }));
+        
+        setComments(prev => cursor ? [...prev, ...commentsWithCounts] : commentsWithCounts);
         setCommentCursor(response.data.next_cursor);
         setHasMoreComments(!!response.data.next_cursor);
         
@@ -95,6 +113,12 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
         if (newComments.length > 0) {
           setShowComments(true);
         }
+
+        // Update post's comment count to include replies
+        const totalCount = newComments.reduce((acc, comment) => 
+          acc + 1 + (comment.replies?.length || 0), 0
+        );
+        updatePost(post.id, { comments_count: totalCount });
       }
     } catch (error) {
       console.error('Failed to load comments:', error);
@@ -176,32 +200,67 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
     }
   };
 
-  const handleDeleteComment = async (commentId, isParentComment = false) => {
+  const handleDeleteComment = async (commentId, isReply = false, parentCommentId = null) => {
     try {
-      await commentService.deleteComment(commentId);
+      console.log('Deleting comment:', { commentId, isReply, parentCommentId }); // Debug log
       
-      // Update local state
-      setComments(prevComments => {
-        if (isParentComment) {
-          // If it's a parent comment, remove it and all its replies
-          return prevComments.filter(c => c.id !== commentId);
-        } else {
-          // If it's a reply, only remove it from its parent's replies array
-          return prevComments.map(comment => ({
-            ...comment,
-            replies: comment.replies?.filter(reply => reply.id !== commentId) || []
-          }));
+      // First make the API call to ensure deletion is successful
+      if (isReply) {
+        if (!parentCommentId) {
+          // Find parent comment ID if not provided
+          const parentComment = comments.find(c => 
+            c.replies && c.replies.some(r => r.id === commentId)
+          );
+          if (parentComment) {
+            parentCommentId = parentComment.id;
+          } else {
+            console.error('Parent comment not found for reply:', commentId);
+            toast.error('Could not delete reply: parent comment not found');
+            return;
+          }
         }
-      });
-      
-      // Update post comment count
-      const newCommentCount = Math.max(0, (post.comments_count || 0) - 1);
-      updatePost(post.id, { comments_count: newCommentCount });
+        await commentService.deleteReply(parentCommentId, commentId);
+        
+        // Update the parent comment's replies
+        setComments(prevComments => 
+          prevComments.map(comment => {
+            if (comment.id === parentCommentId) {
+              const updatedReplies = comment.replies.filter(reply => reply.id !== commentId);
+              return {
+                ...comment,
+                replies: updatedReplies,
+                reply_count: updatedReplies.length
+              };
+            }
+            return comment;
+          })
+        );
+      } else {
+        // For parent comment deletion
+        await commentService.deleteComment(commentId, post.comments_count || 0);
+        
+        // Remove the comment and its replies from the state
+        const commentToDelete = comments.find(c => c.id === commentId);
+        const totalCount = 1 + (commentToDelete?.replies?.length || 0); // Parent + replies
+        
+        setComments(prevComments => prevComments.filter(c => c.id !== commentId));
+        
+        // Update post's comment count
+        updatePost(post.id, { 
+          comments_count: Math.max(0, (post.comments_count || 0) - totalCount)
+        });
+      }
+
+      // Refresh comments to ensure everything is in sync
+      await fetchComments();
       
       toast.success('Comment deleted successfully');
     } catch (error) {
       console.error('Failed to delete comment:', error);
-      toast.error('Failed to delete comment');
+      toast.error(error.response?.data?.error || 'Failed to delete comment');
+      
+      // Revert the changes if the API call failed
+      fetchComments();
     }
   };
 
@@ -442,33 +501,83 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
     }));
   };
 
+  const handleFollow = async () => {
+    try {
+      const response = await userService.followUser(post.user.id);
+      const { followers_count, following_count, is_following, message } = response.data;
+
+      // Update follow data
+      updateFollowData(prev => ({
+        ...prev,
+        followers_count,
+        following_count,
+        following: [...(prev?.following || []), post.user.id]
+      }));
+
+      // Update local state
+      setIsFollowing(true);
+      toast.success(message || 'Successfully followed user');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to follow user');
+    }
+  };
+
+  const handleUnfollow = async () => {
+    try {
+      const response = await userService.unfollowUser(post.user.id);
+      const { followers_count, following_count, is_following, message } = response.data;
+
+      // Update follow data
+      updateFollowData(prev => ({
+        ...prev,
+        followers_count,
+        following_count,
+        following: (prev?.following || []).filter(id => id !== post.user.id)
+      }));
+
+      // Update local state
+      setIsFollowing(false);
+      toast.success(message || 'Successfully unfollowed user');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to unfollow user');
+    }
+  };
+
   return (
     <Card sx={{ mb: 2 }}>
       <CardHeader
         avatar={
           <Avatar
             src={post.user.profile_picture}
-            alt={`${post.user.first_name} ${post.user.last_name}`}
-            onClick={() => navigate(`/profile/${post.user.id}`)}
-            sx={{ cursor: 'pointer' }}
+            alt={post.user.company_name || `${post.user.first_name} ${post.user.last_name}`}
           />
         }
         action={
-          isPostOwner && (
-            <IconButton onClick={handleMenuClick}>
-              <MoreVertIcon />
-            </IconButton>
-          )
+          <>
+            {post.is_recommended && (
+              <Chip
+                icon={<RecommendIcon />}
+                label="Recommended"
+                color="primary"
+                variant="outlined"
+                size="small"
+                sx={{ mr: 1 }}
+              />
+            )}
+            {post.user.id === currentUser?.id && (
+              <IconButton onClick={handleMenuClick}>
+                <MoreVertIcon />
+              </IconButton>
+            )}
+          </>
         }
         title={
-          <Typography
-            variant="h6"
-            component="span"
-            onClick={() => navigate(`/profile/${post.user.id}`)}
-            sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+          <Link
+            to={`/profile/${post.user.id}`}
+            style={{ textDecoration: 'none', color: 'inherit' }}
           >
-            {post.user.first_name} {post.user.last_name}
-          </Typography>
+            {post.user.company_name || `${post.user.first_name} ${post.user.last_name}`}
+          </Link>
         }
         subheader={formatTimeAgo(post.created_at)}
       />
@@ -610,8 +719,9 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
                   key={comment.id}
                   comment={comment}
                   onLike={() => handleCommentLike(comment.id)}
-                  onDelete={() => handleDeleteComment(comment.id)}
+                  onDelete={handleDeleteComment}
                   currentUser={currentUser}
+                  parentId={null}
                 />
               ))}
               
