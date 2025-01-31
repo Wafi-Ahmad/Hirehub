@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     'rest_framework_simplejwt.token_blacklist',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -231,3 +232,10 @@ SPECTACULAR_SETTINGS = {
 
 # Frontend URL for password reset
 FRONTEND_URL = 'http://localhost:3000'
+
+# Graph Class Diagram Models 
+GRAPH_MODELS = {
+  'all_applications': True,
+  'group_models': True,
+}
+
