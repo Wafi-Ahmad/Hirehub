@@ -16,7 +16,9 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  CircularProgress,
+  Backdrop
 } from '@mui/material';
 import { useJob } from '../../context/JobContext';
 import { useAuth } from '../../context/AuthContext';
@@ -28,6 +30,7 @@ const PostJob = () => {
   const { user } = useAuth();
   const { createJob, updateJob, getJobById, deleteJob, selectedJob } = useJob();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -73,6 +76,7 @@ const PostJob = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       const jobData = {
         ...formData,
@@ -90,6 +94,8 @@ const PostJob = () => {
       navigate('/jobs');
     } catch (error) {
       console.error('Error saving job:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -113,6 +119,27 @@ const PostJob = () => {
 
   return (
     <Container maxWidth="lg">
+      <Backdrop
+        sx={{ 
+          color: '#fff', 
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 3
+        }}
+        open={isSubmitting}
+      >
+        <CircularProgress 
+          size={60}
+          thickness={4} 
+          color="primary" 
+        />
+        <Typography variant="h6" sx={{ mt: 2 }}>
+          Creating job and generating quiz...
+        </Typography>
+      </Backdrop>
+      
       <Box sx={{ py: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           {id ? 'Edit Job Posting' : 'Post a New Job'}
@@ -249,6 +276,7 @@ const PostJob = () => {
                   <Button
                     variant="outlined"
                     onClick={() => navigate('/jobs')}
+                    disabled={isSubmitting}
                   >
                     Cancel
                   </Button>
@@ -257,6 +285,7 @@ const PostJob = () => {
                       variant="outlined"
                       color="error"
                       onClick={() => setDeleteDialogOpen(true)}
+                      disabled={isSubmitting}
                     >
                       Delete
                     </Button>
@@ -265,8 +294,9 @@ const PostJob = () => {
                     type="submit"
                     variant="contained"
                     color="primary"
+                    disabled={isSubmitting}
                   >
-                    {id ? 'Update Job' : 'Post Job'}
+                    {isSubmitting ? 'Posting...' : (id ? 'Update Job' : 'Post Job')}
                   </Button>
                 </Box>
               </Grid>
