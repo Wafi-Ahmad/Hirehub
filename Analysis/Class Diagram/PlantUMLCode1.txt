@@ -1,0 +1,194 @@
+@startuml HireHub Backend Class Diagram
+
+' Abstract Base Classes
+abstract class AbstractBaseUser {
+    + password: CharField
+    + last_login: DateTimeField
+    + is_active: BooleanField
+    + EMAIL_FIELD: str
+    + USERNAME_FIELD: str
+    + REQUIRED_FIELDS: list
+    + get_username()
+    + clean()
+    + save()
+    + get_email_field_name()
+}
+
+abstract class PermissionsMixin {
+    + is_superuser: BooleanField
+    + groups: ManyToManyField
+    + user_permissions: ManyToManyField
+    + get_user_permissions()
+    + get_group_permissions()
+    + get_all_permissions()
+    + has_perm()
+    + has_perms()
+    + has_module_perms()
+}
+
+class UserManager {
+    + create_user(email, password, **extra_fields)
+    + create_superuser(email, password, **extra_fields)
+}
+
+class User {
+    ' Enums
+    + {static} NORMAL_USER: str
+    + {static} COMPANY_USER: str
+    + {static} USER_TYPE_CHOICES: list
+    + {static} JOB_TYPE_CHOICES: list
+    
+    ' Base fields
+    + email: EmailField
+    + first_name: CharField
+    + last_name: CharField
+    + user_type: CharField
+    + date_of_birth: DateField
+    + preferred_job_type: CharField
+    
+    ' Company fields
+    + company_name: CharField
+    + industry: CharField
+    + company_size: CharField
+    + about_company: TextField
+    
+    ' Profile fields
+    + profile_picture: ImageField
+    + cover_picture: ImageField
+    + headline: CharField
+    + bio: TextField
+    + skills: TextField
+    + experience: TextField
+    + education: TextField
+    + certifications: TextField
+    + profile_embedding: TextField
+    
+    ' Methods
+    + full_name()
+    + set_profile_embedding()
+    + get_profile_embedding()
+    + is_admin()
+    + is_company()
+}
+
+class Post {
+    + user: ForeignKey(User)
+    + content: TextField
+    + media_type: CharField
+    + image: ImageField
+    + video: FileField
+    + created_at: DateTimeField
+    + updated_at: DateTimeField
+    + likes: ManyToManyField(User)
+    + comments_count: PositiveIntegerField
+    + likes_count: PositiveIntegerField
+    + is_active: BooleanField
+    + is_hidden: BooleanField
+    + update_counts()
+    + add_like(user)
+    + remove_like(user)
+}
+
+class Comment {
+    + post: ForeignKey(Post)
+    + user: ForeignKey(User)
+    + content: TextField
+    + parent_comment: ForeignKey(Comment)
+    + created_at: DateTimeField
+    + updated_at: DateTimeField
+    + likes: ManyToManyField(User)
+    + replies_count: PositiveIntegerField
+    + likes_count: PositiveIntegerField
+}
+
+class JobPost {
+    + title: CharField
+    + description: TextField
+    + required_skills: CharField
+    + experience_level: CharField
+    + employment_type: CharField
+    + location_type: CharField
+    + location: CharField
+    + salary_range: JSON
+    + status: CharField
+    + created_at: DateTimeField
+    + expires_at: DateTimeField
+    + company: ForeignKey(User)
+    + is_active: BooleanField
+}
+
+class Quiz {
+    + job: OneToOneField(JobPost)
+    + questions: JSONField
+    + passing_score: IntegerField
+    + is_active: BooleanField
+    + created_at: DateTimeField
+    + updated_at: DateTimeField
+}
+
+class QuizAttempt {
+    + quiz: ForeignKey(Quiz)
+    + user: ForeignKey(User)
+    + answers: JSONField
+    + score: IntegerField
+    + passed: BooleanField
+    + started_at: DateTimeField
+    + completed_at: DateTimeField
+}
+
+class Notification {
+    + recipient: ForeignKey(User)
+    + sender: ForeignKey(User)
+    + notification_type: CharField
+    + content: TextField
+    + created_at: DateTimeField
+    + is_read: BooleanField
+    + related_object_type: CharField
+    + related_object_id: IntegerField
+    + status: CharField
+}
+
+class JobApplication {
+    + job: ForeignKey(JobPost)
+    + applicant: ForeignKey(User)
+    + status: CharField
+    + applied_at: DateTimeField
+    + cover_letter: TextField
+    + resume: FileField
+    + quiz_score: FloatField
+}
+
+' Relationships
+AbstractBaseUser <|-- User
+PermissionsMixin <|-- User
+UserManager "1" -- "1" User : manages
+User "1" *-- "0..*" Post : creates
+User "1" *-- "0..*" Comment : writes
+User "1" *-- "0..*" JobPost : posts
+User "1" *-- "0..*" JobApplication : submits
+User "1" *-- "0..*" QuizAttempt : takes
+Post "1" *-- "0..*" Comment : has
+JobPost "1" *-- "1" Quiz : has
+Quiz "1" *-- "0..*" QuizAttempt : tracks
+User "1" *-- "0..*" Notification : receives
+User "*" -- "*" Post : likes
+User "*" -- "*" Comment : likes
+User "*" -- "*" User : follows
+
+note right of User
+  Inherits from both AbstractBaseUser 
+  and PermissionsMixin for complete
+  Django authentication support
+end note
+
+note right of JobPost
+  Includes AI-powered
+  matching functionality
+end note
+
+note right of Quiz
+  Supports automated
+  skill assessment
+end note
+
+@enduml
