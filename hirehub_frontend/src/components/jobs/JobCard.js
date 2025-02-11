@@ -31,7 +31,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { formatDistance } from 'date-fns';
 import RecommendIcon from '@mui/icons-material/Recommend';
 
-const JobCard = ({ job }) => {
+const JobCard = ({ job, sx = {} }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { deleteJob, saveJob } = useJob();
@@ -79,6 +79,7 @@ const JobCard = ({ job }) => {
   };
 
   const isOwner = user?.id === job.company_id;
+  const isNormalUser = user?.user_type === 'Normal';
 
   const formatEmploymentType = (type) => {
     return type
@@ -96,17 +97,49 @@ const JobCard = ({ job }) => {
         color: 'black',
         borderRadius: 1,
         height: '200px',
-        width: '500px',
+        width: '100%',
+        maxWidth: '500px',
         boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
         '&:hover': {
           boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
         },
-        position: 'relative'
+        position: 'relative',
+        ...(job.is_recommended && isNormalUser && {
+          border: '2px solid #1976d2',
+          boxShadow: '0 0 10px rgba(25, 118, 210, 0.1)'
+        }),
+        ...sx
       }}
       onClick={handleCardClick}
       elevation={0}
     >
       <CardContent sx={{ p: '16px', '&:last-child': { pb: '16px' } }}>
+        {/* Add Recommended Badge if job is recommended and user is normal */}
+        {job.is_recommended && isNormalUser && (
+          <Box 
+            sx={{ 
+              position: 'absolute',
+              top: -1,
+              right: 16,
+              bgcolor: '#1976d2',
+              color: 'white',
+              px: 1,
+              py: 0.5,
+              borderBottomLeftRadius: 8,
+              borderBottomRightRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              zIndex: 1
+            }}
+          >
+            <RecommendIcon sx={{ fontSize: '1rem' }} />
+            <Typography variant="caption" sx={{ fontWeight: 500 }}>
+              Recommended
+            </Typography>
+          </Box>
+        )}
+
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
           <Typography 
             variant="h6" 
@@ -195,20 +228,6 @@ const JobCard = ({ job }) => {
               }}
             />
           ))}
-          {job.is_recommended && (
-            <Chip
-              icon={<RecommendIcon sx={{ color: 'white', '& path': { fill: 'white' } }} />}
-              label="Recommended For You"
-              size="small"
-              sx={{
-                bgcolor: '#1976d2',
-                color: 'white',
-                height: '24px',
-                '& .MuiChip-label': { px: 1, py: 0.5 },
-                '& .MuiChip-icon': { ml: 0.5, color: 'white' }
-              }}
-            />
-          )}
         </Box>
 
         <Typography 

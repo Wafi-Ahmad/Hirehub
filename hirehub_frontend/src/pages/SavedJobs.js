@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Typography, Grid, Box, CircularProgress } from '@mui/material';
-import JobCard from '../components/job/JobCard';
+import JobCard from '../components/jobs/JobCard';
 import { getSavedJobs } from '../services/jobService';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import toast from 'react-hot-toast';

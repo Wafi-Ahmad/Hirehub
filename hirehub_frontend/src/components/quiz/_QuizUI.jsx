@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { Box, Typography, Alert } from "@mui/material";
 import "./_Quiz.css";
 
-function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
+function QuizUI({ questions = [], onSubmit, disabled, previousAttempt, jobId }) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [timeLeft, setTimeLeft] = useState(45);
@@ -10,15 +11,36 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
   const [answers, setAnswers] = useState({});
   const [showingResult, setShowingResult] = useState(false);
   const [answerOrder, setAnswerOrder] = useState({});
+  const [isBanned, setIsBanned] = useState(false);
+  const [banTimeLeft, setBanTimeLeft] = useState(null);
 
   const navigate = useNavigate();
+
+  // Check for existing ban on component mount
+  useEffect(() => {
+    const banKey = `quizBan_${jobId}`;
+    const banInfo = localStorage.getItem(banKey);
+    if (banInfo) {
+      const { timestamp, attempts } = JSON.parse(banInfo);
+      const now = new Date().getTime();
+      const banEndTime = timestamp + (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+      
+      if (now < banEndTime) {
+        setIsBanned(true);
+        const timeLeft = Math.ceil((banEndTime - now) / (1000 * 60 * 60)); // Convert to hours
+        setBanTimeLeft(timeLeft);
+      } else {
+        // Ban period is over, clear the ban
+        localStorage.removeItem(banKey);
+      }
+    }
+  }, [jobId]);
 
   // Initialize random order for answers
   useEffect(() => {
     if (questions.length > 0) {
       const newAnswerOrder = {};
       questions.forEach((question, index) => {
-        // Create array [0,1,2,3] and shuffle it
         const order = Array.from({ length: 4 }, (_, i) => i);
         for (let i = order.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -56,32 +78,42 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
     }
   }, [timeLeft, handleNextQuestion]);
 
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        setLeaveCount((prevCount) => {
-          const newCount = prevCount + 1;
+  const handleVisibilityChange = useCallback(() => {
+    // Don't track visibility changes if user is already banned
+    if (document.hidden && !isBanned) {
+      setLeaveCount((prevCount) => {
+        const newCount = prevCount + 1;
 
-          if (newCount >= 3) {
-            alert(
-              "You have left the quiz 3 times. You are being redirected to the home page. Better luck next time!"
-            );
-            navigate("/");
-            return newCount;
-          }
-
-          alert("You left the quiz! Skipping to the next question.");
-          handleNextQuestion();
+        if (newCount >= 3) {
+          // Set ban in localStorage with job-specific key
+          const banKey = `quizBan_${jobId}`;
+          const banInfo = {
+            timestamp: new Date().getTime(),
+            attempts: newCount
+          };
+          localStorage.setItem(banKey, JSON.stringify(banInfo));
+          setIsBanned(true);
+          setBanTimeLeft(24);
+          
+          // Show formal message and navigate
+          alert("Due to multiple attempts to leave the quiz, you have been temporarily restricted from accessing this job's quiz. Please try again after 24 hours.");
+          navigate("/");
           return newCount;
-        });
-      }
-    };
+        }
 
+        alert("You left the quiz! Skipping to the next question.");
+        handleNextQuestion();
+        return newCount;
+      });
+    }
+  }, [handleNextQuestion, navigate, isBanned, jobId]);
+
+  useEffect(() => {
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [handleNextQuestion, navigate]);
+  }, [handleVisibilityChange]);
 
   const handleAnswer = (shuffledIndex) => {
     if (disabled) return;
@@ -107,6 +139,32 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt }) {
     }, 1000);
   };
 
+  // If user is banned, show ban message
+  if (isBanned) {
+    return (
+      <Box className="quiz-container" sx={{ p: 3 }}>
+        <Alert 
+          severity="error" 
+          sx={{ 
+            mb: 2,
+            '& .MuiAlert-message': {
+              width: '100%'
+            }
+          }}
+        >
+          <Typography variant="h6" component="div" gutterBottom>
+            Quiz Access Restricted
+          </Typography>
+          <Typography>
+            Due to multiple attempts to leave the quiz, your access has been temporarily restricted. 
+            Please try again in {banTimeLeft} {banTimeLeft === 1 ? 'hour' : 'hours'}.
+          </Typography>
+        </Alert>
+      </Box>
+    );
+  }
+
+  // Rest of your existing render logic
   if (showingResult && previousAttempt) {
     return (
       <div className="quiz-container">

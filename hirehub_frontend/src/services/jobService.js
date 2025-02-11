@@ -22,58 +22,113 @@ class JobService {
   async getJobs(params = {}) {
     const queryParams = new URLSearchParams();
     
+    // Get user profile for recommendations
+    const userStr = localStorage.getItem('user');
+    let user = null;
+    try {
+      user = JSON.parse(userStr);
+      console.log('Current user:', user);
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+    }
+
     // Handle parameters
     Object.entries(params).forEach(([key, value]) => {
       if (key === 'skills' && Array.isArray(value)) {
-        // Add each skill as a separate query parameter
         value.forEach(skill => {
           queryParams.append('skills', skill);
         });
-      } else if (key === 'followed_only' || key === 'recommended') {
-        // Convert boolean to string
-        queryParams.append(key, value ? 'true' : 'false');
       } else if (value) {
         queryParams.append(key, value);
       }
     });
 
-    return axios.get(`${JOB_API}?${queryParams.toString()}`);
+    // Add user data for recommendations if user is normal type
+    if (user?.user_type === 'Normal') {
+      console.log('Adding recommendation data for normal user');
+      
+      // Add user profile data for recommendations
+      queryParams.set('recommended', 'true');
+      queryParams.set('user_id', user.id.toString());
+      
+      // Send skills as a JSON string to preserve array structure
+      if (user.skills?.length > 0) {
+        queryParams.set('user_skills', JSON.stringify(user.skills));
+      }
+      
+      if (user.experience) {
+        queryParams.set('user_experience', user.experience);
+      }
+
+      console.log('Final query params for recommendations:', queryParams.toString());
+    }
+
+    try {
+      const response = await axios.get(`${JOB_API}?${queryParams.toString()}`);
+      console.log('Jobs response:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+      throw error;
+    }
   }
 
   // Get a single job by ID
   async getJobById(id) {
-    return axios.get(`${JOB_API}/${id}`);
+    try {
+      const response = await axios.get(`${JOB_API}/${id}`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching job:', error);
+      throw error;
+    }
   }
 
   // Create a new job posting
   async createJob(jobData) {
-    // Process skills array into proper format if needed
-    const formattedData = {
-      ...jobData,
-      required_skills: Array.isArray(jobData.required_skills) 
-        ? jobData.required_skills 
-        : jobData.required_skills.split(',').map(s => s.trim())
-    };
-    
-    return axios.post(`${JOB_API}/`, formattedData);
+    try {
+      const formattedData = {
+        ...jobData,
+        required_skills: Array.isArray(jobData.required_skills) 
+          ? jobData.required_skills 
+          : jobData.required_skills.split(',').map(s => s.trim())
+      };
+      
+      const response = await axios.post(`${JOB_API}/`, formattedData);
+      return response;
+    } catch (error) {
+      console.error('Error creating job:', error);
+      throw error;
+    }
   }
 
   // Update an existing job
   async updateJob(id, jobData) {
-    // Process skills array into proper format if needed
-    const formattedData = {
-      ...jobData,
-      required_skills: Array.isArray(jobData.required_skills) 
-        ? jobData.required_skills 
-        : jobData.required_skills.split(',').map(s => s.trim())
-    };
-    
-    return axios.put(`${JOB_API}/${id}/`, formattedData);
+    try {
+      const formattedData = {
+        ...jobData,
+        required_skills: Array.isArray(jobData.required_skills) 
+          ? jobData.required_skills 
+          : jobData.required_skills.split(',').map(s => s.trim())
+      };
+      
+      const response = await axios.put(`${JOB_API}/${id}/`, formattedData);
+      return response;
+    } catch (error) {
+      console.error('Error updating job:', error);
+      throw error;
+    }
   }
 
   // Delete a job posting
   async deleteJob(id) {
-    return axios.delete(`${JOB_API}/${id}/`);
+    try {
+      const response = await axios.delete(`${JOB_API}/${id}/`);
+      return response;
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      throw error;
+    }
   }
 
   // Save a job for later
@@ -82,45 +137,58 @@ class JobService {
       const response = await axios.post(`${JOB_API}/${id}/save/`);
       return response.data;
     } catch (error) {
+      console.error('Error saving job:', error);
       throw error.response?.data || { message: 'Failed to save job' };
     }
   }
 
   // Provide feedback on job recommendation
   async provideFeedback(id, feedback) {
-    return axios.post(`${JOB_API}/${id}/feedback/`, feedback);
+    try {
+      const response = await axios.post(`${JOB_API}/${id}/feedback/`, feedback);
+      return response;
+    } catch (error) {
+      console.error('Error providing feedback:', error);
+      throw error;
+    }
   }
 
   // Get job applicants
   async getJobApplicants(jobId) {
-    return axios.get(`${JOB_API}/${jobId}/applicants/`);
+    try {
+      const response = await axios.get(`${JOB_API}/${jobId}/applicants/`);
+      return response;
+    } catch (error) {
+      console.error('Error fetching applicants:', error);
+      throw error;
+    }
   }
 
   // Send job offer to applicant
   async sendJobOffer(jobId, applicantId) {
     try {
       const response = await axios.post(`${JOB_API}/${jobId}/send-offer/${applicantId}/`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error;
-    }
-  }
-
-  async getRecommendedJobs(cursor = null) {
-    try {
-      const response = await axios.get(`${JOB_API}/recommended${cursor ? `?cursor=${cursor}` : ''}`);
       return response;
     } catch (error) {
-      throw error.response?.data || error;
+      console.error('Error sending job offer:', error);
+      throw error;
     }
   }
 
-  async getRecommendedJobs() {
+  // Get recommended jobs
+  async getRecommendedJobs(cursor = null) {
     try {
-      const response = await axios.get(`${JOB_API}/recommended`);
-      return response.data;
+      const queryParams = new URLSearchParams();
+      if (cursor) {
+        queryParams.append('cursor', cursor);
+      }
+      queryParams.append('recommended', 'true');
+      
+      const response = await axios.get(`${JOB_API}?${queryParams.toString()}`);
+      return response;
     } catch (error) {
-      throw this.handleError(error);
+      console.error('Error fetching recommended jobs:', error);
+      throw error;
     }
   }
 }
