@@ -22,6 +22,7 @@ import { toast } from 'react-toastify';
 import FormInput from '../../components/common/FormInput';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import backgroundImage from '../../assets/signup.png';
 
 // Update the validation schema
 const validationSchema = Yup.object().shape({
@@ -138,161 +139,198 @@ const Register = () => {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ minHeight: '80vh', py: 3, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <Paper elevation={isMobile ? 0 : 1} sx={{ p: 4, borderRadius: 2 }}>
-          <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 600 }}>
-            Create Account
-          </Typography>
-
-          <Formik
-            initialValues={{
-              email: '',
-              password: '',
-              user_type: 'Normal',
-              first_name: '',
-              last_name: '',
-              company_name: '',
-              date_of_birth: ''
+    <Box 
+      sx={{ 
+        height: "100vh",
+        overflow: "hidden",
+        position: "relative",
+        bgcolor: "#f5f5f5",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          bottom: 0,
+          right: 0,
+          width: "35%",
+          height: "75%",
+          background: `url(${backgroundImage}) no-repeat bottom right`,
+          backgroundSize: "contain",
+          zIndex: 0,
+          opacity: 0.9
+        }
+      }}
+    >
+      <Container maxWidth="sm" sx={{ position: "relative", zIndex: 1 }}>
+        <Box sx={{
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}>
+          <Paper 
+            elevation={isMobile ? 0 : 2} 
+            sx={{ 
+              p: 4,  
+              border: 2,
+              borderRadius: 2,
+              borderColor: "rgba(0,0,0,0.27)",
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              backdropFilter: "blur(5px)",
+              boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.07)"
             }}
-            validationSchema={validationSchema}
-            onSubmit={handleSubmit}
-            validateOnChange={true}
-            validateOnBlur={true}
           >
-            {({ handleSubmit, isSubmitting, values, setFieldValue, touched, errors }) => (
-              <form onSubmit={handleSubmit} noValidate>
-                {Object.keys(errors).length > 0 && Object.keys(touched).length > 0 && (
-                  <Box sx={{ mb: 2 }}>
-                    <Alert severity="error" sx={{ mb: 2 }}>
-                      Please correct the errors below
-                    </Alert>
-                  </Box>
-                )}
+            <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 600 }}>
+              Create Account
+            </Typography>
 
-                <Box sx={{ my: 2 }}>
-                  <RadioGroup
-                    row
-                    name="user_type"
-                    value={values.user_type}
-                    onChange={(e) => {
-                      setFieldValue('user_type', e.target.value);
-                      if (e.target.value === 'Company') {
-                        setFieldValue('first_name', '');
-                        setFieldValue('last_name', '');
-                        setFieldValue('date_of_birth', '');
-                      } else {
-                        setFieldValue('company_name', '');
-                      }
-                    }}
-                  >
-                    <FormControlLabel 
-                      value="Normal" 
-                      control={<Radio />} 
-                      label="Job Seeker" 
-                    />
-                    <FormControlLabel 
-                      value="Company" 
-                      control={<Radio />} 
-                      label="Employer" 
-                    />
-                  </RadioGroup>
-                </Box>
-
-                <Box sx={{ my: 2 }}>
-                  <Field
-                    component={FormInput}
-                    name="email"
-                    type="email"
-                    label="Email Address"
-                    error={touched.email && Boolean(errors.email)}
-                    helperText={touched.email && errors.email}
-                  />
-                </Box>
-
-                <Box sx={{ my: 2 }}>
-                  <Field
-                    component={FormInput}
-                    name="password"
-                    type="password"
-                    label="Password"
-                    error={touched.password && Boolean(errors.password)}
-                    helperText={touched.password && errors.password}
-                  />
-                </Box>
-
-                {values.user_type === 'Normal' ? (
-                  <>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={6}>
-                        <Field
-                          component={FormInput}
-                          name="first_name"
-                          label="First Name"
-                          error={touched.first_name && Boolean(errors.first_name)}
-                          helperText={touched.first_name && errors.first_name}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <Field
-                          component={FormInput}
-                          name="last_name"
-                          label="Last Name"
-                          error={touched.last_name && Boolean(errors.last_name)}
-                          helperText={touched.last_name && errors.last_name}
-                        />
-                      </Grid>
-                    </Grid>
-
-                    <Box sx={{ my: 2 }}>
-                      <Field
-                        component={FormInput}
-                        name="date_of_birth"
-                        type="date"
-                        label="Date of Birth"
-                        InputLabelProps={{ shrink: true }}
-                        error={touched.date_of_birth && Boolean(errors.date_of_birth)}
-                        helperText={touched.date_of_birth && errors.date_of_birth}
-                      />
+            <Formik
+              initialValues={{
+                email: '',
+                password: '',
+                user_type: 'Normal',
+                first_name: '',
+                last_name: '',
+                company_name: '',
+                date_of_birth: ''
+              }}
+              validationSchema={validationSchema}
+              onSubmit={handleSubmit}
+              validateOnChange={true}
+              validateOnBlur={true}
+            >
+              {({ handleSubmit, isSubmitting, values, setFieldValue, touched, errors }) => (
+                <form onSubmit={handleSubmit} noValidate>
+                  {Object.keys(errors).length > 0 && Object.keys(touched).length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      <Alert severity="error" sx={{ mb: 2 }}>
+                        Please correct the errors below
+                      </Alert>
                     </Box>
-                  </>
-                ) : (
+                  )}
+
+                  <Box sx={{ my: 2 }}>
+                    <RadioGroup
+                      row
+                      name="user_type"
+                      value={values.user_type}
+                      onChange={(e) => {
+                        setFieldValue('user_type', e.target.value);
+                        if (e.target.value === 'Company') {
+                          setFieldValue('first_name', '');
+                          setFieldValue('last_name', '');
+                          setFieldValue('date_of_birth', '');
+                        } else {
+                          setFieldValue('company_name', '');
+                        }
+                      }}
+                    >
+                      <FormControlLabel 
+                        value="Normal" 
+                        control={<Radio />} 
+                        label="Job Seeker" 
+                      />
+                      <FormControlLabel 
+                        value="Company" 
+                        control={<Radio />} 
+                        label="Employer" 
+                      />
+                    </RadioGroup>
+                  </Box>
+
                   <Box sx={{ my: 2 }}>
                     <Field
                       component={FormInput}
-                      name="company_name"
-                      label="Company Name"
-                      error={touched.company_name && Boolean(errors.company_name)}
-                      helperText={touched.company_name && errors.company_name}
+                      name="email"
+                      type="email"
+                      label="Email Address"
+                      error={touched.email && Boolean(errors.email)}
+                      helperText={touched.email && errors.email}
                     />
                   </Box>
-                )}
 
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  size="large"
-                  disabled={isSubmitting || (Object.keys(errors).length > 0 && Object.keys(touched).length > 0)}
-                  sx={{ mt: 3 }}
-                >
-                  {isSubmitting ? 'Creating Account...' : 'Create Account'}
-                </Button>
+                  <Box sx={{ my: 2 }}>
+                    <Field
+                      component={FormInput}
+                      name="password"
+                      type="password"
+                      label="Password"
+                      error={touched.password && Boolean(errors.password)}
+                      helperText={touched.password && errors.password}
+                    />
+                  </Box>
 
-                <Box sx={{ mt: 2, textAlign: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Already have an account?{' '}
-                    <Link component={RouterLink} to="/login" color="primary">
-                      Sign in
-                    </Link>
-                  </Typography>
-                </Box>
-              </form>
-            )}
-          </Formik>
-        </Paper>
-      </Box>
-    </Container>
+                  {values.user_type === 'Normal' ? (
+                    <>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                          <Field
+                            component={FormInput}
+                            name="first_name"
+                            label="First Name"
+                            error={touched.first_name && Boolean(errors.first_name)}
+                            helperText={touched.first_name && errors.first_name}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <Field
+                            component={FormInput}
+                            name="last_name"
+                            label="Last Name"
+                            error={touched.last_name && Boolean(errors.last_name)}
+                            helperText={touched.last_name && errors.last_name}
+                          />
+                        </Grid>
+                      </Grid>
+
+                      <Box sx={{ my: 2 }}>
+                        <Field
+                          component={FormInput}
+                          name="date_of_birth"
+                          type="date"
+                          label="Date of Birth"
+                          InputLabelProps={{ shrink: true }}
+                          error={touched.date_of_birth && Boolean(errors.date_of_birth)}
+                          helperText={touched.date_of_birth && errors.date_of_birth}
+                        />
+                      </Box>
+                    </>
+                  ) : (
+                    <Box sx={{ my: 2 }}>
+                      <Field
+                        component={FormInput}
+                        name="company_name"
+                        label="Company Name"
+                        error={touched.company_name && Boolean(errors.company_name)}
+                        helperText={touched.company_name && errors.company_name}
+                      />
+                    </Box>
+                  )}
+
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    disabled={isSubmitting || (Object.keys(errors).length > 0 && Object.keys(touched).length > 0)}
+                    sx={{ mt: 3 }}
+                  >
+                    {isSubmitting ? 'Creating Account...' : 'Create Account'}
+                  </Button>
+
+                  <Box sx={{ mt: 2, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Already have an account?{' '}
+                      <Link component={RouterLink} to="/login" color="primary">
+                        Sign in
+                      </Link>
+                    </Typography>
+                  </Box>
+                </form>
+              )}
+            </Formik>
+          </Paper>
+        </Box>
+      </Container>
+    </Box>
   );
 };
 

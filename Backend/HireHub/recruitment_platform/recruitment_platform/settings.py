@@ -187,8 +187,8 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
-EMAIL_HOST_USER = 'ahalaswad5@gmail.com'
-EMAIL_HOST_PASSWORD = 'xdqc qrol zhsc mttx'
+EMAIL_HOST_USER = 'platformhirehub@gmail.com'
+EMAIL_HOST_PASSWORD = 'xwgg kssg mbld lwhm'
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 EMAIL_TIMEOUT = 20
 

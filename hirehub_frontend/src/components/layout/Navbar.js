@@ -109,7 +109,7 @@ const Navbar = () => {
           >
             <Tab label="Home" onClick={() => navigate('/')} />
             <Tab label="Jobs" onClick={() => navigate('/jobs')} />
-            <Tab label="Network" onClick={() => navigate('/network')} />
+            {/* <Tab label="Network" onClick={() => navigate('/network')} /> */}
           </Tabs>
         )}
 
