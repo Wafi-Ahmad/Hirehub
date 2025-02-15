@@ -19,6 +19,7 @@ import { toast } from 'react-toastify';
 import FormInput from '../../components/common/FormInput';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
+import backgroundImage from '../../assets/background.png';
 
 const validationSchema = Yup.object({
   email: Yup.string()
@@ -66,127 +67,140 @@ const Login = () => {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{
-        minHeight: '80vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        py: 3,
-      }}>
-        <Paper elevation={isMobile ? 0 : 1} sx={{ p: 4, borderRadius: 2 }}>
-          <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 600 }}>
-            Welcome Back
-          </Typography>
-          <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 4 }}>
-            Enter your credentials to access your account
-          </Typography>
-
-          <Formik
-            initialValues={{ email: '', password: '' }}
-            validationSchema={validationSchema}
-            onSubmit={handleSubmit}
-            validateOnChange={true}
-            validateOnBlur={true}
+    <Box 
+      sx={{ 
+        height: "100vh",
+        overflow: "hidden",
+        position: "relative",
+        bgcolor: "#f5f5f5",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          bottom: 0,
+          right: 0,
+          width: "45%",
+          height: "85%",
+          background: `url(${backgroundImage}) no-repeat bottom right`,
+          backgroundSize: "contain",
+          zIndex: 0,
+          opacity: 0.9
+        }
+      }}
+    >
+      <Container maxWidth="sm" sx={{ position: "relative", zIndex: 1 }}>
+        <Box sx={{
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+        }}>
+          <Paper 
+            elevation={isMobile ? 0 : 2} 
+            sx={{ 
+              p: 4,  
+              border: 2,
+              borderRadius: 2,
+              borderColor: "rgba(0,0,0,0.27)",
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              backdropFilter: "blur(5px)",
+              boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.07)"
+            }}
           >
-            {({ handleSubmit, isSubmitting, touched, errors }) => (
-              <form onSubmit={handleSubmit} noValidate>
-                {((Object.keys(errors).length > 0 && touched.email && touched.password) || 
-                  (errors.password && errors.password.includes('Invalid email or password'))) && (
-                  <Box sx={{ mb: 2 }}>
-                    <Alert 
-                      severity="error" 
-                      sx={{ 
-                        mb: 2,
-                        '& .MuiAlert-message': {
-                          width: '100%'
-                        }
-                      }}
-                    >
-                      {errors.password && errors.password.includes('Invalid email or password') 
-                        ? 'Invalid credentials. Please check your email and password.'
-                        : 'Please correct the errors below'}
-                    </Alert>
+            <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 600 }}>
+              Welcome Back
+            </Typography>
+            <Typography variant="body1" color="text.secondary" align="center" sx={{ mb: 4 }}>
+              Enter your credentials to access your account
+            </Typography>
+
+            <Formik
+              initialValues={{ email: '', password: '' }}
+              validationSchema={validationSchema}
+              onSubmit={handleSubmit}
+              validateOnChange={true}
+              validateOnBlur={true}
+            >
+              {({ handleSubmit, isSubmitting, touched, errors }) => (
+                <form onSubmit={handleSubmit} noValidate>
+                  {((Object.keys(errors).length > 0 && touched.email && touched.password) || 
+                    (errors.password && errors.password.includes('Invalid email or password'))) && (
+                    <Box sx={{ mb: 2 }}>
+                      <Alert 
+                        severity="error" 
+                        sx={{ 
+                          mb: 2,
+                          '& .MuiAlert-message': {
+                            width: '100%'
+                          }
+                        }}
+                      >
+                        {errors.password && errors.password.includes('Invalid email or password') 
+                          ? 'Invalid credentials. Please check your email and password.'
+                          : 'Please correct the errors below'}
+                      </Alert>
+                    </Box>
+                  )}
+
+                  <Box sx={{ mb: 3 }}>
+                    <Field
+                      component={FormInput}
+                      name="email"
+                      type="email"
+                      label="Email Address"
+                      autoComplete="email"
+                      error={touched.email && (Boolean(errors.email) || Boolean(errors.password))}
+                      helperText={touched.email && errors.email}
+                    />
                   </Box>
-                )}
 
-                <Box sx={{ mb: 3 }}>
-                  <Field
-                    component={FormInput}
-                    name="email"
-                    type="email"
-                    label="Email Address"
-                    autoComplete="email"
-                    error={touched.email && (Boolean(errors.email) || Boolean(errors.password))}
-                    helperText={touched.email && errors.email}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        '&.Mui-error': {
-                          '& fieldset': {
-                            borderColor: 'error.main',
-                          },
-                        },
-                      },
-                    }}
-                  />
-                </Box>
+                  <Box sx={{ mb: 4 }}>
+                    <Field
+                      component={FormInput}
+                      name="password"
+                      type="password"
+                      label="Password"
+                      autoComplete="current-password"
+                      error={touched.password && (Boolean(errors.password) || Boolean(errors.email))}
+                      helperText={touched.password && errors.password}
+                    />
+                  </Box>
 
-                <Box sx={{ mb: 4 }}>
-                  <Field
-                    component={FormInput}
-                    name="password"
-                    type="password"
-                    label="Password"
-                    autoComplete="current-password"
-                    error={touched.password && (Boolean(errors.password) || Boolean(errors.email))}
-                    helperText={touched.password && errors.password}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        '&.Mui-error': {
-                          '& fieldset': {
-                            borderColor: 'error.main',
-                          },
-                        },
-                      },
-                    }}
-                  />
-                </Box>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    disabled={isSubmitting || (Object.keys(errors).length > 0 && Object.keys(touched).length > 0)}
+                    sx={{ mb: 2 }}
+                  >
+                    {isSubmitting ? 'Signing in...' : 'Sign In'}
+                  </Button>
 
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  size="large"
-                  disabled={isSubmitting || (Object.keys(errors).length > 0 && Object.keys(touched).length > 0)}
-                  sx={{ mb: 2 }}
-                >
-                  {isSubmitting ? 'Signing in...' : 'Sign In'}
-                </Button>
-
-                <Box sx={{ textAlign: 'center', mb: 3 }}>
-                  <Link component={RouterLink} to="/forgot-password" color="primary" underline="hover">
-                    Forgot password?
-                  </Link>
-                </Box>
-                <Divider sx={{ my: 3 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    OR
-                  </Typography>
-                </Divider>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Don't have an account?{' '}
-                    <Link component={RouterLink} to="/register" color="primary" underline="hover">
-                      Sign up
+                  <Box sx={{ textAlign: 'center', mb: 3 }}>
+                    <Link component={RouterLink} to="/forgot-password" color="primary" underline="hover">
+                      Forgot password?
                     </Link>
-                  </Typography>
-                </Box>
-              </form>
-            )}
-          </Formik>
-        </Paper>
-      </Box>
-    </Container>
+                  </Box>
+                  <Divider sx={{ my: 3 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      OR
+                    </Typography>
+                  </Divider>
+                  <Box sx={{ textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Don't have an account?{' '}
+                      <Link component={RouterLink} to="/register" color="primary" underline="hover">
+                        Sign up
+                      </Link>
+                    </Typography>
+                  </Box>
+                </form>
+              )}
+            </Formik>
+          </Paper>
+        </Box>
+      </Container>
+    </Box>
   );
 };
 
