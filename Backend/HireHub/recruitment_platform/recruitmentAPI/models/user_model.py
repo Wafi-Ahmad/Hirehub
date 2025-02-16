@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.apps import apps
+from django.utils import timezone
 import numpy as np  # Import apps to dynamically get models
 
 # Try to import ArrayField, use TextField as fallback
@@ -142,6 +143,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True,
         help_text="When the profile embedding was last updated"
     )
+
+    # Add date_joined field
+    date_joined = models.DateTimeField(default=timezone.now)
 
     objects = UserManager()
 
