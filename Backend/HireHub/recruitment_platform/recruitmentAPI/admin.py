@@ -1,6 +1,12 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from recruitmentAPI.models import User, Post, Comment, Role, ConnectionRequest
+from .models.job_model import JobPost
+from .models.notification_model import Notification
+from .models.quiz_model import Quiz, QuizAttempt
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -102,3 +108,24 @@ class ConnectionRequestAdmin(admin.ModelAdmin):
     search_fields = ('sender__email', 'receiver__email')
     readonly_fields = ('created_at', 'updated_at')
     date_hierarchy = 'created_at'
+
+@admin.register(JobPost)
+class JobPostAdmin(admin.ModelAdmin):
+    list_display = ('title', 'posted_by', 'status', 'created_at')
+    search_fields = ('title', 'description')
+    list_filter = ('status', 'employment_type', 'location_type')
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('recipient', 'sender', 'notification_type', 'is_read', 'created_at')
+    list_filter = ('notification_type', 'is_read')
+    search_fields = ('content',)
+
+@admin.register(Quiz)
+class QuizAdmin(admin.ModelAdmin):
+    list_display = ('job', 'created_at')
+
+@admin.register(QuizAttempt)
+class QuizAttemptAdmin(admin.ModelAdmin):
+    list_display = ('user', 'quiz', 'score', 'completed_at')
+    list_filter = ('completed_at',)

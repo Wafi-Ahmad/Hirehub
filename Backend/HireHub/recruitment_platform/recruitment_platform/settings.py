@@ -82,25 +82,15 @@ WSGI_APPLICATION = 'recruitment_platform.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'hirehub',            
-        'USER': 'wafi',               
-        'PASSWORD': '1998',           
-        'HOST': 'localhost',           
-        'PORT': '3306',                
-    }
+     'default': {
+         'ENGINE': 'django.db.backends.mysql',
+          'NAME': 'hirehub',  # Your database name
+          'USER': 'root',       # Your MySQL username
+          'PASSWORD': '2002',      # Your MySQL password
+          'HOST': 'localhost',              # Leave it as localhost if using local DB
+          'PORT': '3306',                   # Default MySQL port
+      }
 }
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#          'NAME': 'hirehub',  # Your database name
-#          'USER': 'root',       # Your MySQL username
-#          'PASSWORD': '2002',      # Your MySQL password
-#          'HOST': 'localhost',              # Leave it as localhost if using local DB
-#          'PORT': '3306',                   # Default MySQL port
-#      }
-# }
 
 
 # Password validation
