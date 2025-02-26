@@ -101,7 +101,19 @@ class JobService:
             print(f"Filters: {filters}")
 
             query = Q(status='ACTIVE', is_active=True, expires_at__gt=timezone.now())
+
+            if user and user.user_type == 'Company':
+                query &= Q(posted_by=user)
+                print(f"Filtering jobs for company user: {user.id}")
+                
             jobs = JobPost.objects.filter(query).select_related('posted_by').order_by('-created_at')
+
+            # Filter by followed companies if specified
+            if user and user.user_type == 'Normal' and filters.get('followed_only'):
+                print("Filtering by followed companies")
+                following_ids = user.following.values_list('id', flat=True)
+                jobs = jobs.filter(posted_by__in=following_ids)
+                print(f"Following IDs: {following_ids}")
 
             # Calculate recommendations if user is provided and is normal type
             recommendations = {}

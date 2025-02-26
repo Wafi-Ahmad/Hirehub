@@ -56,11 +56,12 @@ const Jobs = () => {
             Find Your Next Opportunity
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
-            {user?.userType === USER_TYPES.NORMAL && (
+            {user?.user_type === 'Normal' && (
               <Button
                 variant={filters.followed_only ? "contained" : "outlined"}
                 onClick={handleFollowedToggle}
                 startIcon={<PeopleIcon />}
+                color={filters.followed_only ? "primary" : "inherit"}
               >
                 {filters.followed_only ? "Following" : "All Companies"}
               </Button>

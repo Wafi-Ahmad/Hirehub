@@ -33,6 +33,11 @@ const JobList = ({ filters }) => {
       // Only add recommendation parameter for normal users
       if (user?.user_type === 'Normal') {
         params.recommended = true;
+        
+        // Add followed_only parameter only if it's true
+        if (filters.followed_only) {
+          params.followed_only = true;
+        }
       }
       
       console.log('Loading jobs with params:', params);
@@ -81,7 +86,7 @@ const JobList = ({ filters }) => {
   if (!processedJobs?.length) {
     return (
       <Box sx={{ py: 4 }}>
-        <Typography>No jobs found matching your criteria.</Typography>
+        <Typography>No jobs found.</Typography>
       </Box>
     );
   }
