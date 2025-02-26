@@ -52,7 +52,7 @@ const Navbar = () => {
 
   const handleProfile = () => {
     handleClose();
-    navigate(`/profile/${user.id}`);
+    setTimeout(() => navigate(`/profile/${user.id}`), 100);
   };
 
   const getActiveTab = () => {
@@ -151,7 +151,7 @@ const Navbar = () => {
               open={Boolean(anchorEl)}
               onClose={handleClose}
               anchorOrigin={{
-                vertical: 'bottom',
+                vertical: 'top',
                 horizontal: 'right',
               }}
               transformOrigin={{
@@ -159,8 +159,9 @@ const Navbar = () => {
                 horizontal: 'right',
               }}
             >
-              <MenuItem onClick={handleProfile}>Profile</MenuItem>
-              <MenuItem onClick={() => { handleClose(); navigate('/saved-jobs'); }}>Saved Jobs</MenuItem>
+              <MenuItem onClick={() => { handleClose(); handleProfile(); }}>Profile</MenuItem>
+              {/* <MenuItem onClick={() => { handleClose(); navigate('/saved-jobs'); }}>Saved Jobs</MenuItem> */}
+              <MenuItem onClick={() => { handleClose(); setTimeout(() => navigate('/saved-jobs'), 100); }}>Saved Jobs</MenuItem>
               <MenuItem onClick={handleLogout}>Logout</MenuItem>
               <MenuItem onClick={() => { handleClose(); setDeleteDialogOpen(true); }} sx={{ color: 'error.main' }}>
                 Delete Account

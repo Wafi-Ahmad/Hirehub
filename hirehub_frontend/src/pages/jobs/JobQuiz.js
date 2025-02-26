@@ -17,7 +17,7 @@ import CVUpload from '../../components/cv/CVUpload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
-const PASS_THRESHOLD = 70; // 70% is passing score
+const PASS_THRESHOLD = 60; 
 
 const JobQuiz = () => {
     const { jobId } = useParams();

@@ -38,7 +38,7 @@ class JobService {
         value.forEach(skill => {
           queryParams.append('skills', skill);
         });
-      } else if (value) {
+      } else if (value !== null && value !== undefined && value !== '') {
         queryParams.append(key, value);
       }
     });
@@ -48,7 +48,14 @@ class JobService {
       console.log('Adding recommendation data for normal user');
       
       // Add user profile data for recommendations
-      queryParams.set('recommended', 'true');
+      if (params.recommended) {
+        queryParams.set('recommended', 'true');
+      }
+      
+      if (params.followed_only) {
+        queryParams.set('followed_only', 'true');
+      }
+      
       queryParams.set('user_id', user.id.toString());
       
       // Send skills as a JSON string to preserve array structure
@@ -60,7 +67,7 @@ class JobService {
         queryParams.set('user_experience', user.experience);
       }
 
-      console.log('Final query params for recommendations:', queryParams.toString());
+      console.log('Final query params:', queryParams.toString());
     }
 
     try {
