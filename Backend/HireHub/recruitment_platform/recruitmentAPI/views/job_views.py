@@ -45,24 +45,38 @@ class JobListView(viewsets.ViewSet):
         try:
             filters = {}
             
-            # Handle skills parameter
-            if skills := request.query_params.get('skills'):
-                if skills.strip():
-                    filters['skills'] = skills.strip()
+            # Handle search filters
+            search_fields = [
+                'title',
+                'location',
+                'employment_type',
+                'location_type',
+                'experience_level',
+                'min_salary',
+                'max_salary',
+                'skills',
+                'followed_only'
+            ]
 
-            # Handle followed_only parameter
-            if followed_only := request.query_params.get('followed_only'):
-                filters['followed_only'] = followed_only.lower() == 'true'
-
-            # Handle other filters
-            for key in ['title', 'location', 'employment_type', 'location_type', 'experience_level']:
-                if value := request.query_params.get(key):
-                    filters[key] = value.strip()
+            # Process all filters
+            for field in search_fields:
+                if value := request.query_params.get(field):
+                    if field in ['min_salary', 'max_salary']:
+                        try:
+                            filters[field] = float(value)
+                        except (ValueError, TypeError):
+                            continue
+                    else:
+                        filters[field] = value.strip()
 
             # Handle pagination
             cursor = request.query_params.get('cursor')
-            limit = int(request.query_params.get('limit', 10))
+            try:
+                limit = int(request.query_params.get('limit', 10))
+            except (ValueError, TypeError):
+                limit = 10
 
+            # Get search results
             result = JobService.search_jobs(filters, cursor=cursor, limit=limit, user=request.user)
             return Response(result, status=status.HTTP_200_OK)
 

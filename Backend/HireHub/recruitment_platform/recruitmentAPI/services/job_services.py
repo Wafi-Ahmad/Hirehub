@@ -96,77 +96,115 @@ class JobService:
         """Search for jobs with filters and cursor-based pagination."""
         try:
             print("\n=== Job Search Debug ===")
-            print(f"User: {user.email if user else 'No user'}")
-            print(f"User Type: {user.user_type if user else 'No type'}")
-            print(f"Filters: {filters}")
+            print(f"Filters received: {filters}")
+            
+            # Base query for active jobs
+            query = Q(status='active', is_active=True, expires_at__gt=timezone.now())
 
-            query = Q(status='ACTIVE', is_active=True, expires_at__gt=timezone.now())
-
+            # Company-specific filtering
             if user and user.user_type == 'Company':
                 query &= Q(posted_by=user)
-                print(f"Filtering jobs for company user: {user.id}")
+                print(f"Filtering for company: {user.id}")
+
+            # Title search
+            if title := filters.get('title'):
+                title = title.strip()
+                if title:
+                    print(f"Applying title filter: {title}")
+                    query &= (Q(title__icontains=title) | Q(description__icontains=title))
+
+            # Skills filter
+            if skills := filters.get('skills'):
+                if isinstance(skills, str):
+                    skills = [skill.strip().lower() for skill in skills.split(',') if skill.strip()]
+                elif isinstance(skills, list):
+                    skills = [skill.strip().lower() for skill in skills if skill.strip()]
                 
-            jobs = JobPost.objects.filter(query).select_related('posted_by').order_by('-created_at')
+                if skills:
+                    print(f"Applying skills filter: {skills}")
+                    skills_query = Q()
+                    for skill in skills:
+                        skills_query |= Q(required_skills__icontains=skill)
+                    query &= skills_query
+
+            # Location filter
+            if location := filters.get('location'):
+                location = location.strip()
+                if location:
+                    print(f"Applying location filter: {location}")
+                    query &= Q(location__icontains=location)
+
+            # Exact match filters
+            for field in ['employment_type', 'location_type', 'experience_level']:
+                if value := filters.get(field):
+                    value = value.strip()
+                    if value:
+                        print(f"Applying {field} filter: {value}")
+                        query &= Q(**{field: value})
+
+            # Salary range filter
+            if min_salary := filters.get('min_salary'):
+                try:
+                    min_salary = float(min_salary)
+                    print(f"Applying min salary filter: {min_salary}")
+                    query &= Q(salary_max__gte=min_salary)
+                except (ValueError, TypeError):
+                    pass
+
+            if max_salary := filters.get('max_salary'):
+                try:
+                    max_salary = float(max_salary)
+                    print(f"Applying max salary filter: {max_salary}")
+                    query &= Q(salary_min__lte=max_salary)
+                except (ValueError, TypeError):
+                    pass
 
             # Filter by followed companies if specified
             if user and user.user_type == 'Normal' and filters.get('followed_only'):
                 print("Filtering by followed companies")
                 following_ids = user.following.values_list('id', flat=True)
-                jobs = jobs.filter(posted_by__in=following_ids)
-                print(f"Following IDs: {following_ids}")
+                query &= Q(posted_by__in=following_ids)
 
-            # Calculate recommendations if user is provided and is normal type
+            # Execute query
+            jobs = JobPost.objects.filter(query).select_related('posted_by').order_by('-created_at')
+            print(f"SQL Query: {jobs.query}")
+
+            # Calculate recommendations if user is normal type
             recommendations = {}
             if user and user.user_type == 'Normal':
-                print(f"\nCalculating recommendations for user: {user.email}")
-                print(f"User Skills: {user.skills}")
-                print(f"User Experience: {user.experience}")
-                
-                # Process each job individually for recommendations
-                for job in jobs:
-                    try:
-                        # Calculate match score
-                        score = JobMatchingService.calculate_match_score(job, user)
-                        print(f"\nJob {job.id} - {job.title}")
-                        print(f"Calculated Score: {score}")
-                        
-                        # Add to recommendations if meets threshold
-                        if score >= JobMatchingService.SCORE_THRESHOLD:
-                            recommendations[job.id] = score / 100
-                            print(f"Added to recommendations with score: {score}")
-                        else:
-                            print(f"Not recommended (below threshold of {JobMatchingService.SCORE_THRESHOLD})")
-                    except Exception as e:
-                        print(f"Error processing job {job.id}: {str(e)}")
-                        continue
-                
-                print(f"\nFinal recommendations: {recommendations}")
+                recommendations = JobService.calculate_job_recommendations(jobs, user)
 
             # Apply cursor pagination
             if cursor:
-                jobs = jobs.filter(created_at__lt=cursor)
+                try:
+                    cursor_date = datetime.fromisoformat(cursor.replace('Z', '+00:00'))
+                    jobs = jobs.filter(created_at__lt=cursor_date)
+                except (ValueError, TypeError):
+                    pass
 
+            # Get paginated results
             jobs = jobs[:limit + 1]
             jobs_list = list(jobs)
             has_next = len(jobs_list) > limit
             result_jobs = jobs_list[:limit]
 
+            # Prepare next cursor
             next_cursor = None
             if has_next and result_jobs:
                 next_cursor = result_jobs[-1].created_at.isoformat()
 
-            # Add recommendation scores to job data
+            # Serialize results
             serialized_jobs = JobResponseSerializer(result_jobs, many=True).data
+            
+            # Add recommendation scores
             for job_data in serialized_jobs:
-                is_recommended = job_data['id'] in recommendations
-                job_data['is_recommended'] = is_recommended
-                if is_recommended:
+                job_data['is_recommended'] = job_data['id'] in recommendations
+                if job_data['is_recommended']:
                     job_data['match_score'] = recommendations[job_data['id']]
-                print(f"\nJob {job_data['id']} - {job_data['title']}")
-                print(f"Is Recommended: {job_data['is_recommended']}")
-                print(f"Match Score: {job_data.get('match_score', 'No score')}")
 
-            print("\n=== End Job Search Debug ===")
+            print(f"Found {len(result_jobs)} jobs")
+            print("=== End Job Search Debug ===\n")
+
             return {
                 'jobs': serialized_jobs,
                 'next_cursor': next_cursor
