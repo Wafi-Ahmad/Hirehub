@@ -111,7 +111,12 @@ class JobService:
                 title = title.strip()
                 if title:
                     print(f"Applying title filter: {title}")
-                    query &= (Q(title__icontains=title) | Q(description__icontains=title))
+                    # Split search terms for better matching
+                    title_terms = [term.strip() for term in title.split() if term.strip()]
+                    title_query = Q()
+                    for term in title_terms:
+                        title_query |= Q(title__icontains=term) | Q(description__icontains=term)
+                    query &= title_query
 
             # Skills filter
             if skills := filters.get('skills'):
@@ -124,7 +129,10 @@ class JobService:
                     print(f"Applying skills filter: {skills}")
                     skills_query = Q()
                     for skill in skills:
-                        skills_query |= Q(required_skills__icontains=skill)
+                        # Use regex to match whole words or words at boundaries
+                        # This prevents partial matching like "java" matching "javascript"
+                        pattern = r'(^|[,\s])' + re.escape(skill) + r'($|[,\s])'
+                        skills_query |= Q(required_skills__iregex=pattern)
                     query &= skills_query
 
             # Location filter
@@ -132,7 +140,12 @@ class JobService:
                 location = location.strip()
                 if location:
                     print(f"Applying location filter: {location}")
-                    query &= Q(location__icontains=location)
+                    # Split location terms for better matching
+                    location_terms = [term.strip() for term in location.split() if term.strip()]
+                    location_query = Q()
+                    for term in location_terms:
+                        location_query |= Q(location__icontains=term)
+                    query &= location_query
 
             # Exact match filters
             for field in ['employment_type', 'location_type', 'experience_level']:
@@ -161,9 +174,14 @@ class JobService:
 
             # Filter by followed companies if specified
             if user and user.user_type == 'Normal' and filters.get('followed_only'):
-                print("Filtering by followed companies")
-                following_ids = user.following.values_list('id', flat=True)
-                query &= Q(posted_by__in=following_ids)
+                # Check if followed_only is explicitly set to "true" (string)
+                followed_only = str(filters.get('followed_only')).lower()
+                if followed_only == 'true':
+                    print("Filtering by followed companies")
+                    following_ids = user.following.values_list('id', flat=True)
+                    query &= Q(posted_by__in=following_ids)
+                else:
+                    print("Not filtering by followed companies")
 
             # Execute query
             jobs = JobPost.objects.filter(query).select_related('posted_by').order_by('-created_at')

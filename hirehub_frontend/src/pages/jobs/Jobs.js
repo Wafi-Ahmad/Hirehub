@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { 
   Container, 
   Grid, 
@@ -20,6 +20,18 @@ import { USER_TYPES } from '../../utils/permissions';
 import PeopleIcon from '@mui/icons-material/People';
 
 const Jobs = () => {
+  // State for immediate UI updates
+  const [inputValues, setInputValues] = useState({
+    title: '',
+    location: '',
+    employment_type: '',
+    location_type: '',
+    experience_level: '',
+    skills: '',
+    followed_only: false
+  });
+  
+  // State for debounced filters that will be passed to JobList
   const [filters, setFilters] = useState({
     title: '',
     location: '',
@@ -32,21 +44,55 @@ const Jobs = () => {
 
   const navigate = useNavigate();
   const { user } = useAuth();
+  const debounceTimerRef = useRef(null);
 
-  const handleFilterChange = (event) => {
+  // Handle immediate input changes for UI feedback
+  const handleInputChange = (event) => {
     const { name, value } = event.target;
+    setInputValues(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear any existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    
+    // Set a new timer to update filters after delay
+    debounceTimerRef.current = setTimeout(() => {
+      setFilters(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }, 500); // 500ms debounce delay
+  };
+
+  // Handle dropdown selects and other non-text inputs (no debounce needed)
+  const handleImmediateFilterChange = useCallback((event) => {
+    const { name, value } = event.target;
+    // Update both states immediately for dropdowns
+    setInputValues(prev => ({
+      ...prev,
+      [name]: value
+    }));
     setFilters(prev => ({
       ...prev,
       [name]: value
     }));
-  };
+  }, []);
 
-  const handleFollowedToggle = () => {
+  const handleFollowedToggle = useCallback(() => {
+    const newValue = !inputValues.followed_only;
+    setInputValues(prev => ({
+      ...prev,
+      followed_only: newValue
+    }));
     setFilters(prev => ({
       ...prev,
-      followed_only: !prev.followed_only
+      followed_only: newValue
     }));
-  };
+  }, [inputValues.followed_only]);
 
   return (
     <Container maxWidth="xl">
@@ -58,12 +104,12 @@ const Jobs = () => {
           <Box sx={{ display: 'flex', gap: 2 }}>
             {user?.user_type === 'Normal' && (
               <Button
-                variant={filters.followed_only ? "contained" : "outlined"}
+                variant={inputValues.followed_only ? "contained" : "outlined"}
                 onClick={handleFollowedToggle}
                 startIcon={<PeopleIcon />}
-                color={filters.followed_only ? "primary" : "inherit"}
+                color={inputValues.followed_only ? "primary" : "inherit"}
               >
-                {filters.followed_only ? "Following" : "All Companies"}
+                {inputValues.followed_only ? "Following" : "All Companies"}
               </Button>
             )}
             {user?.userType === USER_TYPES.COMPANY && (
@@ -86,8 +132,8 @@ const Jobs = () => {
                 fullWidth
                 label="Search by Title"
                 name="title"
-                value={filters.title}
-                onChange={handleFilterChange}
+                value={inputValues.title}
+                onChange={handleInputChange}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -95,8 +141,8 @@ const Jobs = () => {
                 fullWidth
                 label="Location"
                 name="location"
-                value={filters.location}
-                onChange={handleFilterChange}
+                value={inputValues.location}
+                onChange={handleInputChange}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -104,8 +150,8 @@ const Jobs = () => {
                 fullWidth
                 label="Skills"
                 name="skills"
-                value={filters.skills}
-                onChange={handleFilterChange}
+                value={inputValues.skills}
+                onChange={handleInputChange}
                 helperText="Separate skills with commas"
               />
             </Grid>
@@ -114,8 +160,8 @@ const Jobs = () => {
                 <InputLabel>Employment Type</InputLabel>
                 <Select
                   name="employment_type"
-                  value={filters.employment_type}
-                  onChange={handleFilterChange}
+                  value={inputValues.employment_type}
+                  onChange={handleImmediateFilterChange}
                   label="Employment Type"
                 >
                   <MenuItem value="">All</MenuItem>
@@ -132,8 +178,8 @@ const Jobs = () => {
                 <InputLabel>Location Type</InputLabel>
                 <Select
                   name="location_type"
-                  value={filters.location_type}
-                  onChange={handleFilterChange}
+                  value={inputValues.location_type}
+                  onChange={handleImmediateFilterChange}
                   label="Location Type"
                 >
                   <MenuItem value="">All</MenuItem>
@@ -150,8 +196,8 @@ const Jobs = () => {
                 <InputLabel>Experience Level</InputLabel>
                 <Select
                   name="experience_level"
-                  value={filters.experience_level}
-                  onChange={handleFilterChange}
+                  value={inputValues.experience_level}
+                  onChange={handleImmediateFilterChange}
                   label="Experience Level"
                 >
                   <MenuItem value="">All</MenuItem>

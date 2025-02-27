@@ -60,14 +60,38 @@ class JobListView(viewsets.ViewSet):
 
             # Process all filters
             for field in search_fields:
-                if value := request.query_params.get(field):
-                    if field in ['min_salary', 'max_salary']:
+                if field == 'skills':
+                    # Handle skills as a list (multiple skill parameters)
+                    skills = request.query_params.getlist('skills')
+                    if skills:
+                        # Filter out empty skills
+                        skills = [skill.strip().lower() for skill in skills if skill and skill.strip()]
+                        if skills:
+                            filters['skills'] = skills
+                            print(f"Processing skills filter: {skills}")
+                elif field in ['min_salary', 'max_salary']:
+                    # Handle numeric fields
+                    if value := request.query_params.get(field):
                         try:
                             filters[field] = float(value)
+                            print(f"Processing {field} filter: {filters[field]}")
                         except (ValueError, TypeError):
+                            print(f"Invalid {field} value: {value}")
                             continue
-                    else:
-                        filters[field] = value.strip()
+                elif field == 'followed_only':
+                    # Handle boolean fields
+                    if value := request.query_params.get(field):
+                        value_lower = value.lower()
+                        if value_lower in ['true', '1', 'yes']:
+                            filters[field] = 'true'
+                            print(f"Processing {field} filter: true")
+                else:
+                    # Handle text fields
+                    if value := request.query_params.get(field):
+                        value = value.strip()
+                        if value:
+                            filters[field] = value
+                            print(f"Processing {field} filter: {value}")
 
             # Handle pagination
             cursor = request.query_params.get('cursor')

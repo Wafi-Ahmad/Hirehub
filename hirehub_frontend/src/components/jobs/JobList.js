@@ -8,7 +8,7 @@ const JobList = ({ filters }) => {
   const { jobs, loading, error, getJobs, nextCursor } = useJob();
   const { user } = useAuth();
   const [loadingMore, setLoadingMore] = useState(false);
-
+  
   // Only sort jobs by recommendation and date
   const processedJobs = useMemo(() => {
     if (!jobs?.length) return [];
@@ -28,15 +28,47 @@ const JobList = ({ filters }) => {
 
   const loadJobs = useCallback(async (cursor = null) => {
     try {
-      const params = { ...filters };
+      // Create a clean copy of filters, removing empty values
+      const params = {};
+      
+      // Process filters to ensure proper formatting
+      Object.entries(filters || {}).forEach(([key, value]) => {
+        // Skip empty values
+        if (value === null || value === undefined || value === '') {
+          return;
+        }
+        
+        // Handle string values - trim and check if empty
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          if (trimmed) {
+            params[key] = trimmed;
+          }
+        } 
+        // Handle arrays - filter out empty items
+        else if (Array.isArray(value)) {
+          const filtered = value.filter(item => 
+            item !== null && item !== undefined && 
+            (typeof item !== 'string' || item.trim() !== '')
+          );
+          if (filtered.length > 0) {
+            params[key] = filtered;
+          }
+        }
+        // Handle other values (numbers, booleans)
+        else {
+          params[key] = value;
+        }
+      });
       
       // Only add recommendation parameter for normal users
       if (user?.user_type === 'Normal') {
         params.recommended = true;
         
-        // Add followed_only parameter only if it's true
-        if (filters.followed_only) {
-          params.followed_only = true;
+        // Only include followed_only when it's explicitly true
+        if (filters.followed_only !== true) {
+          // Remove the parameter completely if it's not true
+          delete params.followed_only;
         }
       }
       

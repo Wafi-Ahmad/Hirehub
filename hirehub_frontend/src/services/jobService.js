@@ -34,11 +34,37 @@ class JobService {
 
     // Handle parameters
     Object.entries(params).forEach(([key, value]) => {
-      if (key === 'skills' && Array.isArray(value)) {
-        value.forEach(skill => {
-          queryParams.append('skills', skill);
-        });
-      } else if (value !== null && value !== undefined && value !== '') {
+      // Skip followed_only parameter if it's false
+      if (key === 'followed_only' && value === false) {
+        return;
+      }
+      
+      // Handle skills array
+      if (key === 'skills') {
+        if (Array.isArray(value) && value.length > 0) {
+          // Send each skill as a separate parameter for proper backend handling
+          value.forEach(skill => {
+            if (skill && skill.trim()) {
+              queryParams.append('skills', skill.trim());
+            }
+          });
+        } else if (typeof value === 'string' && value.trim()) {
+          // If skills is a comma-separated string, split and send each skill
+          const skillsArray = value.split(',').map(s => s.trim()).filter(s => s);
+          skillsArray.forEach(skill => {
+            queryParams.append('skills', skill);
+          });
+        }
+      } 
+      // Handle text search parameters (title, location)
+      else if (['title', 'location'].includes(key) && typeof value === 'string') {
+        const trimmedValue = value.trim();
+        if (trimmedValue) {
+          queryParams.append(key, trimmedValue);
+        }
+      }
+      // Handle all other parameters
+      else if (value !== null && value !== undefined && value !== '') {
         queryParams.append(key, value);
       }
     });
@@ -52,7 +78,8 @@ class JobService {
         queryParams.set('recommended', 'true');
       }
       
-      if (params.followed_only) {
+      // Only add followed_only when it's explicitly true
+      if (params.followed_only === true) {
         queryParams.set('followed_only', 'true');
       }
       
