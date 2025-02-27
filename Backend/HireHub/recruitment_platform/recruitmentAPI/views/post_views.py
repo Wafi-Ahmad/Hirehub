@@ -80,7 +80,7 @@ class PostListView(APIView):
             # Create post using PostService
             post = PostService.create_post(
                 user=request.user,
-                content=data.get('content'),
+                content=data.get('content', ''),  # Default to empty string if content is not provided
                 image=request.FILES.get('image'),
                 video=request.FILES.get('video')
             )

@@ -16,7 +16,7 @@ export const postService = {
   // Create a new post
   createPost: async (postData) => {
     const formData = new FormData();
-    formData.append('content', postData.content);
+    formData.append('content', postData.content || '');
     
     if (postData.image) {
       formData.append('image', postData.image);
@@ -40,7 +40,7 @@ export const postService = {
   // Edit an existing post
   editPost: async (postId, postData) => {
     const formData = new FormData();
-    formData.append('content', postData.content);
+    formData.append('content', postData.content || '');
     
     // Always send the media deletion state
     formData.append('remove_media', postData.isMediaDeleted ? 'true' : 'false');
@@ -48,25 +48,37 @@ export const postService = {
     // Only append new media if we're not deleting and have new files
     if (!postData.isMediaDeleted) {
       if (postData.image) {
+        console.log('Appending new image to form data:', postData.image);
         formData.append('image', postData.image);
       }
       if (postData.video) {
+        console.log('Appending new video to form data:', postData.video);
         formData.append('video', postData.video);
       }
     }
 
     console.log('Editing post with data:', {
-      content: postData.content,
+      content: postData.content || '',
       isMediaDeleted: postData.isMediaDeleted,
       hasImage: !!postData.image,
-      hasVideo: !!postData.video
+      hasVideo: !!postData.video,
+      imageType: postData.image ? postData.image.type : null,
+      imageSize: postData.image ? postData.image.size : null
     });
+
+    // Log all form data entries for debugging
+    console.log('Form data entries:');
+    for (let pair of formData.entries()) {
+      console.log(pair[0], pair[1]);
+    }
 
     const response = await api.patch(`/posts/${postId}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
+
+    console.log('Edit post response:', response.data);
 
     // If media was deleted, ensure the response reflects this
     if (postData.isMediaDeleted && response.data) {

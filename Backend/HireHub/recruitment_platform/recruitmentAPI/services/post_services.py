@@ -35,7 +35,7 @@ class PostService:
         try:
             post_data = {
                 'user': user,
-                'content': content,
+                'content': content if content is not None else '',
                 'media_type': 'none'
             }
 
@@ -391,6 +391,8 @@ class PostService:
             # Update content if provided
             if content is not None:
                 post.content = content
+            else:
+                post.content = ''
             
             # Handle media deletion first
             if remove_media:

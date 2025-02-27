@@ -288,6 +288,15 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
   };
 
   const handleEditClick = () => {
+    // Reset all edit-related states
+    setEditedContent(post.content);
+    setEditedImage(null);
+    setEditedVideo(null);
+    setIsMediaDeleted(false);
+    setTempMediaUrls(post.media_urls || {});
+    setTempMediaType(post.media_type);
+    
+    // Start editing
     setIsEditing(true);
     handleMenuClose();
   };
@@ -385,12 +394,44 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
   };
 
   const handleMediaChange = (file, type) => {
+    console.log(`handleMediaChange called with file type: ${type}, file:`, file);
+    
     if (type === 'image') {
+      // Force clear any existing image preview URLs
+      if (tempMediaUrls?.image) {
+        setTempMediaUrls(prev => ({
+          ...prev,
+          image: null
+        }));
+      }
+      
       setEditedImage(file);
-      if (file) setEditedVideo(null); // Remove video if image is selected
+      if (file) {
+        setEditedVideo(null); // Remove video if image is selected
+        setIsMediaDeleted(false); // Reset the media deleted flag when new media is selected
+        
+        // Force update the preview
+        const newImageUrl = URL.createObjectURL(file);
+        console.log('Created new image URL:', newImageUrl);
+      }
     } else if (type === 'video') {
+      // Force clear any existing video preview URLs
+      if (tempMediaUrls?.video) {
+        setTempMediaUrls(prev => ({
+          ...prev,
+          video: null
+        }));
+      }
+      
       setEditedVideo(file);
-      if (file) setEditedImage(null); // Remove image if video is selected
+      if (file) {
+        setEditedImage(null); // Remove image if video is selected
+        setIsMediaDeleted(false); // Reset the media deleted flag when new media is selected
+        
+        // Force update the preview
+        const newVideoUrl = URL.createObjectURL(file);
+        console.log('Created new video URL:', newVideoUrl);
+      }
     }
   };
 
@@ -543,6 +584,19 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
     }
   };
 
+  // Reset edit states when edit mode changes
+  useEffect(() => {
+    if (isEditing) {
+      console.log('Edit mode activated, resetting states');
+      setEditedContent(post.content);
+      setEditedImage(null);
+      setEditedVideo(null);
+      setIsMediaDeleted(false);
+      setTempMediaUrls(post.media_urls || {});
+      setTempMediaType(post.media_type);
+    }
+  }, [isEditing, post]);
+
   return (
     <Card sx={{ mb: 2 }}>
       <CardHeader
@@ -594,8 +648,8 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
             sx={{ mb: 2 }}
           />
           
-          {/* Show current media with delete option */}
-          {!isMediaDeleted && tempMediaUrls?.image && (
+          {/* Show current image with delete option if not already deleted and no new image selected */}
+          {!isMediaDeleted && tempMediaUrls?.image && !editedImage && (
             <Box sx={{ position: 'relative', mb: 2 }}>
               <img
                 src={getMediaUrl(tempMediaUrls.image)}
@@ -622,17 +676,104 @@ const Post = ({ post, onDelete, showRecommended = false }) => {
             </Box>
           )}
 
-          {/* Show media upload only if no current media or media was deleted */}
-          {(isMediaDeleted || !tempMediaUrls?.image) && (
-            <MediaUpload
-              onFileSelect={handleMediaChange}
-              selectedFiles={{
-                image: editedImage,
-                video: editedVideo
-              }}
-              onRemoveFile={handleRemoveMedia}
-            />
+          {/* Show current video with delete option if not already deleted and no new video selected */}
+          {!isMediaDeleted && tempMediaUrls?.video && !editedVideo && (
+            <Box sx={{ position: 'relative', mb: 2 }}>
+              <video
+                controls
+                style={{
+                  width: '100%',
+                  maxHeight: 300,
+                  borderRadius: 8
+                }}
+              >
+                <source src={getMediaUrl(tempMediaUrls.video)} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+              <IconButton
+                onClick={() => handleRemoveMedia('video')}
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  bgcolor: 'rgba(0, 0, 0, 0.6)',
+                  '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.8)' },
+                }}
+              >
+                <CloseIcon sx={{ color: 'white' }} />
+              </IconButton>
+            </Box>
           )}
+
+          {/* Show preview of newly selected image */}
+          {editedImage && (
+            <Box sx={{ position: 'relative', mb: 2 }}>
+              <img
+                src={URL.createObjectURL(editedImage)}
+                alt="New post image"
+                style={{
+                  width: '100%',
+                  maxHeight: 300,
+                  objectFit: 'contain',
+                  borderRadius: 8
+                }}
+              />
+              <IconButton
+                onClick={() => handleRemoveMedia('image')}
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  bgcolor: 'rgba(0, 0, 0, 0.6)',
+                  '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.8)' },
+                }}
+              >
+                <CloseIcon sx={{ color: 'white' }} />
+              </IconButton>
+            </Box>
+          )}
+
+          {/* Show preview of newly selected video */}
+          {editedVideo && (
+            <Box sx={{ position: 'relative', mb: 2 }}>
+              <video
+                controls
+                style={{
+                  width: '100%',
+                  maxHeight: 300,
+                  borderRadius: 8
+                }}
+              >
+                <source src={URL.createObjectURL(editedVideo)} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+              <IconButton
+                onClick={() => handleRemoveMedia('video')}
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  bgcolor: 'rgba(0, 0, 0, 0.6)',
+                  '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.8)' },
+                }}
+              >
+                <CloseIcon sx={{ color: 'white' }} />
+              </IconButton>
+            </Box>
+          )}
+
+          {/* Always show media upload in edit mode */}
+          <MediaUpload
+            key={`edit-media-${post.id}`}
+            onFileSelect={handleMediaChange}
+            selectedFiles={{
+              image: editedImage,
+              video: editedVideo
+            }}
+            onRemoveFile={handleRemoveMedia}
+            hidePreview={true}
+            isEditMode={true}
+          />
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
             <Button

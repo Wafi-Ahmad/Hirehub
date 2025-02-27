@@ -9,7 +9,8 @@ class PostListSerializer(serializers.ModelSerializer):
     media_urls = serializers.SerializerMethodField()
     is_recommended = serializers.SerializerMethodField()
     recommendation_score = serializers.FloatField(read_only=True, default=0)
-    
+    content = serializers.CharField(required=False, allow_blank=True)
+    # content = serializers.CharField(required=False, initial=empty)
     class Meta:
         model = Post
         fields = [

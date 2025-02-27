@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, IconButton, Typography } from '@mui/material';
 import {
   Image as ImageIcon,
@@ -7,11 +7,15 @@ import {
 } from '@mui/icons-material';
 import { MEDIA_BASE_URL } from '../../config';
 
-const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile }) => {
+const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile, hidePreview = false, isEditMode = false }) => {
   const [previews, setPreviews] = useState({
     image: null,
     video: null
   });
+  
+  // Create refs for the file inputs to reset them
+  const imageInputRef = useRef(null);
+  const videoInputRef = useRef(null);
 
   const getMediaUrl = (url) => {
     if (!url) return null;
@@ -55,14 +59,37 @@ const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile }) => {
     };
   }, [selectedFiles]);
 
+  // Reset file inputs when component mounts or when isEditMode changes
+  useEffect(() => {
+    // Reset file inputs
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+    if (videoInputRef.current) {
+      videoInputRef.current.value = '';
+    }
+    console.log('MediaUpload: Reset file inputs');
+  }, [isEditMode]);
+
   const handleFileSelect = (event, type) => {
     const file = event.target.files[0];
     if (file) {
+      console.log(`File selected in MediaUpload: ${type}`, file);
       onFileSelect(file, type);
+      
+      // Reset the file input so the same file can be selected again
+      if (type === 'image' && imageInputRef.current) {
+        imageInputRef.current.value = '';
+      } else if (type === 'video' && videoInputRef.current) {
+        videoInputRef.current.value = '';
+      }
     }
   };
 
   const renderPreview = (type) => {
+    // If hidePreview is true, don't show previews (used in edit form where parent handles previews)
+    if (hidePreview) return null;
+    
     const previewUrl = previews[type];
     if (!previewUrl) return null;
 
@@ -116,17 +143,22 @@ const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile }) => {
     );
   };
 
+  // Generate unique IDs for file inputs to avoid conflicts
+  const imageInputId = isEditMode ? 'edit-image-upload' : 'image-upload';
+  const videoInputId = isEditMode ? 'edit-video-upload' : 'video-upload';
+
   return (
     <Box>
       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
         <input
           accept="image/*"
           type="file"
-          id="image-upload"
+          id={imageInputId}
           hidden
+          ref={imageInputRef}
           onChange={(e) => handleFileSelect(e, 'image')}
         />
-        <label htmlFor="image-upload">
+        <label htmlFor={imageInputId}>
           <IconButton component="span" color={selectedFiles.image ? 'primary' : 'default'}>
             <ImageIcon />
           </IconButton>
@@ -135,11 +167,12 @@ const MediaUpload = ({ onFileSelect, selectedFiles, onRemoveFile }) => {
         <input
           accept="video/*"
           type="file"
-          id="video-upload"
+          id={videoInputId}
           hidden
+          ref={videoInputRef}
           onChange={(e) => handleFileSelect(e, 'video')}
         />
-        <label htmlFor="video-upload">
+        <label htmlFor={videoInputId}>
           <IconButton component="span" color={selectedFiles.video ? 'primary' : 'default'}>
             <VideoIcon />
           </IconButton>
