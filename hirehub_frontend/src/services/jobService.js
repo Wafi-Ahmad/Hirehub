@@ -20,6 +20,7 @@ axios.interceptors.request.use(
 class JobService {
   // Get all jobs with optional filters and pagination
   async getJobs(params = {}) {
+    console.log('JobService: getJobs called with params:', params);
     const queryParams = new URLSearchParams();
     
     // Get user profile for recommendations
@@ -65,6 +66,7 @@ class JobService {
       }
       // Handle all other parameters
       else if (value !== null && value !== undefined && value !== '') {
+        console.log(`Adding parameter ${key}=${value}`);
         queryParams.append(key, value);
       }
     });
@@ -76,6 +78,7 @@ class JobService {
       // Add user profile data for recommendations
       if (params.recommended) {
         queryParams.set('recommended', 'true');
+        console.log('Setting recommended=true');
       }
       
       // Only add followed_only when it's explicitly true
@@ -98,8 +101,16 @@ class JobService {
     }
 
     try {
+      console.log(`Making GET request to ${JOB_API}?${queryParams.toString()}`);
       const response = await axios.get(`${JOB_API}?${queryParams.toString()}`);
       console.log('Jobs response:', response.data);
+      
+      // Log recommended jobs count
+      if (response.data && response.data.jobs) {
+        const recommendedCount = response.data.jobs.filter(job => job.is_recommended).length;
+        console.log(`Found ${recommendedCount} recommended jobs out of ${response.data.jobs.length} total jobs`);
+      }
+      
       return response;
     } catch (error) {
       console.error('Error fetching jobs:', error);

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Container, Grid, Box, Typography, Button, ToggleButtonGroup, ToggleButton } from '@mui/material';
 import CreatePost from '../components/post/CreatePost';
 import PostList from '../components/post/PostList';
@@ -10,6 +10,7 @@ import { useJob } from '../context/JobContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { USER_TYPES } from '../utils/permissions';
+import { jobService } from '../services/jobService';
 
 const Home = () => {
   const { fetchPosts, followedOnly, toggleFollowedOnly } = usePost();
@@ -17,27 +18,55 @@ const Home = () => {
   const { jobs, getJobs } = useJob();
   const { user } = useAuth();
   const navigate = useNavigate();
+  // Create a local state for recommended jobs
+  const [recommendedJobs, setRecommendedJobs] = useState([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
 
+  // Create a separate function to fetch recommended jobs
+  const fetchRecommendedJobs = useCallback(() => {
+    if (!user || user.user_type !== 'Normal' || !jobs?.length) return;
+    
+    console.log('Processing recommended jobs from context...');
+    // Use the jobs from the JobContext, which will have been properly processed
+    // This ensures consistency with the job listing page
+    const recommendedJobsList = jobs.filter(job => job.is_recommended).slice(0, 3);
+    console.log('Filtered recommended jobs from context:', recommendedJobsList);
+    setRecommendedJobs(recommendedJobsList);
+  }, [user, jobs]);
+
+  // Load home data
   useEffect(() => {
     const loadHomeData = async () => {
       if (!user?.id) return;
+      setLoadingJobs(true);
 
       try {
         if (!profileData) {
           await fetchProfileData();
         }
         await fetchPosts();
-        // Only fetch jobs for normal users
-        if (user.user_type === 'Normal') {
-          await getJobs({ limit: 3, recommended: true });
-        }
+        
+        // Fetch jobs for recommendations
+        await getJobs({ 
+          limit: 10,
+          recommended: true
+        });
       } catch (error) {
         console.error('Error loading home data:', error);
+      } finally {
+        setLoadingJobs(false);
       }
     };
 
     loadHomeData();
-  }, [user]); // Add user to dependency array
+  }, [user, fetchProfileData, fetchPosts, profileData, getJobs]);
+
+  // Update recommended jobs when jobs state changes
+  useEffect(() => {
+    if (jobs?.length > 0) {
+      fetchRecommendedJobs();
+    }
+  }, [jobs, fetchRecommendedJobs]);
 
   if (!user) return null;
 
@@ -101,59 +130,71 @@ const Home = () => {
                   VIEW ALL JOBS
                 </Button>
               </Box>
-              {jobs?.filter(job => job.is_recommended).map(job => (
-                <Box 
-                  key={job.id}
-                  sx={{ 
-                    p: 2,
-                    mb: 2,
-                    bgcolor: 'background.paper',
-                    borderRadius: 1,
-                    cursor: 'pointer',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    '&:hover': {
-                      bgcolor: 'action.hover',
-                      borderColor: 'primary.main',
-                    }
-                  }}
-                  onClick={() => navigate(`/jobs/${job.id}`)}
-                >
-                  <Typography variant="subtitle1" gutterBottom>
-                    {job.title}
-                  </Typography>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary', mb: 1 }}>
-                    <Typography variant="body2">
-                      {job.location} ({job.location_type})
+              
+              {loadingJobs ? (
+                <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                  Loading recommended jobs...
+                </Typography>
+              ) : recommendedJobs.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                  No recommended jobs found.
+                </Typography>
+              ) : (
+                recommendedJobs.map(job => (
+                  <Box 
+                    key={job.id}
+                    sx={{ 
+                      p: 2,
+                      mb: 2,
+                      bgcolor: 'background.paper',
+                      borderRadius: 1,
+                      cursor: 'pointer',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      '&:hover': {
+                        bgcolor: 'action.hover',
+                        borderColor: 'primary.main',
+                      }
+                    }}
+                    onClick={() => navigate(`/jobs/${job.id}`)}
+                  >
+                    <Typography variant="subtitle1" gutterBottom>
+                      {job.title}
+                    </Typography>
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary', mb: 1 }}>
+                      <Typography variant="body2">
+                        {job.location} ({job.location_type})
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                      {job.required_skills?.slice(0, 3).map((skill, index) => (
+                        <Typography
+                          key={index}
+                          variant="body2"
+                          sx={{
+                            color: 'primary.main',
+                            bgcolor: 'action.hover',
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: 1,
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          {skill}
+                        </Typography>
+                      ))}
+                    </Box>
+                    
+                    <Typography variant="caption" color="text.secondary">
+                      Posted {job.days_left} days left
                     </Typography>
                   </Box>
-                  
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-                    {job.required_skills?.slice(0, 3).map((skill, index) => (
-                      <Typography
-                        key={index}
-                        variant="body2"
-                        sx={{
-                          color: 'primary.main',
-                          bgcolor: 'action.hover',
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                          fontSize: '0.75rem'
-                        }}
-                      >
-                        {skill}
-                      </Typography>
-                    ))}
-                  </Box>
-                  
-                  <Typography variant="caption" color="text.secondary">
-                    Posted {job.days_left} days left
-                  </Typography>
-                </Box>
-              ))}
-              {jobs?.filter(job => job.is_recommended).length > 3 && (
+                ))
+              )}
+              
+              {recommendedJobs.length > 3 && (
                 <Button
                   fullWidth
                   variant="outlined"

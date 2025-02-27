@@ -15,14 +15,23 @@ export const JobProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
+      console.log('JobContext: Fetching jobs with filters:', filters);
       const response = await jobService.getJobs(filters);
+      console.log('JobContext: Jobs response:', response.data);
+      
       if (filters.cursor) {
+        console.log('JobContext: Appending jobs to existing list');
         setJobs(prev => [...prev, ...response.data.jobs]);
       } else {
+        console.log('JobContext: Setting new jobs list');
         setJobs(response.data.jobs);
       }
       setNextCursor(response.data.next_cursor);
+      
+      // Return the response for direct use
+      return response;
     } catch (error) {
+      console.error('JobContext: Error fetching jobs:', error);
       setError(error.message || 'Failed to fetch jobs');
     } finally {
       setLoading(false);
