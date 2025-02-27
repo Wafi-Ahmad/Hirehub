@@ -114,19 +114,17 @@ const Profile = () => {
   useEffect(() => {
     let intervalId;
     
-    const pollProfileStatus = async () => {
-      if (id && !isOwnProfile && !profileData?.is_profile_public) {
-        try {
-          await fetchProfileData(id);
-        } catch (error) {
-          console.error('Error polling profile status:', error);
-        }
+    const pollFollowStatus = async () => {
+      try {
+        await fetchProfileData(id);
+      } catch (error) {
+        console.error('Error polling follow status:', error);
       }
     };
 
-    // Start polling if viewing someone else's private profile
-    if (id && !isOwnProfile && !profileData?.is_profile_public) {
-      intervalId = setInterval(pollProfileStatus, 5000); // Poll every 5 seconds
+    // Only start polling if there's a pending follow request
+    if (id && !isOwnProfile && profileData?.follow_status === 'PENDING') {
+      intervalId = setInterval(pollFollowStatus, 10000); // Poll every 10 seconds
     }
 
     return () => {
@@ -134,7 +132,7 @@ const Profile = () => {
         clearInterval(intervalId);
       }
     };
-  }, [id, isOwnProfile, profileData?.is_profile_public, fetchProfileData]);
+  }, [id, isOwnProfile, profileData?.follow_status, fetchProfileData]);
 
   // Listen for follow status updates
   useEffect(() => {
@@ -770,5 +768,4 @@ const Profile = () => {
     </Container>
   );
 };
-
 export default Profile;

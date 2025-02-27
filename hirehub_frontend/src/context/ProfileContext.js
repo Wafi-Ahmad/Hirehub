@@ -21,26 +21,29 @@ export const ProfileProvider = ({ children }) => {
             const profileResponse = await profileService.getProfile(userId);
             setProfileData(profileResponse);
 
-            // Fetch follow data
-            try {
-                const followResponse = await profileService.getFollowData(userId);
-                setFollowData(followResponse);
-            } catch (error) {
-                console.error('Error fetching follow data:', error);
-                // Don't set error state for follow data failure
+            // Only fetch follow data if profile is public
+            if (!profileResponse.is_profile_private) {
+                try {
+                    const followResponse = await profileService.getFollowData(userId);
+                    setFollowData(followResponse);
+                } catch (error) {
+                    console.error('Error fetching follow data:', error);
+                    // Don't set error state for follow data failure
+                }
             }
         } catch (error) {
             console.error('Error in fetchProfileData:', error);
-            // Don't set error state for private profiles
-            if (error.response?.status !== 403) {
-                setError(error.response?.data?.error || 'Failed to load profile data');
-            }
-            // For private profiles, still set the basic profile data
+            // Handle private profiles
             if (error.response?.status === 403) {
-                setProfileData({
+                const privateProfileData = {
                     ...error.response?.data,
-                    is_profile_public: false
-                });
+                    is_profile_public: false,
+                    is_profile_private: true
+                };
+                setProfileData(privateProfileData);
+                setFollowData(null); // Clear follow data for private profiles
+            } else {
+                setError(error.response?.data?.error || 'Failed to load profile data');
             }
         } finally {
             setLoading(false);
