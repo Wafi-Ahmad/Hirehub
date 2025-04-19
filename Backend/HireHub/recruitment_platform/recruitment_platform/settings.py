@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'recruitmentAPI',
     'corsheaders',
+    'channels',
     'drf_spectacular',
     'rest_framework_simplejwt.token_blacklist',
     'django_extensions',
@@ -76,7 +77,15 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'recruitment_platform.wsgi.application'
+ASGI_APPLICATION = 'recruitment_platform.asgi.application'
 
+
+# Channels configuration
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
@@ -85,8 +94,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'hirehub',            
-        'USER': 'wafi',               
-        'PASSWORD': '1998',           
+        'USER': 'root',               
+        'PASSWORD': '2002',           
         'HOST': 'localhost',           
         'PORT': '3306',                
     }
@@ -205,6 +214,40 @@ LOGGING = {
 
 CORS_ALLOW_ALL_ORIGINS = True  # Only use this in development!
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'cache-control',
+    'pragma',
+    'expires',
+    'access-control-allow-headers',
+    'access-control-allow-methods',
+    'access-control-allow-origin',
+]
+
+# Add CORS_EXPOSE_HEADERS for ETag support
+CORS_EXPOSE_HEADERS = [
+    'etag',
+    'cache-control',
+    'content-type',
+    'x-total-count',
+    'x-page-count',
+]
 
 # For production, specify allowed origins
 # CORS_ALLOWED_ORIGINS = [

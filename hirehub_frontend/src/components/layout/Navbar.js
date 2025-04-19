@@ -16,13 +16,15 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  DialogContentText
+  DialogContentText,
+  Tooltip
 } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import SearchBar from './SearchBar';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import WorkIcon from '@mui/icons-material/Work';
+import ChatIcon from '@mui/icons-material/Chat';
 import { USER_TYPES } from '../../utils/permissions';
 import NotificationMenu from '../notifications/NotificationMenu';
 import { userService } from '../../services/userService';
@@ -122,6 +124,21 @@ const Navbar = () => {
         {isAuthenticated ? (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <NotificationMenu />
+            
+            {/* Messages Icon */}
+            <Tooltip title="Messages">
+              <IconButton 
+                color="inherit"
+                onClick={() => navigate('/messages')}
+                sx={{ 
+                  backgroundColor: location.pathname === '/messages' ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                  '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.2)' } 
+                }}
+              >
+                <ChatIcon />
+              </IconButton>
+            </Tooltip>
+            
             {user?.userType === USER_TYPES.COMPANY && (
               <Button
                 variant="contained"

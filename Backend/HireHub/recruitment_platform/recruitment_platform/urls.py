@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/roles/', include('recruitmentAPI.urls.role_urls')),
     path('api/jobs/', include('recruitmentAPI.urls.job_urls')),
     path('api/notifications/', include('recruitmentAPI.urls.notification_urls')),
+    path('api/messaging/', include('recruitmentAPI.urls.message_urls')),
     # JWT Authentication URLs
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

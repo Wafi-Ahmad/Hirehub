@@ -6,15 +6,4 @@ from .connection_model import ConnectionRequest
 from .job_model import JobPost
 from .quiz_model import Quiz, QuizAttempt
 from .notification_model import Notification
-
-__all__ = [
-    'User',
-    'Post',
-    'Comment',
-    'Role',
-    'ConnectionRequest',
-    'JobPost',
-    'Quiz',
-    'QuizAttempt',
-    'Notification'  
-]
+from .message_model import Conversation, Message

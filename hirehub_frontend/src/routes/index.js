@@ -20,6 +20,7 @@ const Network = React.lazy(() => import('../pages/network/Network'));
 const SavedJobs = React.lazy(() => import('../pages/SavedJobs'));
 const NotFound = React.lazy(() => import('../pages/NotFound'));
 const Unauthorized = React.lazy(() => import('../pages/Unauthorized'));
+const MessagesPage = React.lazy(() => import('../pages/messages/MessagesPage'));
 
 function AppRoutes() {
   return (
@@ -143,8 +144,27 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        {/* 404 Route */}
-        <Route path="*" element={<NotFound />} />
+        {/* Messages Routes */}
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <MessagesPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages/:conversationId"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <MessagesPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Suspense>
   );

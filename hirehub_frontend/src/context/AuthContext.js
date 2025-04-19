@@ -60,6 +60,7 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data.access) {
         localStorage.setItem('token', response.data.access);
+        console.log('Token refreshed, setting Authorization header with new token');
         api.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
         return true;
       }
@@ -186,8 +187,14 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', loginResponse.access);
       localStorage.setItem('refresh', loginResponse.refresh);
       
+      console.log('Stored tokens in localStorage:', {
+        token: !!loginResponse.access,
+        refresh: !!loginResponse.refresh
+      });
+      
       // Update API client
       api.defaults.headers.common['Authorization'] = `Bearer ${loginResponse.access}`;
+      console.log('Set Authorization header:', `Bearer ${loginResponse.access.substring(0, 15)}...`);
       
       // Update state
       setUser(userData);

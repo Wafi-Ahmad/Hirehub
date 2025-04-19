@@ -46,3 +46,11 @@ huggingface-hub>=0.19.0
 
 # Graph Class Diagram Models
 django-extensions==3.3.1 
+
+# Real-time Chat Dependencies
+channels==4.0.0
+channels-redis==4.1.0
+redis==5.0.1
+django-notifications-hq==1.8.0
+aioredis==2.0.1
+daphne==4.0.0

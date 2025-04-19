@@ -5,6 +5,11 @@ from .connection_urls import urlpatterns as connection_urls
 from .role_urls import urlpatterns as role_urls
 from .job_urls import urlpatterns as job_urls
 from .notification_urls import urlpatterns as notification_urls
+from .message_urls import urlpatterns as message_urls
+
+# For backward compatibility
+from .message_urls import urlpatterns as messaging_urls
+
 from django.urls import path, include
 
 urlpatterns = [
@@ -15,4 +20,5 @@ urlpatterns = [
     path('role/', include(role_urls)),
     path('job/', include(job_urls)),
     path('notification/', include(notification_urls)),
+    path('messaging/', include(message_urls)),
 ]

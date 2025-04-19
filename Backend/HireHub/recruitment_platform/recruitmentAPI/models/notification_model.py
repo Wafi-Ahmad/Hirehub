@@ -11,6 +11,7 @@ class Notification(models.Model):
         ('JOB_OFFER_INITIAL', 'Job Offer Initial'),
         ('JOB_OFFER_ACCEPTED', 'Job Offer Accepted'),
         ('JOB_OFFER_REJECTED', 'Job Offer Rejected'),
+        ('NEW_MESSAGE', 'New Message'),
     ]
 
     STATUS_CHOICES = [
