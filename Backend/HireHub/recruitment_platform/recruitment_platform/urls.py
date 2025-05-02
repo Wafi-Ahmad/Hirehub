@@ -34,9 +34,11 @@ urlpatterns = [
     path('api/jobs/', include('recruitmentAPI.urls.job_urls')),
     path('api/notifications/', include('recruitmentAPI.urls.notification_urls')),
     path('api/messaging/', include('recruitmentAPI.urls.message_urls')),
+    path('api/cv/', include('recruitmentAPI.urls.cv_urls')),
     # JWT Authentication URLs
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
     # YOUR API DOCUMENTATION
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema.json/', SpectacularJSONAPIView.as_view(), name='schema-json'),

@@ -17,9 +17,14 @@ import {
   Divider,
   Alert,
   Snackbar,
+  Paper,
 } from '@mui/material';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import DownloadDoneIcon from '@mui/icons-material/DownloadDone';
 import { useProfile } from '../../context/ProfileContext';
+import cvService from '../../services/cvService';
 
 const REQUIRED_FIELDS = ['first_name', 'last_name'];
 const FILE_SIZE_LIMIT = 5 * 1024 * 1024; // 5MB
@@ -27,8 +32,11 @@ const FILE_SIZE_LIMIT = 5 * 1024 * 1024; // 5MB
 const EditProfileDialog = ({ open, onClose }) => {
   const { profileData, updateProfile } = useProfile();
   const [loading, setLoading] = useState(false);
+  const [parsingLoading, setParsingLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [cvFile, setCvFile] = useState(null);
+  const [cvUploaded, setCvUploaded] = useState(false);
   const [formData, setFormData] = useState({
     // Common fields for both user types
     email: '',
@@ -200,6 +208,201 @@ const EditProfileDialog = ({ open, onClose }) => {
     }
   };
 
+  // Handle CV file selection
+  const handleCVFileChange = (event) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      
+      // Check file extension
+      const fileExt = file.name.split('.').pop().toLowerCase();
+      if (!['pdf', 'doc', 'docx'].includes(fileExt)) {
+        setSnackbar({
+          open: true,
+          message: 'Only PDF, DOC, and DOCX files are allowed',
+          severity: 'error'
+        });
+        event.target.value = '';
+        return;
+      }
+      
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        setSnackbar({
+          open: true,
+          message: 'CV file must be less than 5MB',
+          severity: 'error'
+        });
+        event.target.value = '';
+        return;
+      }
+      
+      setCvFile(file);
+      setCvUploaded(false);
+      
+      setSnackbar({
+        open: true,
+        message: 'CV file selected. Click "Upload CV" to upload.',
+        severity: 'info'
+      });
+    }
+  };
+  
+  // Upload CV without parsing
+  const handleCVUpload = async () => {
+    if (!cvFile) {
+      setSnackbar({
+        open: true,
+        message: 'Please select a CV file first',
+        severity: 'error'
+      });
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const result = await cvService.uploadCV(cvFile);
+      setCvUploaded(true);
+      
+      setSnackbar({
+        open: true,
+        message: 'CV uploaded successfully. You can now parse it.',
+        severity: 'success'
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: `Failed to upload CV: ${error.response?.data?.error || error.message}`,
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Parse CV and update profile
+  const handleCVParse = async () => {
+    setParsingLoading(true);
+    try {
+      const result = await cvService.parseAndUpdateProfile();
+      
+      // Update form with parsed data
+      if (result.parsed_data) {
+        // --- Updated Destructuring and Mapping --- 
+        const { 
+            candidate_name, 
+            location, 
+            linkedin_url, // Use the direct field from LLM output
+            summary, // Use the direct field for bio
+            skills, // Already direct
+            education, // Already direct
+            experience, // Already direct
+            certifications, // Already direct
+            phone_number, // Added for phone mapping
+        } = result.parsed_data;
+        
+        const updatedData = { ...formData };
+        
+        // Update personal info
+        if (candidate_name) {
+          // Corrected split logic: Split by space without limit
+          const nameParts = candidate_name.trim().split(' '); 
+          if (nameParts.length > 0 && !updatedData.first_name) {
+              updatedData.first_name = nameParts[0]; // Assign first part to first name
+          }
+          if (nameParts.length > 1 && !updatedData.last_name) {
+              // Assign the rest of the parts to last name
+              updatedData.last_name = nameParts.slice(1).join(' '); 
+          }
+        }
+        
+        if (location && !updatedData.location) updatedData.location = location;
+        if (linkedin_url && !updatedData.linkedin_url) updatedData.linkedin_url = linkedin_url;
+        if (summary && !updatedData.bio) updatedData.bio = summary; // Map summary to bio
+        
+        // --- Add phone number mapping --- 
+        if (phone_number && !updatedData.phone) updatedData.phone = phone_number;
+        // ---------------------------------
+        
+        // Update skills (convert array to comma-separated string)
+        if (skills && Array.isArray(skills) && skills.length > 0 && !updatedData.skills) {
+          updatedData.skills = skills.join(', ');
+        }
+        
+        // Update education - simple conversion for now (only if field is empty)
+        if (education && Array.isArray(education) && education.length > 0 && !updatedData.education) {
+          const eduText = education.map(edu => {
+            const parts = [];
+            if (edu.degree) parts.push(edu.degree);
+            if (edu.field_of_study) parts.push(`in ${edu.field_of_study}`);
+            if (edu.institution) parts.push(`at ${edu.institution}`);
+            if (edu.dates) parts.push(`(${edu.dates})`);
+            return parts.join(' ');
+          }).join('\n\n');
+          
+          updatedData.education = eduText;
+        }
+        
+        // Update experience (only if field is empty)
+        if (experience && Array.isArray(experience) && experience.length > 0 && !updatedData.experience) {
+          const expText = experience.map(exp => {
+            const parts = [];
+            if (exp.position) parts.push(exp.position);
+            if (exp.company) parts.push(`at ${exp.company}`);
+            if (exp.dates) parts.push(`(${exp.dates})`);
+            if (exp.description) parts.push(`\n${exp.description}`);
+            return parts.join(' ');
+          }).join('\n\n');
+          
+          updatedData.experience = expText;
+        }
+        
+        // Update certifications (only if field is empty)
+        if (certifications && Array.isArray(certifications) && certifications.length > 0 && !updatedData.certifications) {
+          updatedData.certifications = certifications.join('\n');
+        }
+        // -------------------------------------------
+
+        setFormData(updatedData);
+      }
+      
+      setSnackbar({
+        open: true,
+        message: 'CV parsed and profile updated successfully!',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('Error parsing CV:', error);
+      
+      // Extract the most useful error message
+      let errorMessage = 'Failed to parse CV';
+      
+      if (error.response) {
+        // The request was made and the server responded with an error status
+        if (error.response.data && error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response.data && typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else {
+          errorMessage = `Server error: ${error.response.status}`;
+        }
+      } else if (error.request) {
+        // The request was made but no response was received
+        errorMessage = 'No response from server. Please check your connection.';
+      } else {
+        // Something happened in setting up the request
+        errorMessage = error.message || 'Unknown error occurred';
+      }
+      
+      setSnackbar({
+        open: true,
+        message: `Failed to parse CV: ${errorMessage}`,
+        severity: 'error'
+      });
+    } finally {
+      setParsingLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -358,6 +561,60 @@ const EditProfileDialog = ({ open, onClose }) => {
             required
           />
         </Grid>
+        
+        {/* CV Upload and Parse Section */}
+        <Grid item xs={12}>
+          <Paper variant="outlined" sx={{ p: 2, mt: 2, mb: 2, backgroundColor: '#f8f9fa' }}>
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
+              CV Upload & Automated Profile Filling
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Upload your CV to automatically fill your profile information including skills, experience, and education.
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+              <Button
+                variant="outlined"
+                component="label"
+                startIcon={<UploadFileIcon />}
+                sx={{ mr: 1 }}
+              >
+                Select CV File
+                <input
+                  hidden
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={handleCVFileChange}
+                />
+              </Button>
+              
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleCVUpload}
+                disabled={!cvFile || loading}
+                startIcon={loading ? <CircularProgress size={20} /> : <DownloadDoneIcon />}
+              >
+                Upload CV
+              </Button>
+              
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleCVParse}
+                disabled={!cvUploaded || parsingLoading}
+                startIcon={parsingLoading ? <CircularProgress size={20} /> : <AutoFixHighIcon />}
+              >
+                Start Parsing
+              </Button>
+            </Box>
+            {cvFile && (
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Selected file: {cvFile.name}
+              </Typography>
+            )}
+          </Paper>
+        </Grid>
+        
         <Grid item xs={12}>
           <TextField
             fullWidth
