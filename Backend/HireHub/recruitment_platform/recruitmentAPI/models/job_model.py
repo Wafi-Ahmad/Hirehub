@@ -96,15 +96,15 @@ class JobPost(models.Model):
 
     def get_applicants(self):
         """Get all users who have attempted the quiz for this job"""
-        if not self.quiz:
-            return []
-        return User.objects.filter(quiz_attempts__quiz=self.quiz).distinct()
+        if not self.job_quiz:
+            return User.objects.none()
+        return User.objects.filter(quiz_attempts__quiz=self.job_quiz).distinct()
 
     def get_applicant_count(self):
-        """Get the number of applicants for this job"""
-        if not self.quiz:
+        """Get the number of *completed* applicants (attempts) for this job"""
+        if not self.job_quiz:
             return 0
-        return self.quiz.attempts.count()
+        return self.job_quiz.attempts.filter(completed_at__isnull=False).count()
 
     def is_expired(self):
         """Check if the job posting has expired"""

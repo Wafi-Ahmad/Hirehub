@@ -2,6 +2,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config';
 
 const JOB_API = `${API_BASE_URL}/jobs`;
+const QUIZ_API = `${API_BASE_URL}/quizzes`; // Added for potential future quiz-specific calls
 
 // Add auth token interceptor
 axios.interceptors.request.use(
@@ -234,6 +235,65 @@ class JobService {
     } catch (error) {
       console.error('Error fetching recommended jobs:', error);
       throw error;
+    }
+  }
+
+  // --- NEW ADAPTIVE QUIZ METHODS ---
+
+  /**
+   * Starts or resumes a quiz attempt for a given job.
+   * @param {number | string} jobId The ID of the job.
+   * @returns {Promise<object>} Promise resolving to the initial quiz step data (question or finished status).
+   */
+  async startQuiz(jobId) {
+    try {
+      console.log(`JobService: Starting quiz for job ${jobId}`);
+      const response = await axios.post(`${JOB_API}/${jobId}/quiz/start/`);
+      console.log("Quiz start response:", response.data);
+      return response.data; // Expected format: { status: 'in_progress'/'finished', question?: {...}, ...results }
+    } catch (error) {
+      console.error('Error starting quiz:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  }
+
+  /**
+   * Submits an answer for the current quiz step and gets the next step.
+   * @param {number | string} jobId The ID of the job.
+   * @param {object} answerData The answer data ({ question_ref, answer_index }).
+   * @returns {Promise<object>} Promise resolving to the next quiz step data (question or finished status).
+   */
+  async submitQuizAnswer(jobId, answerData) {
+    try {
+      console.log(`JobService: Submitting answer for job ${jobId}:`, answerData);
+      const response = await axios.post(`${JOB_API}/${jobId}/quiz/step/`, answerData);
+      console.log("Quiz step response:", response.data);
+      return response.data; // Expected format: { status: 'in_progress'/'finished', question?: {...}, ...results }
+    } catch (error) {
+      console.error('Error submitting quiz answer:', error.response?.data || error.message);
+      throw error.response?.data || error;
+    }
+  }
+
+  /**
+    * Gets the result of a completed quiz attempt.
+    * @param {number | string} jobId The ID of the job.
+    * @returns {Promise<object>} Promise resolving to the quiz result.
+    */
+  async getQuizResult(jobId) {
+    try {
+        console.log(`JobService: Getting quiz result for job ${jobId}`);
+        const response = await axios.get(`${JOB_API}/${jobId}/quiz/result/`);
+        console.log("Quiz result response:", response.data);
+        return response.data; // Expected format: { score, passed, completed_at, ... }
+    } catch (error) {
+        console.error('Error getting quiz result:', error.response?.data || error.message);
+        // Handle 404 specifically maybe?
+        if (error.response && error.response.status === 404) {
+            console.log('No completed quiz attempt found.');
+            return null; // Indicate no result found
+        }
+        throw error.response?.data || error;
     }
   }
 }

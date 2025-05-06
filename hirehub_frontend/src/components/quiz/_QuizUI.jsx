@@ -1,112 +1,145 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, Typography, Alert } from "@mui/material";
+import { Box, Typography, Alert, CircularProgress, Button } from "@mui/material";
+import { jobService } from "../../services/jobService";
+import CVUpload from '../cv/CVUpload';
 import "./_Quiz.css";
 
-function QuizUI({ questions = [], onSubmit, disabled, previousAttempt, jobId }) {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
+// Define target length (should ideally match backend)
+const TARGET_QUIZ_LENGTH = 10;
+
+function QuizUI({ jobId }) {
+  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [selectedAnswerIndex, setSelectedAnswerIndex] = useState(null);
+  const [quizStatus, setQuizStatus] = useState('loading');
+  const [quizResult, setQuizResult] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [questionsAnsweredCount, setQuestionsAnsweredCount] = useState(0);
   const [timeLeft, setTimeLeft] = useState(45);
   const [leaveCount, setLeaveCount] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [showingResult, setShowingResult] = useState(false);
-  const [answerOrder, setAnswerOrder] = useState({});
   const [isBanned, setIsBanned] = useState(false);
   const [banTimeLeft, setBanTimeLeft] = useState(null);
 
   const navigate = useNavigate();
 
-  // Check for existing ban on component mount
   useEffect(() => {
     const banKey = `quizBan_${jobId}`;
     const banInfo = localStorage.getItem(banKey);
     if (banInfo) {
-      const { timestamp, attempts } = JSON.parse(banInfo);
+      const { timestamp } = JSON.parse(banInfo);
       const now = new Date().getTime();
-      const banEndTime = timestamp + (24 * 60 * 60 * 1000); // 24 hours in milliseconds
+      const banEndTime = timestamp + (24 * 60 * 60 * 1000); // 24 hours
       
       if (now < banEndTime) {
         setIsBanned(true);
-        const timeLeft = Math.ceil((banEndTime - now) / (1000 * 60 * 60)); // Convert to hours
-        setBanTimeLeft(timeLeft);
+        const timeLeftHrs = Math.ceil((banEndTime - now) / (1000 * 60 * 60));
+        setBanTimeLeft(timeLeftHrs);
+        setQuizStatus('banned');
       } else {
-        // Ban period is over, clear the ban
         localStorage.removeItem(banKey);
       }
     }
   }, [jobId]);
 
-  // Initialize random order for answers
-  useEffect(() => {
-    if (questions.length > 0) {
-      const newAnswerOrder = {};
-      questions.forEach((question, index) => {
-        const order = Array.from({ length: 4 }, (_, i) => i);
-        for (let i = order.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [order[i], order[j]] = [order[j], order[i]];
-        }
-        const questionId = question.id ?? index;
-        newAnswerOrder[questionId] = order;
-      });
-      setAnswerOrder(newAnswerOrder);
+  const startQuiz = useCallback(async () => {
+    if (!jobId || isBanned) return;
+    setQuizStatus('loading');
+    setErrorMessage('');
+    try {
+      const response = await jobService.startQuiz(jobId);
+      if (response.status === 'in_progress' && response.question) {
+        setCurrentQuestion(response.question);
+        setQuestionsAnsweredCount(0);
+        setSelectedAnswerIndex(null);
+        setTimeLeft(45);
+        setQuizStatus('in_progress');
+      } else if (response.status === 'finished') {
+        setQuizResult(response);
+        setQuizStatus('finished');
+      } else {
+        throw new Error(response.message || 'Unexpected response when starting quiz.');
+      }
+    } catch (error) {
+      console.error("Error starting quiz:", error);
+      setErrorMessage(error.message || "Failed to start quiz. Please try again.");
+      setQuizStatus('error');
     }
-  }, [questions]);
+  }, [jobId, isBanned]);
 
   useEffect(() => {
-    if (previousAttempt) {
-      setShowingResult(true);
+    if (!isBanned) {
+      startQuiz();
     }
-  }, [previousAttempt]);
+  }, [startQuiz, isBanned]);
 
-  const handleNextQuestion = useCallback(() => {
-    setSelectedAnswer(null);
-    setTimeLeft(45);
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
-    } else {
-      onSubmit(answers);
+  const submitAnswer = useCallback(async (answerIndex) => {
+    if (!currentQuestion || selectedAnswerIndex !== null) return;
+
+    setQuizStatus('loading');
+    setErrorMessage('');
+    setSelectedAnswerIndex(answerIndex);
+    
+    const answerData = {
+      question_ref: currentQuestion.ref,
+      answer_index: answerIndex,
+    };
+
+    try {
+      const response = await jobService.submitQuizAnswer(jobId, answerData);
+
+      setTimeout(() => {
+         if (response.status === 'in_progress' && response.question) {
+           setCurrentQuestion(response.question);
+           setQuestionsAnsweredCount(prev => prev + 1);
+           setSelectedAnswerIndex(null);
+           setTimeLeft(45);
+           setQuizStatus('in_progress');
+         } else if (response.status === 'finished') {
+           setQuizResult(response);
+           setQuizStatus('finished');
+         } else {
+            throw new Error(response.message || 'Unexpected response after submitting answer.');
+         }
+      }, 500);
+
+    } catch (error) {
+      console.error("Error submitting answer:", error);
+      setErrorMessage(error.message || "Failed to submit answer. Please try again or refresh.");
+      setQuizStatus('error'); 
     }
-  }, [currentQuestionIndex, questions.length, answers, onSubmit]);
+  }, [jobId, currentQuestion, selectedAnswerIndex]);
 
   useEffect(() => {
-    if (timeLeft > 0) {
+    if (quizStatus === 'in_progress' && timeLeft > 0) {
       const timer = setTimeout(() => setTimeLeft((prevTime) => prevTime - 1), 1000);
       return () => clearTimeout(timer);
-    } else {
-      handleNextQuestion();
+    } else if (quizStatus === 'in_progress' && timeLeft === 0) {
+      console.log("Time ran out, submitting skip.");
+      submitAnswer(-1); 
     }
-  }, [timeLeft, handleNextQuestion]);
+  }, [timeLeft, quizStatus, submitAnswer]);
 
   const handleVisibilityChange = useCallback(() => {
-    // Don't track visibility changes if user is already banned
-    if (document.hidden && !isBanned) {
+    if (document.hidden && !isBanned && quizStatus === 'in_progress') {
       setLeaveCount((prevCount) => {
         const newCount = prevCount + 1;
-
         if (newCount >= 3) {
-          // Set ban in localStorage with job-specific key
           const banKey = `quizBan_${jobId}`;
-          const banInfo = {
-            timestamp: new Date().getTime(),
-            attempts: newCount
-          };
+          const banInfo = { timestamp: new Date().getTime(), attempts: newCount };
           localStorage.setItem(banKey, JSON.stringify(banInfo));
           setIsBanned(true);
           setBanTimeLeft(24);
-          
-          // Show formal message and navigate
-          alert("Due to multiple attempts to leave the quiz, you have been temporarily restricted from accessing this job's quiz. Please try again after 24 hours.");
+          setQuizStatus('banned');
+          alert("Due to multiple attempts to leave the quiz... try again after 24 hours.");
           navigate("/");
           return newCount;
         }
-
         alert("You left the quiz! Skipping to the next question.");
-        handleNextQuestion();
+        submitAnswer(-1);
         return newCount;
       });
     }
-  }, [handleNextQuestion, navigate, isBanned, jobId]);
+  }, [navigate, isBanned, jobId, quizStatus, submitAnswer]);
 
   useEffect(() => {
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -115,121 +148,115 @@ function QuizUI({ questions = [], onSubmit, disabled, previousAttempt, jobId }) 
     };
   }, [handleVisibilityChange]);
 
-  const handleAnswer = (shuffledIndex) => {
-    if (disabled) return;
-    
-    const currentQuestion = questions[currentQuestionIndex];
-    const questionId = currentQuestion.id ?? currentQuestionIndex;
-    const order = answerOrder[questionId];
-    const originalIndex = order[shuffledIndex];
-    
-    const newAnswers = {
-      ...answers,
-      [questionId]: originalIndex
-    };
-    setAnswers(newAnswers);
-    setSelectedAnswer(shuffledIndex);
-
-    setTimeout(() => {
-      if (currentQuestionIndex === questions.length - 1) {
-        onSubmit(newAnswers);
-      } else {
-        handleNextQuestion();
-      }
-    }, 1000);
-  };
-
-  // If user is banned, show ban message
-  if (isBanned) {
+  if (quizStatus === 'banned') {
     return (
       <Box className="quiz-container" sx={{ p: 3 }}>
-        <Alert 
-          severity="error" 
-          sx={{ 
-            mb: 2,
-            '& .MuiAlert-message': {
-              width: '100%'
-            }
-          }}
-        >
-          <Typography variant="h6" component="div" gutterBottom>
-            Quiz Access Restricted
-          </Typography>
+        <Alert severity="error" sx={{ mb: 2, '& .MuiAlert-message': { width: '100%' } }}>
+          <Typography variant="h6" component="div" gutterBottom>Quiz Access Restricted</Typography>
           <Typography>
-            Due to multiple attempts to leave the quiz, your access has been temporarily restricted. 
-            Please try again in {banTimeLeft} {banTimeLeft === 1 ? 'hour' : 'hours'}.
+            Access restricted. Try again in {banTimeLeft} {banTimeLeft === 1 ? 'hour' : 'hours'}.
           </Typography>
         </Alert>
       </Box>
     );
   }
 
-  // Rest of your existing render logic
-  if (showingResult && previousAttempt) {
+  if (quizStatus === 'loading') {
+    return (
+      <Box className="quiz-container" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (quizStatus === 'error') {
+    return (
+      <Box className="quiz-container" sx={{ p: 3 }}>
+        <Alert severity="error">{errorMessage || 'An error occurred.'}</Alert>
+        <Button variant="contained" onClick={startQuiz} sx={{ mt: 2 }}>Retry</Button>
+      </Box>
+    );
+  }
+
+  if (quizStatus === 'finished' && quizResult) {
+    const hasPassed = quizResult.passed;
     return (
       <div className="quiz-container">
-        <h2 className="quiz-title">Previous Attempt Result</h2>
-        <div className="quiz-result">
-          <p><strong>Score:</strong> {previousAttempt.score}%</p>
-          <p><strong>Status:</strong> {previousAttempt.passed ? 'Passed' : 'Failed'}</p>
-          <p><strong>Completed:</strong> {new Date(previousAttempt.completed_at).toLocaleString()}</p>
+        <h2 className="quiz-title">Quiz Completed</h2>
+        <div className="quiz-result" style={{ marginBottom: '20px' }}>
+          {quizResult.message && <p>{quizResult.message}</p>} 
+          <p><strong>Score:</strong> {quizResult.score}%</p>
+          <p><strong>Status:</strong> {hasPassed ? 'Passed' : 'Failed'}</p>
+          {quizResult.correct_answers !== undefined && (
+             <p>Correct Answers: {quizResult.correct_answers} / {quizResult.total_questions || TARGET_QUIZ_LENGTH}</p>
+          )}
+        </div>
+
+        {hasPassed ? (
+          <CVUpload 
+            onSuccess={() => {
+              console.log("CV Upload successful, navigating home.");
+              navigate('/');
+            }}
+          />
+        ) : (
+          <>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+                Unfortunately, you did not meet the passing score for this quiz.
+            </Alert>
+            <Button variant="contained" onClick={() => navigate('/')} sx={{ mt: 2 }}>
+                Go Home
+            </Button>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (quizStatus === 'in_progress' && currentQuestion) {
+    const progress = Math.min(100, (questionsAnsweredCount / TARGET_QUIZ_LENGTH) * 100);
+    return (
+      <div className="quiz-container">
+        <div className="progress-bar">
+          <span style={{ width: `${progress}%` }}></span>
+        </div>
+        <div className="quiz-content">
+          <div className="quiz-header">
+            <p className="question-counter">
+              Question {questionsAnsweredCount + 1}/{TARGET_QUIZ_LENGTH}
+            </p>
+            <p className="quiz-timer">
+              <strong>Time Left: {timeLeft}s</strong>
+            </p>
+          </div>
+          <h3 className="question-text">{currentQuestion.text}</h3>
+          <ul className="quiz-options">
+            {currentQuestion.options.map((optionText, index) => (
+              <li
+                key={index} 
+                onClick={() => submitAnswer(index)}
+                className={`quiz-option ${selectedAnswerIndex === index ? "selected" : ""} ${selectedAnswerIndex !== null ? 'disabled' : ''}`}
+              >
+                <div className="option-label">
+                  {String.fromCharCode(65 + index)} 
+                </div>
+                <div className="option-text">{optionText}</div>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="leave-count-warning">
+          {leaveCount > 0 && leaveCount < 3 && (
+            <p className="warning-text">
+              Warning: You have left the quiz {leaveCount} time(s).
+            </p>
+          )}
         </div>
       </div>
     );
   }
 
-  if (!questions.length || Object.keys(answerOrder).length === 0) {
-    return <div className="quiz-container"><p>No questions available.</p></div>;
-  }
-
-  const currentQuestion = questions[currentQuestionIndex];
-  const currentOrder = answerOrder[currentQuestion.id ?? currentQuestionIndex] || [];
-
-  return (
-    <div className="quiz-container">
-      <div className="progress-bar">
-        <span
-          style={{
-            width: `${((currentQuestionIndex + 1) / questions.length) * 100}%`
-          }}
-        ></span>
-      </div>
-      <div className="quiz-content">
-        <div className="quiz-header">
-          <p className="question-counter">
-            Question {currentQuestionIndex + 1}/{questions.length}
-          </p>
-          <p className="quiz-timer">
-            <strong>Time Left: {timeLeft}s</strong>
-          </p>
-        </div>
-        <h3 className="question-text">{currentQuestion.question}</h3>
-        <ul className="quiz-options">
-          {currentOrder.map((originalIndex, shuffledIndex) => (
-            <li
-              key={shuffledIndex}
-              onClick={() => handleAnswer(shuffledIndex)}
-              className={`quiz-option ${
-                selectedAnswer === shuffledIndex ? "selected" : ""
-              } ${disabled || selectedAnswer !== null ? 'disabled' : ''}`}
-            >
-              <div className="option-label">
-                {String.fromCharCode(65 + shuffledIndex)}
-              </div>
-              <div className="option-text">{currentQuestion.answers[originalIndex]}</div>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="leave-count-warning">
-        {leaveCount > 0 && leaveCount < 3 && (
-          <p className="warning-text">
-            Warning: You have left the quiz {leaveCount} time(s).
-          </p>
-        )}
-      </div>
-    </div>
-  );
+  return <div className="quiz-container"><p>Loading quiz...</p></div>;
 }
 
 export default QuizUI;

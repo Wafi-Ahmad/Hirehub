@@ -12,6 +12,9 @@ from .quiz_services import QuizService
 from ..models.notification_model import Notification
 from .job_matching_service import JobMatchingService
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 class JobService:
     JOBS_PER_PAGE = 10
@@ -21,75 +24,62 @@ class JobService:
     @transaction.atomic
     def create_job(validated_data: dict, user_id: int) -> dict:
         """Create a new job posting with business logic validation"""
-        try:
-            user = User.objects.get(id=user_id)
-            
-            if not user.is_company:
-                raise ValidationError("Only company users can create job postings")
+        user = User.objects.get(id=user_id)
+        
+        if not user.is_company:
+            raise ValidationError("Only company users can create job postings")
 
-            # Process skills
-            print(validated_data['required_skills'])
-            skills = [skill.strip().lower() for skill in validated_data['required_skills'] if skill.strip()]
-            print(skills)
-            if not skills:
-                raise ValidationError("At least one skill is required")
+        # Process skills
+        print(validated_data['required_skills'])
+        skills = [skill.strip().lower() for skill in validated_data['required_skills'] if skill.strip()]
+        print(skills)
+        if not skills:
+            raise ValidationError("At least one skill is required")
 
-            job = JobPost(
-                title=validated_data['title'],
-                description=validated_data['description'],
-                required_skills=','.join(skills),
-                employment_type=validated_data['employment_type'],
-                salary_min=validated_data.get('salary_min'),
-                salary_max=validated_data.get('salary_max'),
-                location_type=validated_data['location_type'],
-                location=validated_data['location'],
-                experience_level=validated_data['experience_level'],
-                posted_by=user,
-                expires_at=timezone.now() + timezone.timedelta(days=30)
+        job = JobPost(
+            title=validated_data['title'],
+            description=validated_data['description'],
+            required_skills=','.join(skills),
+            employment_type=validated_data['employment_type'],
+            salary_min=validated_data.get('salary_min'),
+            salary_max=validated_data.get('salary_max'),
+            location_type=validated_data['location_type'],
+            location=validated_data['location'],
+            experience_level=validated_data['experience_level'],
+            posted_by=user,
+            expires_at=timezone.now() + timezone.timedelta(days=30)
+        )
+        
+        job.save()
+
+        # Create notifications for all users
+        users = User.objects.exclude(id=user_id).filter(is_active=True)
+        notifications = [
+            Notification(
+                recipient=recipient,
+                sender=user,
+                notification_type='NEW_JOB_POST',
+                content=f'posted a new job: {job.title}',
+                related_object_id=job.id,
+                related_object_type='JobPost'
             )
-            
-            job.save()
+            for recipient in users
+        ]
+        if notifications:
+            Notification.objects.bulk_create(notifications)
 
-            # Create notifications for all users
-            # Get all users except the company that posted the job
-            users = User.objects.exclude(id=user_id).filter(is_active=True)
-            
-            # Create notifications in bulk
-            notifications = [
-                Notification(
-                    recipient=recipient,
-                    sender=user,
-                    notification_type='NEW_JOB_POST',
-                    content=f'posted a new job: {job.title}',
-                    related_object_id=job.id,
-                    related_object_type='JobPost'
-                )
-                for recipient in users
-            ]
-            
-            # Bulk create notifications
-            if notifications:
-                Notification.objects.bulk_create(notifications)
-
-            # Generate quiz for the job
-            try:
-                QuizService.generate_quiz(job.id)
-            except Exception as e:
-                print(f"Failed to generate quiz: {str(e)}")
-                # Don't fail job creation if quiz generation fails
-                # We can regenerate it later if needed
-
-            # Invalidate job list cache
-            cache.delete_many([
-                'jobs:list:recent',
-                f'jobs:company:{user.id}:list'
-            ])
-            
-            res = JobResponseSerializer(job).data
-            return res
-
-        except User.DoesNotExist:
-            raise ValidationError("Invalid user")
+        # Generate quiz for the job
+        QuizService.generate_quiz(job.id)
+        logger.info(f"Successfully generated quiz for new job ID {job.id}")
+        
+        # Invalidate job list cache
+        cache.delete_many([
+            'jobs:list:recent',
+            f'jobs:company:{user.id}:list'
+        ])
+        
+        res = JobResponseSerializer(job).data
+        return res
 
     @staticmethod
     def search_jobs(filters: Dict, cursor=None, limit=JOBS_PER_PAGE, user=None) -> Dict:

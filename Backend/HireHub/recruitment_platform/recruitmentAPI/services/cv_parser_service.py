@@ -201,13 +201,13 @@ Return the information ONLY as a JSON object matching this exact structure:
 
         logger.info(f"Merged data from {len(page_results)} pages.")
         return merged_data
-
+    
     def parse_cv(self, file_path):
         """Parses a CV file using an LLM API, processing pages sequentially."""
         logger.info(f"Starting LLM CV parsing for: {os.path.basename(file_path)}")
         
         file_ext = os.path.splitext(file_path)[1].lower()
-
+        
         if file_ext == '.pdf':
             logger.info("Converting PDF to images...")
             images_base64 = self._convert_pdf_to_images(file_path)

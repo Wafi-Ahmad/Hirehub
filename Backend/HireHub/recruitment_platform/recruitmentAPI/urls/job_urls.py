@@ -1,6 +1,6 @@
 from django.urls import path
 from ..views.job_views import JobListView, JobView
-from ..views.quiz_views import QuizView, QuizSubmissionView, QuizResultView, JobApplicantsView
+from ..views.quiz_views import QuizStartView, AdaptiveQuizStepView, QuizResultView, JobApplicantsView
 from ..views.job_offer_views import SendJobOfferView
 
 urlpatterns = [
@@ -10,9 +10,12 @@ urlpatterns = [
     path('<int:pk>/save/', JobView.as_view({'post': 'save'}), name='job-save'),
     path('saved/', JobView.as_view({'get': 'saved_jobs'}), name='saved-jobs'),
     
-    # Quiz URLs
-    path('<int:job_id>/quiz/', QuizView.as_view(), name='quiz-detail'),
-    path('<int:job_id>/quiz/submit/', QuizSubmissionView.as_view(), name='quiz-submit'),
+    # Quiz URLs (Updated for Adaptive Flow)
+    # POST to start/resume quiz and get first question
+    path('<int:job_id>/quiz/start/', QuizStartView.as_view(), name='quiz-start'), 
+    # POST answer and get next question/result
+    path('<int:job_id>/quiz/step/', AdaptiveQuizStepView.as_view(), name='quiz-step'), 
+    # GET final result (after completion)
     path('<int:job_id>/quiz/result/', QuizResultView.as_view(), name='quiz-result'),
     
     # Applicant URLs
