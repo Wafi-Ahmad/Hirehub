@@ -226,6 +226,7 @@ const ConversationView = ({ conversationId, currentUser }) => {
   const [conversation, setConversation] = useState(null);
   const messagesEndRef = useRef(null);
   const wsRef = useRef(null);
+  const justSentMessageRef = useRef(null);
   
   // Connect to WebSocket when conversation changes
   useEffect(() => {
@@ -292,15 +293,19 @@ const ConversationView = ({ conversationId, currentUser }) => {
             // Check if the message belongs to the current conversation
             if (data.message.conversation_id === parseInt(conversationId)) {
               // Check if we already have this message to avoid duplicates
-              if (!messages.some(m => m.id === data.message.id)) {
-                console.log('Adding new message to state');
-                setMessages(prevMessages => [...prevMessages, data.message]);
-                
-                // Scroll to bottom after adding message
-                setTimeout(() => {
-                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-                }, 300);
-              }
+              setMessages(prevMessages => {
+                if (!prevMessages.some(m => m.id === data.message.id) && 
+                    justSentMessageRef.current !== data.message.id) {
+                  console.log('Adding new message to state');
+                  return [...prevMessages, data.message];
+                }
+                return prevMessages;
+              });
+              
+              // Scroll to bottom after adding message
+              setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }, 300);
             }
           }
           else if (data.type === 'message_updated' && data.message) {
@@ -424,7 +429,16 @@ const ConversationView = ({ conversationId, currentUser }) => {
       
       // Update the messages state by adding the new message
       if (response.data && response.data.id) {
-        setMessages(prevMessages => [...prevMessages, response.data]);
+        // Store the message ID that was just sent to prevent duplicates from WebSocket
+        justSentMessageRef.current = response.data.id;
+        
+        // Don't add the message to state here - let the WebSocket handle it
+        // This prevents duplication of messages
+        
+        // Clear the sent message ID reference after a short delay
+        setTimeout(() => {
+          justSentMessageRef.current = null;
+        }, 2000); // 2 second window to prevent duplicates
       }
       
       setNewMessage('');
@@ -526,6 +540,7 @@ const ConversationView = ({ conversationId, currentUser }) => {
         overflow: 'hidden',
         width: '100%',
       }}
+      data-testid="conversation-view"
     >
       {/* Conversation header with recipient info */}
       <Box

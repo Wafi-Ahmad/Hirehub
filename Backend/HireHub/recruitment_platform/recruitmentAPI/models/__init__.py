@@ -6,4 +6,5 @@ from .connection_model import ConnectionRequest
 from .job_model import JobPost
 from .quiz_model import Quiz, QuizAttempt
 from .notification_model import Notification
-from .message_model import Conversation, Message
+from .message_model import Conversation, Message 
+from .interview_model import Interview

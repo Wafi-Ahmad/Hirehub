@@ -21,15 +21,23 @@ import {
     DialogContent,
     DialogActions,
     Button,
+    Stack,
+    Tabs,
+    Tab,
+    Divider,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import DescriptionIcon from '@mui/icons-material/Description';
 import PersonIcon from '@mui/icons-material/Person';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EmailIcon from '@mui/icons-material/Email';
+import EventIcon from '@mui/icons-material/Event';
 import { quizService } from '../../services/quizService';
 import { jobService } from '../../services/jobService';
+import { interviewService } from '../../services/interviewService';
 import moment from 'moment';
+import ScheduleInterviewDialog from './ScheduleInterviewDialog';
+import InterviewManagement from './InterviewManagement';
 
 import { toast } from 'react-toastify';
 
@@ -41,6 +49,10 @@ const ApplicantTable = ({ jobId }) => {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [openCVDialog, setOpenCVDialog] = useState(false);
     const [selectedCV, setSelectedCV] = useState(null);
+    const [openInterviewDialog, setOpenInterviewDialog] = useState(false);
+    const [selectedApplicant, setSelectedApplicant] = useState(null);
+    const [isScheduling, setIsScheduling] = useState(false);
+    const [tabValue, setTabValue] = useState(0);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -102,6 +114,35 @@ const ApplicantTable = ({ jobId }) => {
         setSelectedCV(null);
     };
 
+    const handleScheduleInterview = (applicant) => {
+        setSelectedApplicant(applicant);
+        setOpenInterviewDialog(true);
+    };
+
+    const handleCloseInterviewDialog = () => {
+        setOpenInterviewDialog(false);
+        setSelectedApplicant(null);
+    };
+
+    const handleSubmitInterview = async (interviewData) => {
+        setIsScheduling(true);
+        try {
+            await interviewService.scheduleInterview(jobId, selectedApplicant.id, interviewData);
+            toast.success('Interview scheduled successfully');
+            setOpenInterviewDialog(false);
+            setTabValue(1);
+        } catch (error) {
+            console.error('Error scheduling interview:', error);
+            toast.error(error.message || 'Failed to schedule interview');
+        } finally {
+            setIsScheduling(false);
+        }
+    };
+
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
+    };
+
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" p={3}>
@@ -118,7 +159,7 @@ const ApplicantTable = ({ jobId }) => {
         );
     }
 
-    if (!applicants.length) {
+    if (!applicants.length && tabValue === 0) {
         return (
             <Alert severity="info">
                 No applicants have applied for this position yet.
@@ -128,6 +169,14 @@ const ApplicantTable = ({ jobId }) => {
 
     return (
         <>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                <Tabs value={tabValue} onChange={handleTabChange} aria-label="applicant tabs">
+                    <Tab label="Applicants" />
+                    <Tab label="Interviews" />
+                </Tabs>
+            </Box>
+
+            {tabValue === 0 ? (
             <TableContainer component={Paper} sx={{ mt: 2 }}>
                 <Table>
                     <TableHead>
@@ -201,14 +250,26 @@ const ApplicantTable = ({ jobId }) => {
                                         {moment(applicant.applied_at).format('MMM DD, YYYY')}
                                     </TableCell>
                                     <TableCell align="center">
+                                            <Stack direction="row" spacing={1} justifyContent="center">
                                         <Button
                                             variant="contained"
                                             color="primary"
                                             startIcon={<EmailIcon />}
                                             onClick={() => handleSendJobOffer(applicant.id)}
+                                                    size="small"
                                         >
-                                            Send Job Offer
+                                                    Send Offer
+                                                </Button>
+                                                <Button
+                                                    variant="outlined"
+                                                    color="secondary"
+                                                    startIcon={<EventIcon />}
+                                                    onClick={() => handleScheduleInterview(applicant)}
+                                                    size="small"
+                                                >
+                                                    Schedule Interview
                                         </Button>
+                                            </Stack>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -224,6 +285,9 @@ const ApplicantTable = ({ jobId }) => {
                     onRowsPerPageChange={handleChangeRowsPerPage}
                 />
             </TableContainer>
+            ) : (
+                <InterviewManagement jobId={jobId} />
+            )}
 
             <Dialog
                 open={openCVDialog}
@@ -246,6 +310,15 @@ const ApplicantTable = ({ jobId }) => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Schedule Interview Dialog */}
+            <ScheduleInterviewDialog
+                open={openInterviewDialog}
+                onClose={handleCloseInterviewDialog}
+                onSchedule={handleSubmitInterview}
+                applicant={selectedApplicant}
+                isScheduling={isScheduling}
+            />
         </>
     );
 };

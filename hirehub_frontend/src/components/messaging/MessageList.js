@@ -233,6 +233,7 @@ const MessageList = ({ conversationId, currentUser }) => {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
   const wsRef = useRef(null);
+  const justSentMessageRef = useRef(null);
 
   // Connect to WebSocket and fetch messages when conversation changes
   useEffect(() => {
@@ -300,7 +301,8 @@ const MessageList = ({ conversationId, currentUser }) => {
             // Check if the message belongs to the current conversation
             if (data.message.conversation_id === parseInt(conversationId)) {
               // Check if we already have this message to avoid duplicates
-              if (!messages.some(m => m.id === data.message.id)) {
+              if (!messages.some(m => m.id === data.message.id) && 
+                  justSentMessageRef.current !== data.message.id) {
                 console.log('Adding new message to state');
                 setMessages(prevMessages => [...prevMessages, data.message]);
                 
@@ -403,8 +405,16 @@ const MessageList = ({ conversationId, currentUser }) => {
       // Add the new message to the existing messages instead of refetching
       if (response.data && response.data.id) {
         const newMessageObj = response.data;
-        // Add message to correct date group or create new group
+        // Store the message ID that was just sent to prevent duplicates from WebSocket
+        justSentMessageRef.current = newMessageObj.id;
+        
+        // Add message to state
         setMessages(prevMessages => [...prevMessages, newMessageObj]);
+        
+        // Clear the sent message ID reference after a short delay
+        setTimeout(() => {
+          justSentMessageRef.current = null;
+        }, 2000); // 2 second window to prevent duplicates
       }
       
       setNewMessage('');

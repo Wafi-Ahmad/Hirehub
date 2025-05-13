@@ -13,9 +13,12 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 from datetime import timedelta
 import os
+from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load .env file
+load_dotenv(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -291,4 +294,12 @@ GRAPH_MODELS = {
   'all_applications': True,
   'group_models': True,
 }
+
+# Meeting Platform API Keys (Add these)
+ZOOM_API_KEY = os.environ.get('QyNNo6DCSUWwu4R6Q4RKEg')
+ZOOM_API_SECRET = os.environ.get('89NlpqQeYh1lh1gmabppwEGdF869r7jj')
+
+# Note: Google Meet often uses OAuth 2.0 Credentials (JSON file)
+# You might store the path to the credentials file in an env var
+GOOGLE_CREDENTIALS_FILE_PATH = os.environ.get('GOOGLE_CREDENTIALS_PATH')
 

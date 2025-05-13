@@ -6,6 +6,7 @@ from .role_urls import urlpatterns as role_urls
 from .job_urls import urlpatterns as job_urls
 from .notification_urls import urlpatterns as notification_urls
 from .message_urls import urlpatterns as message_urls
+from .interview_urls import urlpatterns as interview_urls
 
 # For backward compatibility
 from .message_urls import urlpatterns as messaging_urls
@@ -21,4 +22,5 @@ urlpatterns = [
     path('job/', include(job_urls)),
     path('notification/', include(notification_urls)),
     path('messaging/', include(message_urls)),
+    path('interview/', include(interview_urls)),
 ]
